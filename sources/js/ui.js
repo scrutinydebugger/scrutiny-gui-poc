@@ -14,6 +14,7 @@ class UI {
         }
 
         this.loaded_sfd = null
+        this.device_info = null
     }
 
     init() {
@@ -28,10 +29,27 @@ class UI {
             $("#modal-container").hide()
         })
 
+        $(document).on('keyup', function(e) {
+            if (e.key == "Escape") {
+                $("#modal-container").hide()
+                $(".tooltip").hide()
+            }
+        })
+
         $("#loaded_firmware_label").click(function() {
             that.show_firmware_info()
         })
+
+        $("#device_status_label").click(function() {
+            that.show_device_info()
+        })
+
+        $("body").keypress(function(e) {
+            that.keypress_handler(e)
+        })
     }
+
+
 
     resize() {
         let golden_layout_margin = 2
@@ -51,6 +69,7 @@ class UI {
         this.container.css('left', sidemenu_width + golden_layout_margin);
         this.widget_layout.updateSize(this.container.width(), this.container.height());
     }
+
 
     show_modal(title, content) {
         $("#modal-content").empty();
@@ -124,6 +143,143 @@ class UI {
         }
     }
 
+
+
+    show_device_info() {
+        let padLeft = function(s, ch, n) {
+            return s.length >= n ? s : (Array(n + 1).join(ch) + s).slice(-n);
+        };
+
+
+
+        if (this.device_info != null) {
+            let device_id = '-';
+            let display_name = '-';
+            let max_tx_data_size = '-';
+            let max_rx_data_size = '-';
+            let max_bitrate_bps = '-';
+            let rx_timeout_us = '-';
+            let heartbeat_timeout_us = '-';
+            let address_size_bits = '-';
+            let protocol_version = '-';
+            let supported_feature_map_content = '-';
+            let readonly_memory_regions_content = '-';
+            let forbidden_memory_regions_content = '-';
+
+            try {
+                device_id = this.device_info['device_id']
+            } catch {}
+
+            try {
+                display_name = this.device_info['display_name']
+            } catch {}
+
+            try {
+                max_tx_data_size = this.device_info['max_tx_data_size'] + ' bytes'
+            } catch {}
+
+            try {
+                max_rx_data_size = this.device_info['max_rx_data_size'] + ' bytes'
+            } catch {}
+
+            try {
+                max_bitrate_bps = this.device_info['max_bitrate_bps'] + ' b/s'
+            } catch {}
+
+            try {
+                rx_timeout_us = this.device_info['rx_timeout_us'] + ' us'
+            } catch {}
+
+            try {
+                heartbeat_timeout_us = this.device_info['heartbeat_timeout_us'] + ' us'
+            } catch {}
+
+            try {
+                address_size_bits = this.device_info['address_size_bits'] + ' bits'
+            } catch {}
+
+            try {
+                let major = this.device_info['protocol_major'];
+                let minor = this.device_info['protocol_minor']
+                protocol_version = `V${major}.${minor}`;
+            } catch {}
+
+            try {
+                supported_feature_map_content = $('<ul></ul>');
+                supported_feature_map_content.append($('<li>Memory read : ' + (this.device_info['supported_feature_map']['memory_read'] ? 'Yes' : 'No') + ' </li>'))
+                supported_feature_map_content.append($('<li>Memory Write : ' + (this.device_info['supported_feature_map']['memory_write'] ? 'Yes' : 'No') + ' </li>'))
+                supported_feature_map_content.append($('<li>Datalog acquisition: ' + (this.device_info['supported_feature_map']['datalog_acquire'] ? 'Yes' : 'No') + ' </li>'))
+                supported_feature_map_content.addClass('list-no-margin')
+            } catch {
+                supported_feature_map_content = '-'
+            }
+
+            try {
+                let address_size_bytes = Math.round(this.device_info['address_size_bits'] / 8);
+                if (this.device_info['readonly_memory_regions'].length == 0) {
+                    readonly_memory_regions_content = 'None'
+                } else {
+                    readonly_memory_regions_content = $('<ul></ul>');
+                    for (let i = 0; i < this.device_info['readonly_memory_regions'].length; i++) {
+                        let start = this.device_info['readonly_memory_regions'][i]['start'];
+                        let end = this.device_info['readonly_memory_regions'][i]['end'];
+                        let display_str = '0x' + padLeft(start.toString(16), '0', address_size_bytes) + ' - 0x' + padLeft(end.toString(16), '0', address_size_bytes)
+                        readonly_memory_regions_content.append($('<li>' + display_str + '</li>'))
+                    }
+                    readonly_memory_regions_content.addClass('list-no-margin')
+                }
+            } catch {
+                readonly_memory_regions_content = '-'
+            }
+
+
+            try {
+                let address_size_bytes = Math.round(this.device_info['address_size_bits'] / 8);
+                if (this.device_info['forbidden_memory_regions'].length == 0) {
+                    forbidden_memory_regions_content = 'None'
+                } else {
+                    forbidden_memory_regions_content = $('<ul></ul>');
+                    for (let i = 0; i < this.device_info['forbidden_memory_regions'].length; i++) {
+                        let start = this.device_info['forbidden_memory_regions'][i]['start'];
+                        let end = this.device_info['forbidden_memory_regions'][i]['end'];
+                        let display_str = '0x' + padLeft(start.toString(16), '0', address_size_bytes) + ' - 0x' + padLeft(end.toString(16), '0', address_size_bytes)
+                        forbidden_memory_regions_content.append($('<li>' + display_str + '</li>'))
+                    }
+                    forbidden_memory_regions_content.addClass('list-no-margin')
+                }
+            } catch {
+                forbidden_memory_regions_content = '-'
+            }
+
+            this.show_modal('Device Information', $("#template-device-info-table").html())
+            $("#modal-content [label-name='device_id']").text(device_id)
+            $("#modal-content [label-name='display_name']").text(display_name)
+            $("#modal-content [label-name='max_tx_data_size']").text(max_tx_data_size)
+            $("#modal-content [label-name='max_rx_data_size']").text(max_rx_data_size)
+            $("#modal-content [label-name='max_bitrate_bps']").text(max_bitrate_bps)
+            $("#modal-content [label-name='rx_timeout_us']").text(rx_timeout_us)
+            $("#modal-content [label-name='heartbeat_timeout_us']").text(heartbeat_timeout_us)
+            $("#modal-content [label-name='address_size_bits']").text(address_size_bits)
+            $("#modal-content [label-name='protocol_version']").text(protocol_version)
+
+            $("#modal-content td[label-name='supported_feature_map']").html(supported_feature_map_content)
+            $("#modal-content td[label-name='readonly_memory_regions']").html(readonly_memory_regions_content)
+            $("#modal-content td[label-name='forbidden_memory_regions']").html(forbidden_memory_regions_content)
+
+
+            $("#modal-content [show-tooltip]").on('mouseover', function(e) {
+                let tooltip = $($(this).attr('show-tooltip'));
+                tooltip.show()
+            })
+
+            $("#modal-content [show-tooltip]").on('mouseleave', function(e) {
+                let tooltip = $($(this).attr('show-tooltip'));
+                tooltip.hide()
+            })
+
+        }
+    }
+
     register_widget(widget_class, server_conn) {
         // Add component to GoldenLayout
         this.widget_layout.registerComponent(widget_class.name(),
@@ -179,6 +335,8 @@ class UI {
 
 
     set_device_status(status, device_info) {
+        this.device_info = device_info;
+
         let status_label_text = "";
         let indicator_img = "";
         if (status == DeviceStatus.Disconnected) {
@@ -204,6 +362,12 @@ class UI {
         if (img_elem.attr('src') != indicator_img) {
             img_elem.attr('src', indicator_img)
         }
+
+        if (this.device_info != null) {
+            $("#device_status_label").addClass('clickable_label');
+        } else {
+            $("#device_status_label").removeClass('clickable_label');
+        }
     }
 
     set_loaded_sfd(loaded_sfd) {
@@ -212,7 +376,6 @@ class UI {
 
         let project_name = '<Unnamed>'
         let project_version = '<No Version>'
-        let firmware_id_str = '-'
 
         if (loaded_sfd != null) {
 
@@ -226,24 +389,16 @@ class UI {
 
             try {
                 this.loaded_sfd_id = loaded_sfd['firmware_id']
-                firmware_id_str = this.loaded_sfd_id
             } catch {}
 
             display_str = project_name + ' V' + project_version;
-            $("#loaded_firmware_label").css('cursor', 'pointer');
+            $("#loaded_firmware_label").addClass('clickable_label');
         } else {
-            $("#loaded_firmware_label").css('cursor', 'auto');
+            $("#loaded_firmware_label").removeClass('clickable_label');
         }
 
-        $('#loaded_firmware').attr('alt', firmware_id_str)
-
-        // todo : Add popup with more data when clicked
         if (display_str != $('#loaded_firmware_label').text()) {
             $('#loaded_firmware_label').text(display_str);
         }
-    }
-
-    set_loaded_firmware(name, version, firmware_id) {
-
     }
 }

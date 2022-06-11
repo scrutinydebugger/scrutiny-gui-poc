@@ -119,9 +119,6 @@ template{
     margin: 0;
 }
 
-#loaded_firmware_label{
-    cursor: auto;
-}
 
 .widget_draggable_item
 {
@@ -238,7 +235,7 @@ template{
 
 .styled-table th,
 .styled-table td {
-    padding: 12px 15px;
+    padding: 3px 15px;
 }
 
 .styled-table tbody tr {
@@ -250,8 +247,59 @@ template{
 }
 
 
-.firmware-detail-table{
+.firmware-detail-table,
+.device-info-table{
     margin-left: auto;
     margin-right: auto;
     font-size: 1.2em;
+}
+
+
+.clickable_label {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.help-content{
+    display: none;
+}
+
+.device-info-table .help-icon{
+    margin: auto;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.tooltip{
+    position: fixed;
+    background: #234;
+    color: #fff;
+    padding-left: 15px;
+    padding-right: 15px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    min-width: 250px;
+    font-size: 0.8em;
+    max-width: 400px;
+}
+
+.device-info-table .tooltip{
+    float: right;
+}
+
+.no-style-list{
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.list-no-margin{
+    margin: 0;
+    list-style: inside;
+    padding-left: 0;
+}
+
+.device-info-table [label-name=device_id],
+.firmware-detail-table [label-name=firmware_id]{
+    font-size: 0.7em;
 }
