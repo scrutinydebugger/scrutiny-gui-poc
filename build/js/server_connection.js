@@ -1,7 +1,6 @@
 class ServerConnection {
 
-
-    constructor(ui, hostname = '127.0.0.1', port = 8765) {
+    constructor(ui, datastore) {
         let that = this;
         this.update_ui_interval = 500;
         this.reconnect_interval = 500;
@@ -9,22 +8,29 @@ class ServerConnection {
         this.get_status_interval = 2000;
 
         this.ui = ui
-        this.set_endpoint(hostname, port)
+        this.datastore = datastore
+        this.set_endpoint('127.0.0.1', 8765) // default
         this.socket = null
         this.server_status = ServerStatus.Disconnected
         this.device_status = DeviceStatus.NA
         this.loaded_sfd = null
         this.device_info = null
 
-        this.callback_dict = {}
         this.enable_reconnect = true
         this.connect_timeout_handle = null;
 
         this.get_status_interval_handle = null
+        this.datastore_reload_in_progress = false
+        this.actual_request_id = 0
+        this.pending_request_queue = {}
 
 
         this.register_callback("inform_server_status", function(data) {
             that.inform_server_status_callback(data)
+        })
+
+        this.register_callback("response_get_watchable_count", function(data) {
+
         })
 
         this.set_disconnected()
@@ -43,6 +49,13 @@ class ServerConnection {
         this.hostname = hostname
         this.port = port
     }
+
+    reload_datastore() {
+        this.datastore_reload_in_progress = true
+        this.datastore = {}
+        this.send_request('get_watchable_count')
+    }
+
 
     start() {
         let that = this
@@ -66,18 +79,49 @@ class ServerConnection {
     }
 
     send_request(cmd, params = {}) {
+        let reqid = null
         if (this.socket !== null) {
             if (this.socket.readyState == this.socket.OPEN) {
                 try {
+                    reqid = this.actual_request_id++;
                     params['cmd'] = cmd;
+                    params['reqid'] = reqid;
                     let payload = JSON.stringify(params)
                     console.debug('Sending: ' + payload)
                     this.socket.send(payload)
                 } catch (e) {
+                    reqid = null
                     console.error('Cannot send request with command=' + cmd + '. Error: ' + e)
                 }
             }
         }
+
+        return reqid
+    }
+
+    chain_request(cmd, params = {}) {
+        let reqid = this.send_request(cmd, params)
+
+        let that = this
+        return new Promise(function(resolve, reject) {
+            if (reqid != null) {
+                that.pending_request_queue[reqid] = {
+                    'resolve': resolve,
+                    'reject': reject
+                }
+            } else {
+                reject() // Could not send the request
+            }
+
+            setTimeout(function() {
+                // Reject the Promise and delete it
+                reject()
+                if (that.pending_request_queue.hasOwnProperty(reqid)) {
+                    delete that.pending_request_queue[reqid]
+                }
+            }, 2000)
+
+        })
     }
 
     create_socket() {
@@ -181,13 +225,30 @@ class ServerConnection {
                     error_message += obj.msg
                 }
 
-                console.error(error_message)
-            } else { // Server is happy, spread the news
-                if (this.callback_dict.hasOwnProperty(obj.cmd)) {
-                    for (let i = 0; i < this.callback_dict[obj.cmd].length; i++) {
-                        this.callback_dict[obj.cmd][i](obj);
+                // Settle the Promise and delete it
+                if (obj.hasOwnProperty('reqid')) {
+                    if (this.pending_request_queue.hasOwnProperty(obj['reqid'])) {
+                        this.pending_request_queue[obj['reqid']]['reject']()
+                        delete this.pending_request_queue[obj['reqid']]
                     }
                 }
+
+                console.error(error_message)
+            } else { // Server is happy, spread the news
+
+                $.event.trigger({
+                    type: "scrutiny." + obj.cmd,
+                    obj: obj
+                });
+
+                // Settle the Promise and delete it
+                if (obj.hasOwnProperty('reqid')) {
+                    if (this.pending_request_queue.hasOwnProperty(obj['reqid'])) {
+                        this.pending_request_queue[obj['reqid']]['resolve']()
+                        delete this.pending_request_queue[obj['reqid']]
+                    }
+                }
+
             }
         } catch (error) {
             // Server is drunk. Ignore him.
@@ -196,11 +257,9 @@ class ServerConnection {
     }
 
     register_callback(cmd, callback) {
-        if (!this.callback_dict.hasOwnProperty(cmd)) {
-            this.callback_dict[cmd] = []
-        }
-
-        this.callback_dict[cmd].push(callback)
+        $(document).on('scrutiny.' + cmd, function(e) {
+            callback(e.obj)
+        })
     }
 
     // =====
@@ -223,6 +282,22 @@ class ServerConnection {
             }
 
             try {
+
+                let must_reload = false
+                if (data['loaded_sfd'] != null) {
+                    if (this.loaded_sfd == null) {
+                        must_reload = true
+                    } else {
+                        if (this.loaded_sfd['firmware_id'] != data['loaded_sfd']['firmware_id']) {
+                            must_reload = true
+                        }
+                    }
+                }
+
+                if (must_reload) {
+                    //this.reload_datastore()
+                }
+
                 this.loaded_sfd = data['loaded_sfd'];
             } catch (e) {
                 this.loaded_sfd = null

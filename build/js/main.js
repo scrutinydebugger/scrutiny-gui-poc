@@ -1,6 +1,6 @@
 var scrutiny_client_config = {
     'server': {
-        'hostname': '127.0.0.1',
+        'host': '127.0.0.1',
         'port': 8765
     }
 }
@@ -36,13 +36,15 @@ function load_config() {
 
     ui = new UI($('#layout-container'));
     ui.init()
+    datastore = new Datastore()
+
     let config = scrutiny_client_config
-    server_conn = new ServerConnection(ui)
-    server_conn.set_endpoint(config['server']['hostname'], config['server']['port'])
+    server_conn = new ServerConnection(ui, datastore)
+    server_conn.set_endpoint(config['server']['host'], config['server']['port'])
     server_conn.start()
 
-    ui.register_widget(VarListWidget, server_conn)
-    ui.register_widget(WatchWidget, server_conn)
+    ui.register_widget(VarListWidget, server_conn, datastore)
+    ui.register_widget(WatchWidget, server_conn, datastore)
 
 })();
 

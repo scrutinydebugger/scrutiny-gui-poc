@@ -1,6 +1,6 @@
 class WatchWidget {
 
-    static initialize(container, server_conn) {
+    static initialize(container, server_conn, datastore) {
         container.getElement().html('<h2 style="text-align:center">Watch!</h2>');
     }
 
