@@ -1,0 +1,13 @@
+ul.varlist-tree{
+    padding: 0;
+    margin: 0;
+}
+
+
+li.varlist-tree-node{
+    font-size: 12px;
+    padding: 0;
+    margin: 0;
+    list-style: outside;
+    padding-left: 15px;
+}

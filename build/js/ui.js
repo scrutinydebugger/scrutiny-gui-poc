@@ -284,7 +284,8 @@ class UI {
         // Add component to GoldenLayout
         this.widget_layout.registerComponent(widget_class.name(),
             function(container, state) {
-                widget_class.initialize(container, ...args);
+                let widget = new widget_class(container.getElement(), ...args)
+                widget.initialize();
             });
 
         // Add menu item for drag and drop

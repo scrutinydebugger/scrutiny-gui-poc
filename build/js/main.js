@@ -31,6 +31,14 @@ function load_config() {
 
 }
 
+function init_widget(widget_class) {
+    let css_list = widget_class.css_list()
+    for (let i = 0; i < css_list.length; i++) {
+        let path = 'widgets/' + widget_class.name() + '/' + css_list[i]
+        $('head').append('<link rel="stylesheet" href="' + path + '" type="text/css" />');
+    }
+}
+
 (function() {
     load_config()
 
@@ -43,8 +51,13 @@ function load_config() {
     server_conn.set_endpoint(config['server']['host'], config['server']['port'])
     server_conn.start()
 
-    ui.register_widget(VarListWidget, server_conn, datastore)
-    ui.register_widget(WatchWidget, server_conn, datastore)
+
+    let widget_list = [VarListWidget, WatchWidget]
+
+    for (let i = 0; i < widget_list.length; i++) {
+        init_widget(widget_list[i])
+        ui.register_widget(widget_list[i], server_conn, datastore)
+    }
 
 })();
 

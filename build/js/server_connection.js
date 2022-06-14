@@ -20,7 +20,10 @@ class ServerConnection {
         this.connect_timeout_handle = null;
 
         this.get_status_interval_handle = null
-        this.datastore_reload_in_progress = false
+        this.active_sfd_download = null
+        this.sfd_download_complete = false
+        this.sfd_download_error = false
+        this.expected_datastore_size = null
         this.actual_request_id = 0
         this.pending_request_queue = {}
 
@@ -29,9 +32,25 @@ class ServerConnection {
             that.inform_server_status_callback(data)
         })
 
-        this.register_callback("response_get_watchable_count", function(data) {
-
+        this.register_callback("response_get_watchable_list", function(data) {
+            that.receive_watchable_list(data)
         })
+
+
+
+        $(document).on('scrutiny.sfd.loaded', function(e) {
+            that.reload_datastore(e.sfd)
+        })
+
+        $(document).on('scrutiny.sfd.unloaded', function() {
+            that.reload_datastore(null)
+        })
+
+        $(document).on('scrutiny.server.disconnected', function() {
+            that.set_disconnected()
+            that.datastore.clear()
+        })
+
 
         this.set_disconnected()
         this.update_ui()
@@ -50,10 +69,36 @@ class ServerConnection {
         this.port = port
     }
 
-    reload_datastore() {
-        this.datastore_reload_in_progress = true
-        this.datastore = {}
-        this.send_request('get_watchable_count')
+    reload_datastore(sfd) {
+        this.active_sfd_download = sfd
+        this.sfd_download_complete = false
+        this.sfd_download_error = false
+        this.expected_datastore_size = null
+        this.datastore.clear()
+
+        if (sfd != null) {
+
+            let that = this
+
+            let download_params = {
+                'max_per_response': 1000,
+                "filter": {
+                    "type": ["var"]
+                }
+            }
+
+            that.chain_request('get_watchable_count').then(function(data) {
+
+                that.expected_datastore_size = {}
+                that.expected_datastore_size[DatastoreEntryType.Var] = data['qty']['var']
+                that.expected_datastore_size[DatastoreEntryType.Alias] = data['qty']['alias']
+
+                that.send_request('get_watchable_list', download_params)
+            }, function(data) {
+                that.sfd_download_error = true
+            })
+
+        }
     }
 
 
@@ -75,7 +120,12 @@ class ServerConnection {
         if (this.socket !== null) {
             this.socket.close()
         }
-        this.set_disconnected();
+
+        if (this.server_status == ServerStatus.Connected) {
+            $.event.trigger({
+                type: "scrutiny.server.disconnected"
+            });
+        }
     }
 
     send_request(cmd, params = {}) {
@@ -177,6 +227,12 @@ class ServerConnection {
     }
 
     on_socket_close_callback(e) {
+        if (this.server_status == ServerStatus.Connected) {
+            $.event.trigger({
+                type: "scrutiny.server.disconnected"
+            });
+        }
+
         this.set_disconnected();
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
@@ -187,15 +243,26 @@ class ServerConnection {
     }
 
     on_socket_open_callback(e) {
+        $.event.trigger('scrutiny.server.disconnected')
         this.server_status = ServerStatus.Connected
         this.device_status = DeviceStatus.NA
         this.update_ui();
         this.clear_connect_timeout()
 
         this.start_get_status_periodic_call()
+
+        $.event.trigger({
+            type: "scrutiny.server.connected"
+        });
     }
 
     on_socket_error_callback(e) {
+        if (this.server_status == ServerStatus.Connected) {
+            $.event.trigger({
+                type: "scrutiny.server.disconnected"
+            });
+        }
+
         this.set_disconnected();
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
@@ -228,7 +295,7 @@ class ServerConnection {
                 // Settle the Promise and delete it
                 if (obj.hasOwnProperty('reqid')) {
                     if (this.pending_request_queue.hasOwnProperty(obj['reqid'])) {
-                        this.pending_request_queue[obj['reqid']]['reject']()
+                        this.pending_request_queue[obj['reqid']]['reject'](obj)
                         delete this.pending_request_queue[obj['reqid']]
                     }
                 }
@@ -237,14 +304,14 @@ class ServerConnection {
             } else { // Server is happy, spread the news
 
                 $.event.trigger({
-                    type: "scrutiny." + obj.cmd,
+                    type: "scrutiny.api.rx." + obj.cmd,
                     obj: obj
                 });
 
                 // Settle the Promise and delete it
                 if (obj.hasOwnProperty('reqid')) {
                     if (this.pending_request_queue.hasOwnProperty(obj['reqid'])) {
-                        this.pending_request_queue[obj['reqid']]['resolve']()
+                        this.pending_request_queue[obj['reqid']]['resolve'](obj)
                         delete this.pending_request_queue[obj['reqid']]
                     }
                 }
@@ -257,12 +324,66 @@ class ServerConnection {
     }
 
     register_callback(cmd, callback) {
-        $(document).on('scrutiny.' + cmd, function(e) {
+        $(document).on('scrutiny.api.rx.' + cmd, function(e) {
             callback(e.obj)
         })
     }
 
     // =====
+    receive_watchable_list(data) {
+        if (this.active_sfd_download == null)
+            return
+
+        if (this.sfd_download_complete)
+            return
+
+        if (this.sfd_download_error)
+            return
+
+        try {
+
+            if (this.server_status != ServerStatus.Connected) {
+                this.sfd_download_error = true
+            } else if (this.device_status != DeviceStatus.Connected) {
+                this.sfd_download_error = true
+            } else if (this.loaded_sfd == null) {
+                this.sfd_download_error = true
+            } else if (this.loaded_sfd['firmware_id'] != this.active_sfd_download['firmware_id']) {
+                this.sfd_download_error = true
+            } else if (this.expected_datastore_size == null) {
+                this.sfd_download_error = true
+            } else {
+                for (let i = 0; i < data['content']['var'].length; i++) {
+                    this.datastore.add_from_server_def(DatastoreEntryType.Var, data['content']['var'][i])
+                }
+
+                for (let i = 0; i < data['content']['alias'].length; i++) {
+                    this.datastore.add_from_server_def(DatastoreEntryType.Alias, data['content']['alias'][i])
+                }
+
+                var actual_count = this.datastore.get_count()
+
+                if (this.expected_datastore_size[DatastoreEntryType.Var] == actual_count[DatastoreEntryType.Var] &&
+                    this.expected_datastore_size[DatastoreEntryType.Alias] == actual_count[DatastoreEntryType.Alias]) {
+                    this.sfd_download_complete = true
+                    this.active_sfd_download = null
+                    this.datastore.set_ready()
+                } else {
+                    if (actual_count[DatastoreEntryType.Var] > this.expected_datastore_size[DatastoreEntryType.Var] ||
+                        actual_count[DatastoreEntryType.Alias] > this.expected_datastore_size[DatastoreEntryType.Alias]) {
+                        this.sfd_download_error = true
+                        console.error("Server gave more data than expected!")
+                    }
+                }
+            }
+
+        } catch (e) {
+            this.sfd_download_error = true
+            console.error(e)
+        }
+    }
+
+
 
     inform_server_status_callback(data) {
         let device_status_str_to_obj = {
@@ -275,7 +396,20 @@ class ServerConnection {
 
         try {
             try {
-                this.device_status = device_status_str_to_obj[data.device_status];
+                let new_device_status = device_status_str_to_obj[data.device_status];
+                if (new_device_status != this.device_status) {
+                    if (new_device_status == DeviceStatus.Connected) {
+                        $.event.trigger({
+                            type: 'scrutiny.device.connected'
+                        })
+                    } else if (this.device_status == DeviceStatus.Connected) {
+                        $.event.trigger({
+                            type: 'scrutiny.device.disconnected'
+                        })
+                    }
+                }
+
+                this.device_status = new_device_status;
             } catch {
                 this.device_status = DeviceStatus.NA;
                 console.error('[inform_server_status] Received a bad device status')
@@ -283,19 +417,24 @@ class ServerConnection {
 
             try {
 
-                let must_reload = false
-                if (data['loaded_sfd'] != null) {
+                if (data['loaded_sfd'] == null && this.loaded_sfd != null) {
+                    $.event.trigger({
+                        type: 'scrutiny.sfd.unloaded'
+                    })
+                } else if (data['loaded_sfd'] != null) {
+                    let must_reload = false
                     if (this.loaded_sfd == null) {
                         must_reload = true
-                    } else {
-                        if (this.loaded_sfd['firmware_id'] != data['loaded_sfd']['firmware_id']) {
-                            must_reload = true
-                        }
+                    } else if (this.loaded_sfd['firmware_id'] != data['loaded_sfd']['firmware_id']) {
+                        must_reload = true
                     }
-                }
 
-                if (must_reload) {
-                    //this.reload_datastore()
+                    if (must_reload) {
+                        $.event.trigger({
+                            type: 'scrutiny.sfd.loaded',
+                            sfd: data['loaded_sfd']
+                        })
+                    }
                 }
 
                 this.loaded_sfd = data['loaded_sfd'];
@@ -303,7 +442,6 @@ class ServerConnection {
                 this.loaded_sfd = null
                 console.error('[inform_server_status] Cannot read loaded firmware. ' + e)
             }
-
 
             try {
                 this.device_info = data['device_info'];
