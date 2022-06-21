@@ -34,16 +34,28 @@ class Datastore {
 
     clear_silent() {
         this.ready = false
-        this.display_path_to_entry_dict = {}
+        this.tree = new Tree()
 
         this.display_path_list_per_type = {}
         this.display_path_list_per_type[DatastoreEntryType.Var] = [];
         this.display_path_list_per_type[DatastoreEntryType.Alias] = [];
     }
 
+
+
     add(entry_type, entry) {
-        this.display_path_to_entry_dict[entry.display_path] = entry
+
+        this.tree.add(entry.display_path, entry)
         this.display_path_list_per_type[entry_type].push(entry.display_path)
+    }
+
+    node_exist(path) {
+        try {
+            this.tree.get_obj(path)
+            return true
+        } catch {
+            return false
+        }
     }
 
     add_from_server_def(entry_type, data) {
@@ -55,7 +67,7 @@ class Datastore {
     }
 
     get_server_id(display_path) {
-        return this.display_path_to_entry_dict[display_path]
+        return this.tree.get_obj_obj(display_path).server_id
     }
 
     get_entries(entry_type) {
@@ -64,7 +76,7 @@ class Datastore {
 
         for (let i = 0; i < this.display_path_list_per_type[entry_type].length; i++) {
             let display_path = this.display_path_list_per_type[entry_type][i]
-            list[i] = this.display_path_to_entry_dict[display_path]
+            list[i] = this.tree.get_obj(display_path)
         }
         return list
     }
@@ -92,6 +104,40 @@ class Datastore {
 
     is_ready() {
         return this.ready
+    }
+
+    get_children(path) {
+        let tree_objs = this.tree.get_children(path)
+
+        let children = {
+            'entries': {},
+            'subfolders': []
+        }
+
+        Object.keys(DatastoreEntryType).forEach(function(typeval, i) {
+            children['entries'][DatastoreEntryType[typeval]] = []
+        })
+
+
+        let folders = tree_objs['subtrees'];
+        let nodes = tree_objs['nodes'];
+        let node_names = Object.keys(nodes).sort()
+        let folder_names = Object.keys(folders).sort()
+        for (let i = 0; i < node_names.length; i++) {
+            let node = nodes[node_names[i]];
+            node['name'] = trim(node.display_path, '/').split('/').pop()
+            children['entries'][node.entry_type].push(node)
+
+        }
+
+        folder_names.forEach(function(folder_name, i) {
+            children['subfolders'].push({
+                'name': folder_name,
+                'children': folders[folder_name]['has_nodes'] || folders[folder_name]['has_subtrees']
+            })
+        })
+
+        return children
     }
 
 }

@@ -11,3 +11,7 @@ li.varlist-tree-node{
     list-style: outside;
     padding-left: 15px;
 }
+
+li.varlist-tree-node[draggable=true]{
+    cursor: copy;
+}

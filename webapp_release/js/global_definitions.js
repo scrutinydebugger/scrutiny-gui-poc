@@ -1,6 +1,7 @@
 var DatastoreEntryType = {
     Alias: 'alias',
-    Var: 'var'
+    Var: 'var',
+    Did: 'did'
 }
 
 var ServerStatus = {
