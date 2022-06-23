@@ -106,7 +106,7 @@ class Datastore {
         return this.ready
     }
 
-    get_children(path) {
+    get_children(path, entry_type = null) {
         let tree_objs = this.tree.get_children(path)
 
         let children = {
@@ -126,8 +126,9 @@ class Datastore {
         for (let i = 0; i < node_names.length; i++) {
             let node = nodes[node_names[i]];
             node['name'] = trim(node.display_path, '/').split('/').pop()
-            children['entries'][node.entry_type].push(node)
-
+            if (entry_type == null || entry_type == node.entry_type) {
+                children['entries'][node.entry_type].push(node)
+            }
         }
 
         folder_names.forEach(function(folder_name, i) {

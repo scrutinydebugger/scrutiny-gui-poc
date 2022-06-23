@@ -18,7 +18,6 @@ class VarListWidget {
         let that = this
 
         this.container.html("");
-        this.container.append($("<div class='type-filter'></div>"))
         this.container.append($("<div class='tree-container'></div>"))
 
         // Event handlers
@@ -27,7 +26,7 @@ class VarListWidget {
         })
 
         $(document).on('scrutiny.datastore.clear', function() {
-            that.clear()
+            that.clear_tree()
         })
 
         $("#test_drop").on('drop', function(e) {
@@ -40,31 +39,14 @@ class VarListWidget {
             e.preventDefault()
         })
 
+    
+
+
         // Setup
         if (this.app.datastore.is_ready()) {
-            that.rebuild_tree()
+            this.rebuild_tree()
+        } else {
         }
-
-        this.active_filter = null
-
-        let template = this.app.get_template(this, 'entry_type_filter')
-        template.find('button.toggle-button').click(function(e) {
-            let target = $(e.target)
-            let filter_str = target.attr('filter')
-
-            target.siblings('button.toggle-button').removeClass('active')
-            target.addClass('active')
-            if (filter_str === 'all') {
-                this.active_filter = null
-            } else if (filter_str === 'alias') {
-                this.active_filter = DatastoreEntryType.Alias
-            } else if (filter_str === 'var') {
-                this.active_filter = DatastoreEntryType.Var
-            } else if (filter_str === 'did') {
-                this.active_filter = DatastoreEntryType.Did
-            }
-        })
-        this.container.find('.type-filter').append(template)
     }
 
     make_node_id(display_path) {
@@ -127,9 +109,11 @@ class VarListWidget {
         return this.container.find('.tree-container');
     }
 
+
     // called on datastore ready event
     rebuild_tree() {
-        this.clear()
+        this.clear_tree()
+
         let tree_name = 'varlist' + this.instance_id;
         let that = this
         let ds = this.app.datastore
@@ -147,12 +131,18 @@ class VarListWidget {
             }
         });
 
+        // Open root on load complete.
+        let root_node_id = this.make_node_id('/')
+        thetree.bind("loaded.jstree", function() {
+            thetree.jstree().open_node(root_node_id)
+        });
+
         this.get_tree_container().append(thetree)
 
     }
 
     // called on datastore clear event
-    clear() {
+    clear_tree() {
         this.get_tree_container().html("")
     }
 
@@ -172,8 +162,6 @@ class VarListWidget {
     }
 
     static templates() {
-        return {
-            'entry_type_filter': 'templates/entry_type_filter.html'
-        }
+        return {}
     }
 }
