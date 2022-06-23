@@ -39,14 +39,13 @@ class VarListWidget {
             e.preventDefault()
         })
 
-    
+
 
 
         // Setup
         if (this.app.datastore.is_ready()) {
             this.rebuild_tree()
-        } else {
-        }
+        } else {}
     }
 
     make_node_id(display_path) {
@@ -56,6 +55,13 @@ class VarListWidget {
 
     fetch_jstree_subnodes(parent, callback) {
         // jstree root has id="#"
+
+        let node_type_map = {}
+        node_type_map[DatastoreEntryType.Var] = 'var'
+        node_type_map[DatastoreEntryType.Alias] = 'alias'
+        node_type_map[DatastoreEntryType.Did] = 'did'
+
+
         let that = this
         if (parent.id == "#") {
             let display_path = '/'
@@ -96,7 +102,7 @@ class VarListWidget {
                         'li_attr': {
                             "display_path": display_path
                         },
-                        "icon": "jstree-file"
+                        "type": node_type_map[entry_type]
                     })
                 })
             })
@@ -119,7 +125,7 @@ class VarListWidget {
         let ds = this.app.datastore
 
         let thetree = $("<div class='varlist-tree'></div>").jstree({
-            'plugins': ["dnd"], // Drag and drop
+            'plugins': ["dnd", "types"], // Drag and drop
             'core': {
                 'data': function(obj, cb) {
                     that.fetch_jstree_subnodes(obj, cb)
@@ -128,7 +134,18 @@ class VarListWidget {
                 'themes': {
                     "variant": "small"
                 }
-            }
+            },
+            "types": {
+                "alias": {
+                    "icon": "assets/img/alias-16x16.png"
+                },
+                'var': {
+                    "icon": "assets/img/var-16x16.png"
+                },
+                "did": {
+                    "icon": "assets/img/did-16x16.png"
+                }
+            },
         });
 
         // Open root on load complete.
