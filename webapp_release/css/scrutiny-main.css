@@ -303,3 +303,8 @@ template{
 .firmware-detail-table [label-name=firmware_id]{
     font-size: 0.7em;
 }
+
+
+.inline-button{
+    display: inline-block;
+}

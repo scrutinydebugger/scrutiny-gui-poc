@@ -1,6 +1,6 @@
 var DatastoreEntryType = {
-    Alias: 'alias',
     Var: 'var',
+    Alias: 'alias',
     Did: 'did'
 }
 

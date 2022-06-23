@@ -280,11 +280,11 @@ class UI {
         }
     }
 
-    register_widget(widget_class, ...args) {
+    register_widget(widget_class, app) {
         // Add component to GoldenLayout
         this.widget_layout.registerComponent(widget_class.name(),
             function(container, state) {
-                let widget = new widget_class(container.getElement(), ...args)
+                let widget = new widget_class(container.getElement(), app)
                 widget.initialize();
             });
 
