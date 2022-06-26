@@ -1,3 +1,9 @@
+var DatastoreEntryType = {
+    Var: 'var',
+    Alias: 'alias',
+    Did: 'did'
+}
+
 var ServerStatus = {
     Disconnected: 'disconnected',
     Connecting: 'connecting',

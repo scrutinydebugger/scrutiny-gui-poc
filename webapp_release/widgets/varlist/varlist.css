@@ -1,0 +1,46 @@
+ul.varlist-tree{
+    padding: 0;
+    margin: 0;
+}
+
+
+li.varlist-tree-node{
+    font-size: 12px;
+    padding: 0;
+    margin: 0;
+    list-style: outside;
+    padding-left: 15px;
+}
+
+li.varlist-tree-node[draggable=true]{
+    cursor: copy;
+}
+
+
+.type-filter{
+    width: 100%;
+    padding: 5px;
+
+}
+
+.type-filter button{
+    display: inline-block;
+    background-color: #ffffff;
+    border-radius: 3px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border: 1px solid #ccc;
+}
+
+
+.type-filter button:hover{
+    background-color: #E7F4F9;
+}
+
+.type-filter button:active,
+.type-filter button.active{
+    background-color: #ACD9EA;
+}
+

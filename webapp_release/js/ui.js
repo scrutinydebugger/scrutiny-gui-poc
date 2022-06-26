@@ -280,11 +280,12 @@ class UI {
         }
     }
 
-    register_widget(widget_class, server_conn) {
+    register_widget(widget_class, app) {
         // Add component to GoldenLayout
         this.widget_layout.registerComponent(widget_class.name(),
             function(container, state) {
-                widget_class.initialize(container, server_conn);
+                let widget = new widget_class(container.getElement(), app)
+                widget.initialize();
             });
 
         // Add menu item for drag and drop
