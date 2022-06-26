@@ -24,3 +24,10 @@ function trim(str, ch) {
 
     return (start > 0 || end < str.length) ? str.substring(start, end) : str;
 }
+
+function get_url_param(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+};

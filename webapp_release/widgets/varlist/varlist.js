@@ -179,6 +179,8 @@ class VarListWidget {
     }
 
     static templates() {
-        return {}
+        return {
+            'miaou' : 'templates/entry_type_filter.html'
+        }
     }
 }
