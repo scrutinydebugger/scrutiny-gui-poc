@@ -1,5 +1,5 @@
 # scrutiny-gui-webapp
 Scrutiny GUI client web application
 
-
-Initial Release plan : https://github.com/scrutinydebugger/scrutiny-gui-webapp/projects/1
+## Roadmap
+ Initial Release : https://github.com/scrutinydebugger/scrutiny-gui-webapp/projects/1
