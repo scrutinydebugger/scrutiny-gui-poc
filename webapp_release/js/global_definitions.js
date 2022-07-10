@@ -1,16 +1,16 @@
-var DatastoreEntryType = {
+export var DatastoreEntryType = {
     Var: 'var',
     Alias: 'alias',
     Did: 'did'
 }
 
-var ServerStatus = {
+export var ServerStatus = {
     Disconnected: 'disconnected',
     Connecting: 'connecting',
     Connected: 'connected'
 }
 
-var DeviceStatus = {
+export var DeviceStatus = {
     NA: 'unkown',
     Disconnected: 'disconnected',
     Connecting: 'connecting',

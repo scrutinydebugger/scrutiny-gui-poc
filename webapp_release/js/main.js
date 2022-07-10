@@ -1,3 +1,8 @@
+import { App } from "./app.js";
+import { get_url_param } from "./tools.js"
+import {VarListWidget} from '../widgets/varlist/varlist.js'
+import {WatchWidget} from '../widgets/watch/watch.js'
+
 var default_config = {
     'server': {
         'host': '127.0.0.1',
@@ -15,7 +20,7 @@ function load_config() {
     }
 
     // If launched through webbrowser, this config will exist. Let'S give priority to it.
-    let url_config = this.get_url_param('config')   // From tools.js
+    let url_config = get_url_param('config')   // From tools.js
     if (url_config != '') {
         try {
             let json_utf8 = atob(url_config)

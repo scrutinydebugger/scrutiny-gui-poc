@@ -1,4 +1,8 @@
-class DatastoreEntry {
+import { Tree } from "./tree.js";
+import {DatastoreEntryType} from './global_definitions.js'
+import { trim } from "/js/tools.js"
+
+export class DatastoreEntry {
     constructor(entry_type, server_id, display_path, datatype, enumdef = null) {
         this.entry_type = entry_type
         this.server_id = server_id
@@ -19,7 +23,7 @@ class DatastoreEntry {
     }
 }
 
-class Datastore {
+export class Datastore {
 
     constructor() {
         this.clear_silent()
@@ -39,9 +43,43 @@ class Datastore {
         this.display_path_list_per_type = {}
         this.display_path_list_per_type[DatastoreEntryType.Var] = [];
         this.display_path_list_per_type[DatastoreEntryType.Alias] = [];
+
+        this.watchable_regsitered_watchers = {}
     }
 
+    register_watcher(display_path, watcher){
+        if (!this.watchable_regsitered_watchers.hasOwnProperty(display_path)){
+            this.watchable_regsitered_watchers[display_path] = new Set()
+        }
+        this.watchable_regsitered_watchers[display_path].add(watcher)
+    }
 
+    unregister_watcher(display_path, watcher){
+        if (this.watchable_regsitered_watchers.hasOwnProperty(display_path)){
+            if (this.watchable_regsitered_watchers[display_path].has(watcher)){
+                this.watchable_regsitered_watchers[display_path].delete(watcher)
+            }
+
+            if (this.watchable_regsitered_watchers[display_path].size == 0){
+                delete this.watchable_regsitered_watchers[display_path];
+            }
+        }
+    }
+
+    get_all_watched_items(){
+        let ds = this
+        let theSet = new Set()
+        Object.entries(this.watchable_regsitered_watchers).map(display_path => {
+            try{
+                obj = ds.tree.get_obj(display_path)
+                theSet.add(obj.server_id)
+            }   catch(e){
+                console.log(e)
+            } 
+        })
+
+        return theSet
+    }
 
     add(entry_type, entry) {
 

@@ -1,4 +1,6 @@
-class ServerConnection {
+import {DeviceStatus, ServerStatus, DatastoreEntryType} from "./global_definitions.js"
+
+export class ServerConnection {
 
     constructor(ui, datastore) {
         let that = this;

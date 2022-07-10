@@ -1,4 +1,7 @@
-class VarListWidget {
+import { DatastoreEntryType} from "/js/global_definitions.js"
+import { replaceAll } from "/js/tools.js"
+
+export class VarListWidget {
 
     constructor(container, app) {
         this.container = container
@@ -49,9 +52,8 @@ class VarListWidget {
     }
 
     make_node_id(display_path) {
-        return this.treename + '_' + display_path.replaceAll('/', '_')
+        return this.treename + '_' + replaceAll(replaceAll(display_path, '.', '_'), '/', '_')
     }
-
 
     fetch_jstree_subnodes(parent, callback) {
         // jstree root has id="#"
@@ -180,7 +182,6 @@ class VarListWidget {
 
     static templates() {
         return {
-            'miaou' : 'templates/entry_type_filter.html'
         }
     }
 }

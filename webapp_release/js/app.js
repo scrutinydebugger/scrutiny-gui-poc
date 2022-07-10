@@ -1,4 +1,8 @@
-class App {
+import { Datastore } from "./datastore.js";
+import { ServerConnection } from "./server_connection.js";
+import { UI } from "./ui.js";
+
+export class App {
     constructor(config) {
         this.config = config
         this.init_promises = [] // During init stage, multiple promises will be generated. App will be ready when they all complete

@@ -1,4 +1,6 @@
-class Tree {
+import { trim } from "./tools.js";
+
+export class Tree {
 
     constructor() {
         this.datastruct = {

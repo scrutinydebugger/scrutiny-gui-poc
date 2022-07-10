@@ -1,4 +1,7 @@
-class UI {
+import {ServerStatus, DeviceStatus} from './global_definitions.js'
+
+
+export class UI {
     constructor(container) {
         let config = {
             content: []
