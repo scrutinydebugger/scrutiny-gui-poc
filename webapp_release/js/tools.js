@@ -31,12 +31,3 @@ export function get_url_param(name) {
     var results = regex.exec(location.search);
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 };
-
-
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-}
-
-export function replaceAll(str, match, replacement){
-    return str.replace(new RegExp(escapeRegExp(match), 'g'), ()=>replacement);
-}

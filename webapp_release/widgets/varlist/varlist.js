@@ -1,5 +1,4 @@
 import { DatastoreEntryType} from "/js/global_definitions.js"
-import { replaceAll } from "/js/tools.js"
 
 export class VarListWidget {
 
@@ -17,6 +16,8 @@ export class VarListWidget {
         }
         this.instance_id = VarListWidget.next_instance_id
         this.treename = 'varlist_tree_' + this.instance_id
+        this.id_map = {}
+        this.nextid=0;
 
         let that = this
 
@@ -43,16 +44,23 @@ export class VarListWidget {
         })
 
 
-
-
         // Setup
         if (this.app.datastore.is_ready()) {
             this.rebuild_tree()
         } else {}
     }
 
+    destroy(){
+
+    }
+
     make_node_id(display_path) {
-        return this.treename + '_' + replaceAll(replaceAll(display_path, '.', '_'), '/', '_')
+        if (!this.id_map.hasOwnProperty(display_path))
+        {
+            this.id_map[display_path] = this.nextid
+            this.nextid++ 
+        }
+        return this.treename + '_' + this.id_map[display_path]
     }
 
     fetch_jstree_subnodes(parent, callback) {
@@ -62,7 +70,6 @@ export class VarListWidget {
         node_type_map[DatastoreEntryType.Var] = 'var'
         node_type_map[DatastoreEntryType.Alias] = 'alias'
         node_type_map[DatastoreEntryType.Did] = 'did'
-
 
         let that = this
         if (parent.id == "#") {

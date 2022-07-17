@@ -1,0 +1,15 @@
+{
+  "type": "module",
+  "imports": {
+    "#appjs/*": {
+      "default": "./webapp_release/js/*"
+    },
+    "#tests/*": {
+      "default": "./webapp_release/tests/*"
+    }
+  },
+  "dependencies": {
+    "esm": "^3.2.25",
+    "mocha": "^10.0.0"
+  }
+}

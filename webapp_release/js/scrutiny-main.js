@@ -1,7 +1,8 @@
 import { App } from "./app.js";
 import { get_url_param } from "./tools.js"
-import {VarListWidget} from '../widgets/varlist/varlist.js'
-import {WatchWidget} from '../widgets/watch/watch.js'
+
+import {VarListWidget} from '/widgets/varlist/varlist.js'
+import {WatchWidget} from '/widgets/watch/watch.js'
 
 var default_config = {
     'server': {
@@ -46,3 +47,5 @@ function load_config() {
 
     app.launch()    // Will fire the "scrutiny.ready" event when all async init is done.
 })();
+
+window.app = app;   // for debugging
