@@ -1,4 +1,6 @@
-class VarListWidget {
+import { DatastoreEntryType} from "/js/global_definitions.js"
+
+export class VarListWidget {
 
     constructor(container, app) {
         this.container = container
@@ -14,6 +16,8 @@ class VarListWidget {
         }
         this.instance_id = VarListWidget.next_instance_id
         this.treename = 'varlist_tree_' + this.instance_id
+        this.id_map = {}
+        this.nextid=0;
 
         let that = this
 
@@ -40,18 +44,24 @@ class VarListWidget {
         })
 
 
-
-
         // Setup
         if (this.app.datastore.is_ready()) {
             this.rebuild_tree()
         } else {}
     }
 
-    make_node_id(display_path) {
-        return this.treename + '_' + display_path.replaceAll('/', '_')
+    destroy(){
+
     }
 
+    make_node_id(display_path) {
+        if (!this.id_map.hasOwnProperty(display_path))
+        {
+            this.id_map[display_path] = this.nextid
+            this.nextid++ 
+        }
+        return this.treename + '_' + this.id_map[display_path]
+    }
 
     fetch_jstree_subnodes(parent, callback) {
         // jstree root has id="#"
@@ -60,7 +70,6 @@ class VarListWidget {
         node_type_map[DatastoreEntryType.Var] = 'var'
         node_type_map[DatastoreEntryType.Alias] = 'alias'
         node_type_map[DatastoreEntryType.Did] = 'did'
-
 
         let that = this
         if (parent.id == "#") {
@@ -180,7 +189,6 @@ class VarListWidget {
 
     static templates() {
         return {
-            'miaou' : 'templates/entry_type_filter.html'
         }
     }
 }

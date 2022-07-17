@@ -1,10 +1,19 @@
-class UI {
+import {ServerStatus, DeviceStatus} from './global_definitions.js'
+
+
+export class UI {
     constructor(container) {
         let config = {
             content: []
         };
         this.container = container;
         this.widget_layout = new GoldenLayout(config, container);
+        this.widget_layout.on( 'itemDestroyed', function( component ){
+            if (component.type === 'component'){
+                let widget = component.instance;    // instance is the object returned by the callback in registerComponent
+                widget.destroy();
+            }
+        });
 
         this.indicator_lights = {
             'red': 'assets/img/indicator-red.png',
@@ -44,9 +53,6 @@ class UI {
             that.show_device_info()
         })
 
-        $("body").keypress(function(e) {
-            that.keypress_handler(e)
-        })
     }
 
 
@@ -286,6 +292,7 @@ class UI {
             function(container, state) {
                 let widget = new widget_class(container.getElement(), app)
                 widget.initialize();
+                return widget
             });
 
         // Add menu item for drag and drop

@@ -1,4 +1,4 @@
-function trimAny(str, chars) {
+export function trimAny(str, chars) {
     var start = 0,
         end = str.length;
 
@@ -12,7 +12,7 @@ function trimAny(str, chars) {
 }
 
 // Fastest Trim algo according to stack overflow
-function trim(str, ch) {
+export function trim(str, ch) {
     var start = 0,
         end = str.length;
 
@@ -25,7 +25,7 @@ function trim(str, ch) {
     return (start > 0 || end < str.length) ? str.substring(start, end) : str;
 }
 
-function get_url_param(name) {
+export function get_url_param(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
     var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
     var results = regex.exec(location.search);

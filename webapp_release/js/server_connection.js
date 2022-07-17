@@ -1,4 +1,6 @@
-class ServerConnection {
+import {DeviceStatus, ServerStatus, DatastoreEntryType} from "./global_definitions.js"
+
+export class ServerConnection {
 
     constructor(ui, datastore) {
         let that = this;
@@ -28,15 +30,17 @@ class ServerConnection {
         this.pending_request_queue = {}
 
 
-        this.register_callback("inform_server_status", function(data) {
+        this.register_api_callback("inform_server_status", function(data) {
             that.inform_server_status_callback(data)
         })
 
-        this.register_callback("response_get_watchable_list", function(data) {
+        this.register_api_callback("response_get_watchable_list", function(data) {
             that.receive_watchable_list(data)
         })
 
-
+        this.register_api_callback("watchable_update", function(data) {
+            that.receive_watchable_update(data)
+        })
 
         $(document).on('scrutiny.sfd.loaded', function(e) {
             that.reload_datastore(e.sfd)
@@ -51,6 +55,27 @@ class ServerConnection {
             that.datastore.clear()
         })
 
+        // todo : agglomerate list
+        $(document).on('scrutiny.datastore.start_watching', function(data) {
+            let params = {
+                "watchables" : [
+                    data.entry.server_id        
+                ]
+            }
+
+            that.send_request('subscribe_watchable', params)
+        })
+
+        // todo : agglomerate list
+        $(document).on('scrutiny.datastore.stop_watching', function(data) {
+            let params = {
+                "watchables" : [
+                    data.entry.server_id        
+                ]
+            }
+
+            that.send_request('unsubscribe_watchable', params)
+        })
 
         this.set_disconnected()
         this.update_ui()
@@ -323,7 +348,7 @@ class ServerConnection {
         }
     }
 
-    register_callback(cmd, callback) {
+    register_api_callback(cmd, callback) {
         $(document).on('scrutiny.api.rx.' + cmd, function(e) {
             callback(e.obj)
         })
@@ -455,5 +480,26 @@ class ServerConnection {
         }
 
         this.update_ui()
+    }
+
+    receive_watchable_update(data){
+        try{
+            let updates = data['updates']
+            for(let i=0; i<updates.length; i++){
+                let server_id = updates[i].id
+                let value = updates[i].value
+
+                try {
+                    let entry = this.datastore.get_entry_from_server_id(server_id)
+                    this.datastore.set_value(entry, value)
+                }
+                catch(e){
+                    console.log(`Cannot update value of entry with server ID ${server_id}. ` + e)
+                }
+            }
+        }catch(e)
+        {
+            console.error('[receive_watchable_update] Received a bad update list. ' + e)
+        }
     }
 }
