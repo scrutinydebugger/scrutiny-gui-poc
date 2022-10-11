@@ -77,7 +77,7 @@ export class Datastore {
         this.display_path_list_per_type = {}
         this.display_path_list_per_type[DatastoreEntryType.Var] = [];
         this.display_path_list_per_type[DatastoreEntryType.Alias] = [];
-        this.display_path_list_per_type[DatastoreEntryType.Did] = [];
+        this.display_path_list_per_type[DatastoreEntryType.RPV] = [];
 
         this.serverid2entry = {}
         this.watcher2entry = {}

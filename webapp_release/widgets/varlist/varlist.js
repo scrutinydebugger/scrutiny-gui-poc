@@ -69,7 +69,7 @@ export class VarListWidget {
         let node_type_map = {}
         node_type_map[DatastoreEntryType.Var] = 'var'
         node_type_map[DatastoreEntryType.Alias] = 'alias'
-        node_type_map[DatastoreEntryType.Did] = 'did'
+        node_type_map[DatastoreEntryType.RPV] = 'rpv'
 
         let that = this
         if (parent.id == "#") {
@@ -129,10 +129,7 @@ export class VarListWidget {
     rebuild_tree() {
         this.clear_tree()
 
-        let tree_name = 'varlist' + this.instance_id;
         let that = this
-        let ds = this.app.datastore
-
         let thetree = $("<div class='varlist-tree'></div>").jstree({
             'plugins': ["dnd", "types"], // Drag and drop
             'core': {
@@ -151,8 +148,8 @@ export class VarListWidget {
                 'var': {
                     "icon": "assets/img/var-16x16.png"
                 },
-                "did": {
-                    "icon": "assets/img/did-16x16.png"
+                "rpv": {
+                    "icon": "assets/img/rpv-16x16.png"
                 }
             },
         });

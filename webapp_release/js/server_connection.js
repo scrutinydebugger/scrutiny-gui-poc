@@ -106,10 +106,7 @@ export class ServerConnection {
             let that = this
 
             let download_params = {
-                'max_per_response': 1000,
-                "filter": {
-                    "type": ["var"]
-                }
+                'max_per_response': 1000
             }
 
             that.chain_request('get_watchable_count').then(function(data) {
@@ -386,16 +383,22 @@ export class ServerConnection {
                     this.datastore.add_from_server_def(DatastoreEntryType.Alias, data['content']['alias'][i])
                 }
 
+                for (let i = 0; i < data['content']['rpv'].length; i++) {
+                    this.datastore.add_from_server_def(DatastoreEntryType.RPV, data['content']['rpv'][i])
+                }
+
                 var actual_count = this.datastore.get_count()
 
                 if (this.expected_datastore_size[DatastoreEntryType.Var] == actual_count[DatastoreEntryType.Var] &&
-                    this.expected_datastore_size[DatastoreEntryType.Alias] == actual_count[DatastoreEntryType.Alias]) {
+                    this.expected_datastore_size[DatastoreEntryType.Alias] == actual_count[DatastoreEntryType.Alias] &&
+                    this.expected_datastore_size[DatastoreEntryType.RPV] == actual_count[DatastoreEntryType.RPV]) {
                     this.sfd_download_complete = true
                     this.active_sfd_download = null
                     this.datastore.set_ready()
                 } else {
                     if (actual_count[DatastoreEntryType.Var] > this.expected_datastore_size[DatastoreEntryType.Var] ||
-                        actual_count[DatastoreEntryType.Alias] > this.expected_datastore_size[DatastoreEntryType.Alias]) {
+                        actual_count[DatastoreEntryType.Alias] > this.expected_datastore_size[DatastoreEntryType.Alias] || 
+                        actual_count[DatastoreEntryType.Alias] > this.expected_datastore_size[DatastoreEntryType.RPV]) {
                         this.sfd_download_error = true
                         console.error("Server gave more data than expected!")
                     }

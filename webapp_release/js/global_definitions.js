@@ -1,7 +1,7 @@
 export var DatastoreEntryType = {
     Var: 'var',
     Alias: 'alias',
-    Did: 'did'
+    RPV: 'rpv'
 }
 
 export var ServerStatus = {
