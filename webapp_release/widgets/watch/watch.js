@@ -57,7 +57,8 @@ export class WatchWidget {
                 if (that.container.has(dropzone).length) { // Make sure we only take our event. Not the one from other watch window.
                     $(data.data.nodes).each(function(i, nodeid) { // For each dragged node
                         let display_path = $("#" + nodeid).attr('display_path')
-                        that.add_var(display_path)
+                        let entry_type = $("#" + nodeid).attr('type')
+                        that.add_var(entry_type, display_path)
                     })
                 }
             }
@@ -88,12 +89,13 @@ export class WatchWidget {
         return this.get_widget_name()+'_line_' + instance
     }
 
-    add_var(display_path){
+    add_var(entry_type, display_path){
         let line = $('<tr></tr>')
         let line_instance = this.next_line_instance++;
         let line_id = this.get_line_id(line_instance);
         line.attr('id', line_id)
         line.attr('display_path', display_path)
+        line.attr('type', entry_type)
         line.append('<td>'+display_path+'</td>')
         line.append('<td class="value-cell"><span>0.0</span></td>')
         line.append('<td class="help-cell"><img src="assets/img/question-mark-grey-64x64.png" /></td>')
@@ -123,8 +125,8 @@ export class WatchWidget {
             }
             line.find('.value-cell span').text(val)
         }
-        update_callback(this.app.datastore.get_value(display_path))
-        this.app.datastore.watch(display_path, line_id, update_callback)
+        update_callback(this.app.datastore.get_value(entry_type, display_path))
+        this.app.datastore.watch(entry_type, display_path, line_id, update_callback)
     }
 
     remove_var(line){

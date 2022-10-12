@@ -7,6 +7,10 @@ export class Tree {
             'nodes': {},
             'subtrees': {}
         }
+        this.nb_obj = 0;
+    }
+    count(){
+        return this.nb_obj
     }
 
     get_segments(path, has_name = true) {
@@ -44,8 +48,8 @@ export class Tree {
         }
 
         actual_branch['nodes'][target['name']] = obj
+        this.nb_obj++
     }
-
 
     get_obj(path) {
         let error_str = "" + path + " does not exist in the tree"
@@ -97,5 +101,65 @@ export class Tree {
         children['subtrees'] = subtrees
 
         return children
+    }
+
+    get_all_paths(path, thelist, array_index){
+        if (typeof(path) === 'undefined'){
+            path = ""
+        }
+
+        if (typeof(thelist) === 'undefined'){
+            thelist = new Array(this.count())
+        }
+
+        if (typeof(array_index) === 'undefined'){
+            array_index = 0
+        }
+
+        let children = this.get_children(path)
+
+        let node_names = Object.keys(children.nodes)
+        for (let i=0; i<node_names.length; i++){
+            thelist[array_index++] = path+'/'+node_names[i]
+        }
+
+        let subtrees = Object.keys(children.subtrees)
+        for (let i=0; i<subtrees.length; i++){
+            this.get_all_paths(path + '/' + subtrees[i], thelist, array_index)
+        }
+
+        if(path === ''){
+            return thelist
+        }
+    }
+
+    get_all_obj(path, thelist, array_index){
+        if (typeof(path) === 'undefined'){
+            path = ""
+        }
+
+        if (typeof(thelist) === 'undefined'){
+            thelist = new Array(this.count())
+        }
+        
+        if (typeof(array_index) === 'undefined'){
+            array_index = 0
+        }
+
+        let children = this.get_children(path)
+        
+        let node_names = Object.keys(children.nodes)
+        for (let i=0; i<node_names.length; i++){
+            thelist[array_index++] = children.nodes[node_names[i]]
+        }
+
+        let subtrees = Object.keys(children.subtrees)
+        for (let i=0; i<subtrees.length; i++){
+            this.get_all_obj(path + '/' + subtrees[i], thelist, array_index)
+        }
+
+        if(path === ''){
+            return thelist
+        }
     }
 }

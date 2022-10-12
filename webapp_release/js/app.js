@@ -8,26 +8,37 @@ export class App {
         this.init_promises = [] // During init stage, multiple promises will be generated. App will be ready when they all complete
     }
 
+    // Add a layer of abstraction above event handling for easier unit testing without JQuery
+    trigger_event(name, data_dict){
+        console.debug("Triggering event : " + name)
+        if (typeof(data_dict) == 'undefined') {data_dict = {}}
+        $.event.trigger(Object.assign({}, {"type":name}, data_dict));
+    }
+
+    on_event(name, callback){
+        $(document).on(name, function(data) {
+            console.debug("Running event callback: " + name)
+            callback(data)
+        })
+    }
+
     // Must be called after init_all
     launch() {
-        $(document).on('scrutiny.ready', function(){
+        let that = this
+        this.on_event('scrutiny.ready', function(data){
             $('#loading_mask').hide()
             console.log('App ready.')
         })
 
         Promise.all(this.init_promises).then(function(){
-            $.event.trigger({
-                type: "scrutiny.ready"
-            });
+            that.trigger_event("scrutiny.ready")
         }).catch(function(){
             console.error('App cannot start correctly.')
             // Let's trigger a ready anyway.
             // That will make debugging easier because we need the app to fail where there init 
             // error cause a problem.
 
-            $.event.trigger({
-                type: "scrutiny.ready"
-            });
+            that.trigger_event("scrutiny.ready")
         })
     }
 
@@ -100,11 +111,15 @@ export class App {
     init_all() {
         this.ui = new UI($('#layout-container'));   // Container for Golden Layour
         this.ui.init()
-        this.datastore = new Datastore()
+        this.datastore = new Datastore(this)
 
-        this.server_conn = new ServerConnection(this.ui, this.datastore)
+        this.server_conn = new ServerConnection(this, this.ui, this.datastore)
         this.server_conn.set_endpoint(this.config['server']['host'], this.config['server']['port'])
-        this.server_conn.start()
+
+        let that=this
+        this.on_event('scrutiny.ready', function(){
+            that.server_conn.start()
+        })
     }
 
     // Entry point to add a widget to the app. Must be called after init_all

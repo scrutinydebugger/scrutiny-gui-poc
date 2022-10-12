@@ -1,4 +1,9 @@
-import { DatastoreEntryType} from "/js/global_definitions.js"
+import { DatastoreEntryType, AllDatastoreEntryTypes} from "/js/global_definitions.js"
+
+var ENTRY_TYPE_TREE_NAME = {}
+ENTRY_TYPE_TREE_NAME[DatastoreEntryType.Var] = 'tree-var'
+ENTRY_TYPE_TREE_NAME[DatastoreEntryType.Alias] = 'tree-alias'
+ENTRY_TYPE_TREE_NAME[DatastoreEntryType.RPV] = 'tree-rpv'
 
 export class VarListWidget {
 
@@ -21,33 +26,53 @@ export class VarListWidget {
 
         let that = this
 
-        this.container.html("");
-        this.container.append($("<div class='tree-container'></div>"))
+        this.container.html(this.app.get_template(this, 'varlist-content'));
+        this.container.find(".btn-alias").click(function(){
+            that.change_display_type(DatastoreEntryType.Alias)
+        })
+
+        this.container.find(".btn-rpv").click(function(){
+            that.change_display_type(DatastoreEntryType.RPV)
+        })
+
+        this.container.find(".btn-var").click(function(){
+            that.change_display_type(DatastoreEntryType.Var)
+        })
 
         // Event handlers
-        $(document).on('scrutiny.datastore.ready', function() {
-            that.rebuild_tree()
+        $(document).on('scrutiny.datastore.ready', function(data) {
+            that.rebuild_tree(data['entry_type'])
         })
 
-        $(document).on('scrutiny.datastore.clear', function() {
-            that.clear_tree()
+        $(document).on('scrutiny.datastore.clear', function(data) {
+            that.clear_tree(data['entry_type'])
         })
-
-        $("#test_drop").on('drop', function(e) {
-            e.preventDefault()
-
-            $(this).text(e.originalEvent.dataTransfer.getData('display_path'))
-        })
-
-        $("#test_drop").on('dragover', function(e) {
-            e.preventDefault()
-        })
-
 
         // Setup
-        if (this.app.datastore.is_ready()) {
-            this.rebuild_tree()
-        } else {}
+        for (let i=0; i<AllDatastoreEntryTypes.length; i++){
+            if (this.app.datastore.is_ready(AllDatastoreEntryTypes[i])) {
+                this.rebuild_tree(AllDatastoreEntryTypes[i])
+            } else {}
+        }
+    }
+
+    change_display_type(entry_type){
+        this.container.find("button.type-btn").removeClass('selected')
+        if (entry_type == DatastoreEntryType.Alias){
+            this.container.find("button.btn-alias").addClass('selected')
+        }
+        else if (entry_type == DatastoreEntryType.Var){
+            this.container.find("button.btn-var").addClass('selected')
+        }
+        else if (entry_type == DatastoreEntryType.RPV){
+            this.container.find("button.btn-rpv").addClass('selected')
+        }
+
+        let nb_entries = this.app.datastore.get_count(entry_type)
+        this.container.find(".entries-count-label").text(`(${nb_entries} entries)`)
+
+        this.container.find(".watchable-tree").hide()
+        this.get_tree_container(entry_type).show()
     }
 
     destroy(){
@@ -63,7 +88,7 @@ export class VarListWidget {
         return this.treename + '_' + this.id_map[display_path]
     }
 
-    fetch_jstree_subnodes(parent, callback) {
+    fetch_jstree_subnodes(entry_type, parent, callback) {
         // jstree root has id="#"
 
         let node_type_map = {}
@@ -83,7 +108,7 @@ export class VarListWidget {
                 }
             }]);
         } else {
-            let children = this.app.datastore.get_children(parent.li_attr.display_path)
+            let children = this.app.datastore.get_children(entry_type, parent.li_attr.display_path)
             let jstree_childrens = []
                 // Add folders node
             children['subfolders'].forEach(function(subfolder, i) {
@@ -104,12 +129,12 @@ export class VarListWidget {
                 let entry_type = DatastoreEntryType[typeval]
                     // Entries are organized by entry type
                 children['entries'][entry_type].forEach(function(entry, i) {
-                    let display_path = entry.display_path
                     jstree_childrens.push({
                         'text': entry.name,
-                        'id': that.make_node_id(display_path),
+                        'id': that.make_node_id(entry.display_path),
                         'li_attr': {
-                            "display_path": display_path
+                            "display_path": entry.display_path,
+                            "type" : entry.entry_type
                         },
                         "type": node_type_map[entry_type]
                     })
@@ -120,21 +145,21 @@ export class VarListWidget {
         }
     }
 
-    get_tree_container() {
-        return this.container.find('.tree-container');
+    get_tree_container(entry_type) {
+        return this.container.find('.varlist-tree-container .' + ENTRY_TYPE_TREE_NAME[entry_type]);
     }
 
 
     // called on datastore ready event
-    rebuild_tree() {
-        this.clear_tree()
+    rebuild_tree(entry_type) {
+        this.clear_tree(entry_type)
 
         let that = this
         let thetree = $("<div class='varlist-tree'></div>").jstree({
             'plugins': ["dnd", "types"], // Drag and drop
             'core': {
                 'data': function(obj, cb) {
-                    that.fetch_jstree_subnodes(obj, cb)
+                    that.fetch_jstree_subnodes(entry_type, obj, cb)
                 },
                 'animation': 75,
                 'themes': {
@@ -160,13 +185,13 @@ export class VarListWidget {
             thetree.jstree().open_node(root_node_id)
         });
 
-        this.get_tree_container().append(thetree)
+        this.get_tree_container(entry_type).append(thetree)
 
     }
 
     // called on datastore clear event
-    clear_tree() {
-        this.get_tree_container().html("")
+    clear_tree(entry_type) {
+        this.get_tree_container(entry_type).html("")
     }
 
     static name() {
@@ -186,6 +211,7 @@ export class VarListWidget {
 
     static templates() {
         return {
+            'varlist-content' : 'templates/varlist-content.html'
         }
     }
 }

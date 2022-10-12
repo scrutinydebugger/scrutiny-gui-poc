@@ -4,6 +4,14 @@ export var DatastoreEntryType = {
     RPV: 'rpv'
 }
 
+export var AllDatastoreEntryTypes = [];
+
+let keys = Object.keys(DatastoreEntryType)
+for (let i=0; i<keys.length; i++)
+{
+    AllDatastoreEntryTypes.push(DatastoreEntryType[keys[i]]);
+}
+
 export var ServerStatus = {
     Disconnected: 'disconnected',
     Connecting: 'connecting',
