@@ -1,6 +1,7 @@
 import { Tree } from "./tree.js";
-import {DatastoreEntryType} from './global_definitions.js'
+import {DatastoreEntryType, AllDatastoreEntryTypes} from './global_definitions.js'
 import { trim } from "./tools.js"
+
 
 export class DatastoreEntry {
     constructor(entry_type, server_id, display_path, datatype, enumdef = null) {
@@ -11,6 +12,7 @@ export class DatastoreEntry {
         this.enumdef = enumdef
         this.value = null
         this.callbacks = {}
+        
     }
 
 
@@ -58,35 +60,44 @@ export class DatastoreEntry {
 
 export class Datastore {
 
-    constructor() {
-        this.clear_silent()
-    }
-
-    clear() {
-        this.clear_silent()
-        $.event.trigger({
-            type: "scrutiny.datastore.clear"
-        });
-    }
-
-    clear_silent() {
-        this.ready = false
-        this.tree = new Tree()
+    constructor(app) {
+        this.app = app
         this.entry_cache = {}
+        this.trees = {}
+        this.ready ={}
+        for (let i=0; i<AllDatastoreEntryTypes.length; i++){
+            let entry_type = AllDatastoreEntryTypes[i]
+            this.trees[entry_type] = new Tree()
+            this.entry_cache[entry_type] = {}
+        }
 
-        this.display_path_list_per_type = {}
-        this.display_path_list_per_type[DatastoreEntryType.Var] = [];
-        this.display_path_list_per_type[DatastoreEntryType.Alias] = [];
-        this.display_path_list_per_type[DatastoreEntryType.Did] = [];
+        this.clear_silent()
+    }
+
+    clear(entry_types) {
+        this.clear_silent(entry_types)
+        this.app.trigger_event("scrutiny.datastore.clear")
+    }
+
+    clear_silent(entry_types) {
+        if (typeof(entry_types) === 'undefined'){
+            entry_types = AllDatastoreEntryTypes
+        }
+
+        for (let i=0; i<entry_types.length; i++){
+            let entry_type = entry_types[i]
+            this.trees[entry_type] = new Tree()
+            this.entry_cache[entry_type] = {}
+            this.ready[entry_type] = false
+        }
 
         this.serverid2entry = {}
         this.watcher2entry = {}
         this.watched_entries = new Set()
-
     }
 
-    watch(entry, watcher, callback){
-        entry = this.get_entry(entry)
+    watch(entry_type, entry, watcher, callback){
+        entry = this.get_entry(entry_type, entry)
         entry.watch(watcher, callback)
         if (!this.watcher2entry.hasOwnProperty(watcher)){
             this.watcher2entry[watcher] = new Set()
@@ -96,10 +107,7 @@ export class Datastore {
         if (!this.watched_entries.has(entry))
         {
             this.watched_entries.add(entry)
-            $.event.trigger({
-                type: "scrutiny.datastore.start_watching",
-                entry: entry
-            });
+            this.app.trigger_event("scrutiny.datastore.start_watching", {"entry":entry})
         }
     }
 
@@ -109,10 +117,7 @@ export class Datastore {
             this.watcher2entry[watcher].forEach(function(entry){
                 entry.unwatch(watcher)
                 if (!entry.has_watchers()){
-                    $.event.trigger({
-                        type: "scrutiny.datastore.stop_watching",
-                        entry : entry
-                    });
+                    that.app.trigger_event("scrutiny.datastore.stop_watching", {"entry":entry})
                     that.watched_entries.delete(entry)
                 }
             })
@@ -126,8 +131,7 @@ export class Datastore {
     }
     
     add(entry) {
-        this.tree.add(entry.display_path, entry)
-        this.display_path_list_per_type[entry.entry_type].push(entry.display_path)
+        this.trees[entry.entry_type].add(entry.display_path, entry)
         
         if (this.serverid2entry.hasOwnProperty(entry.server_id)){
             throw "Duplicate server ID in datastore" + entry.server_id
@@ -135,22 +139,21 @@ export class Datastore {
         this.serverid2entry[entry.server_id] = entry
     }
 
-    get_entry(o){
-        if (typeof(o) !== 'string')
-        {
-            o = o.display_path
+    get_entry(entry_type, path){
+        if (typeof(path) !== 'string'){
+            path = path.display_path  // Shortcut to read the tree from an entry object.
         }
 
-        if (!this.entry_cache.hasOwnProperty(o)){
-            this.entry_cache[o] = this.tree.get_obj(o)
+        if (!this.entry_cache[entry_type].hasOwnProperty(path)){
+            this.entry_cache[entry_type][path] = this.trees[entry_type].get_obj(path)
         }
-        return this.entry_cache[o]
+        return this.entry_cache[entry_type][path]
     }
 
     // Tells if a node identified by its display path exists in the datastore
-    node_exist(path) {
+    node_exist(entry_type, path) {
         try {
-            this.tree.get_obj(path)
+            this.trees[entry_type].get_obj(path)
             return true
         } catch {
             return false
@@ -163,12 +166,12 @@ export class Datastore {
 
     // Return the list of display path of all entries in the datastore for a given entry type
     all_display_path(entry_type) {
-        return this.display_path_list_per_type[entry_type]
+        return this.trees[entry_type].get_all_paths()
     }
 
     // Return the server id of an entry from its display path
-    get_server_id(display_path) {
-        return this.tree.get_obj(display_path).server_id
+    get_server_id(entry_type, display_path) {
+        return this.trees[entry_type].get_obj(display_path).server_id
     }
 
     get_entry_from_server_id(server_id){
@@ -180,22 +183,15 @@ export class Datastore {
 
     // Return all entries in the datastore of the given type
     get_entries(entry_type) {
-        let count = this.get_count(entry_type)
-        let list = new Array(count)
-
-        for (let i = 0; i < this.display_path_list_per_type[entry_type].length; i++) {
-            let display_path = this.display_path_list_per_type[entry_type][i]
-            list[i] = this.get_entry(display_path)
-        }
-        return list
+        return this.trees[entry_type].get_all_obj()
     }
 
-    set_value(entry, val){
-        return this.get_entry(entry).set_value(val)
+    set_value(entry_type, entry_path, val){
+        return this.get_entry(entry_type, entry_path).set_value(val)
     }
 
-    get_value(entry){
-        return this.get_entry(entry).get_value()
+    get_value(entry_type, entry_path){
+        return this.get_entry(entry_type, entry_path).get_value()
     }
 
     // Return the number of entries in the datastore of the given type
@@ -203,29 +199,28 @@ export class Datastore {
         if (typeof(entry_type) == 'undefined') {
 
             let obj_out = {}
-            obj_out[DatastoreEntryType.Var] = this.display_path_list_per_type[DatastoreEntryType.Var].length;
-            obj_out[DatastoreEntryType.Alias] = this.display_path_list_per_type[DatastoreEntryType.Alias].length;
+            for (let i=0; i<AllDatastoreEntryTypes.length; i++){
+                obj_out[AllDatastoreEntryTypes[i]] = this.trees[AllDatastoreEntryTypes[i]].count();
+            }
             return obj_out
         } else {
-            return this.display_path_list_per_type[entry_type].length;
+            return this.trees[entry_type].count();
         }
     }
 
-    set_ready() {
-        if (this.ready == false) {
-            $.event.trigger({
-                type: "scrutiny.datastore.ready"
-            });
+    set_ready(entry_type) {
+        if (this.ready[entry_type] == false) {
+            this.app.trigger_event("scrutiny.datastore.ready", {'entry_type':entry_type})
         }
-        this.ready = true
+        this.ready[entry_type] = true
     }
 
-    is_ready() {
-        return this.ready
+    is_ready(entry_type) {
+        return this.ready[entry_type]
     }
 
-    get_children(path, entry_type = null) {
-        let tree_objs = this.tree.get_children(path)
+    get_children(entry_type, path) {
+        let tree_objs = this.trees[entry_type].get_children(path)
 
         let children = {
             'entries': {},

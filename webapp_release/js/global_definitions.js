@@ -1,7 +1,15 @@
 export var DatastoreEntryType = {
     Var: 'var',
     Alias: 'alias',
-    Did: 'did'
+    RPV: 'rpv'
+}
+
+export var AllDatastoreEntryTypes = [];
+
+let keys = Object.keys(DatastoreEntryType)
+for (let i=0; i<keys.length; i++)
+{
+    AllDatastoreEntryTypes.push(DatastoreEntryType[keys[i]]);
 }
 
 export var ServerStatus = {

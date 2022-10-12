@@ -1,14 +1,80 @@
-import {DeviceStatus, ServerStatus, DatastoreEntryType} from "./global_definitions.js"
+import {DeviceStatus, ServerStatus, DatastoreEntryType, AllDatastoreEntryTypes} from "./global_definitions.js"
+
+
+var WATCHABLE_DOWNLOAD_TYPES = {
+    RPV : 'rpv',
+    Var_Alias : 'var_alias'
+}
+class LoadWatchableSession{
+
+    constructor(reqid, download_type){
+        this.reqid = reqid
+        this.download_type = download_type
+        this.canceled = false
+        
+        this.expected_datastore_size = {}
+        for (let i=0; i<AllDatastoreEntryTypes.length; i++){
+            this.expected_datastore_size[AllDatastoreEntryTypes[i]] = null
+        }
+    }
+    
+    is_canceled(){
+        return this.canceled
+    }
+
+    set_expected_datastore_size(sizes_per_types){
+        if (this.download_type == WATCHABLE_DOWNLOAD_TYPES.RPV){
+            if (!sizes_per_types.hasOwnProperty(DatastoreEntryType.RPV)){
+                this.cancel()
+                throw 'Expected number of RPV is expected'
+            }
+        }
+        else if (this.download_type == WATCHABLE_DOWNLOAD_TYPES.Var_Alias){
+            if (!sizes_per_types.hasOwnProperty(DatastoreEntryType.Var) || !sizes_per_types.hasOwnProperty(DatastoreEntryType.Alias)){
+                this.cancel()
+                throw 'Expected number of Var and Alias is expected'
+            }
+        }
+
+        for (let i=0; i<AllDatastoreEntryTypes.length; i++){
+            if (sizes_per_types.hasOwnProperty(AllDatastoreEntryTypes[i])){
+                this.expected_datastore_size[AllDatastoreEntryTypes[i]] = sizes_per_types[AllDatastoreEntryTypes[i]]
+            }
+        }
+    }
+
+    get_required_datastore_size(entry_type){
+        if (entry_type == DatastoreEntryType.RPV && !this.download_type==WATCHABLE_DOWNLOAD_TYPES.RPV){
+            throw 'Entry type "RPV" not expected for this download'
+        }
+        if (entry_type == DatastoreEntryType.Alias && !this.download_type==WATCHABLE_DOWNLOAD_TYPES.Var_Alias){
+            throw 'Entry type "Alias" not expected for this download'
+        }
+
+        if (entry_type == DatastoreEntryType.Var && !this.download_type==WATCHABLE_DOWNLOAD_TYPES.Var_Alias){
+            throw 'Entry type "Var" not expected for this download'
+        }
+
+        return this.expected_datastore_size[entry_type]
+    }
+
+    cancel(){
+        this.canceled = true
+    }
+}
+
+
 
 export class ServerConnection {
 
-    constructor(ui, datastore) {
+    constructor(app, ui, datastore) {
         let that = this;
         this.update_ui_interval = 500;
         this.reconnect_interval = 500;
         this.connect_timeout = 1500;
         this.get_status_interval = 2000;
 
+        this.app = app
         this.ui = ui
         this.datastore = datastore
         this.set_endpoint('127.0.0.1', 8765) // default
@@ -22,12 +88,11 @@ export class ServerConnection {
         this.connect_timeout_handle = null;
 
         this.get_status_interval_handle = null
-        this.active_sfd_download = null
-        this.sfd_download_complete = false
-        this.sfd_download_error = false
-        this.expected_datastore_size = null
         this.actual_request_id = 0
         this.pending_request_queue = {}
+        this.active_donload_session = {}
+        this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.RPV] = null
+        this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.Var_Alias] = null
 
 
         this.register_api_callback("inform_server_status", function(data) {
@@ -42,21 +107,32 @@ export class ServerConnection {
             that.receive_watchable_update(data)
         })
 
-        $(document).on('scrutiny.sfd.loaded', function(e) {
-            that.reload_datastore(e.sfd)
+        this.app.on_event('scrutiny.sfd.loaded', function(data) {
+            that.reload_datastore_from_server( WATCHABLE_DOWNLOAD_TYPES.Var_Alias )
         })
 
-        $(document).on('scrutiny.sfd.unloaded', function() {
-            that.reload_datastore(null)
+        this.app.on_event('scrutiny.device.connected', function(e) {
+            that.reload_datastore_from_server(WATCHABLE_DOWNLOAD_TYPES.RPV)
         })
 
-        $(document).on('scrutiny.server.disconnected', function() {
+        this.app.on_event('scrutiny.device.diconnected', function(e) {
+            that.datastore.clear([DatastoreEntryType.RPV])
+            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.RPV)
+            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
+        })
+
+        this.app.on_event('scrutiny.sfd.unloaded', function() {
+            that.datastore.clear([DatastoreEntryType.Alias, DatastoreEntryType.Var])
+            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
+        })
+
+        this.app.on_event('scrutiny.server.disconnected', function() {
             that.set_disconnected()
             that.datastore.clear()
         })
 
         // todo : agglomerate list
-        $(document).on('scrutiny.datastore.start_watching', function(data) {
+        this.app.on_event('scrutiny.datastore.start_watching', function(data) {
             let params = {
                 "watchables" : [
                     data.entry.server_id        
@@ -67,7 +143,7 @@ export class ServerConnection {
         })
 
         // todo : agglomerate list
-        $(document).on('scrutiny.datastore.stop_watching', function(data) {
+        this.app.on_event('scrutiny.datastore.stop_watching', function(data) {
             let params = {
                 "watchables" : [
                     data.entry.server_id        
@@ -81,7 +157,18 @@ export class ServerConnection {
         this.update_ui()
     }
 
+    cancel_watchable_download_if_any(download_type){
+        if(this.active_donload_session.hasOwnProperty(download_type)){
+            if (this.active_donload_session[download_type] !== null){
+                this.active_donload_session[download_type].cancel()
+                this.active_donload_session[download_type] = null;
+            }
+        }
+    }
+
     set_disconnected() {
+        this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
+        this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.RPV)
         this.server_status = ServerStatus.Disconnected
         this.device_status = DeviceStatus.NA
         this.loaded_sfd = null
@@ -94,38 +181,56 @@ export class ServerConnection {
         this.port = port
     }
 
-    reload_datastore(sfd) {
-        this.active_sfd_download = sfd
-        this.sfd_download_complete = false
-        this.sfd_download_error = false
-        this.expected_datastore_size = null
-        this.datastore.clear()
-
-        if (sfd != null) {
-
-            let that = this
-
-            let download_params = {
-                'max_per_response': 1000,
-                "filter": {
-                    "type": ["var"]
-                }
+    reload_datastore_from_server(download_type) {
+        let download_params = {
+            'max_per_response': 1000,
+            'filter' : {
+                'type' : []
             }
-
-            that.chain_request('get_watchable_count').then(function(data) {
-
-                that.expected_datastore_size = {}
-                that.expected_datastore_size[DatastoreEntryType.Var] = data['qty']['var']
-                that.expected_datastore_size[DatastoreEntryType.Alias] = data['qty']['alias']
-
-                that.send_request('get_watchable_list', download_params)
-            }, function(data) {
-                that.sfd_download_error = true
-            })
-
         }
-    }
 
+        try {
+
+            if (download_type == WATCHABLE_DOWNLOAD_TYPES.Var_Alias){
+                if (this.loaded_sfd == null){
+                    throw('Cannot process watchable list, no SFD loaded');
+                }
+                
+                this.datastore.clear([DatastoreEntryType.Alias, DatastoreEntryType.Var])
+                download_params['filter']['type'] = ['alias', 'var']
+            } 
+            else if (download_type == WATCHABLE_DOWNLOAD_TYPES.RPV){
+                this.datastore.clear([DatastoreEntryType.RPV])
+                download_params['filter']['type'] = ['rpv']
+            }
+            else {
+                throw('Unsupported download type ' +  download_type);
+            }
+            
+        } catch(e){
+            console.error(e)
+            this.cancel_watchable_download_if_any(download_type)    // This accepts garbage an won't throw
+            return 
+        }
+        
+        let that = this
+
+        that.chain_request('get_watchable_count').then(function(data) {
+
+            let reqid = that.send_request('get_watchable_list', download_params)
+            that.active_donload_session[download_type] = new LoadWatchableSession(reqid, download_type)
+
+            let expected_size={}
+            expected_size[DatastoreEntryType.Var] = data['qty']['var'];
+            expected_size[DatastoreEntryType.Alias] = data['qty']['alias'];
+            expected_size[DatastoreEntryType.RPV] = data['qty']['rpv'];
+            that.active_donload_session[download_type].set_expected_datastore_size(expected_size)
+
+
+        }, function(data) {
+            that.cancel_watchable_download_if_any(download_type)
+        })
+    }
 
     start() {
         let that = this
@@ -147,9 +252,8 @@ export class ServerConnection {
         }
 
         if (this.server_status == ServerStatus.Connected) {
-            $.event.trigger({
-                type: "scrutiny.server.disconnected"
-            });
+            
+            this.app.trigger_event("scrutiny.server.disconnected")
         }
     }
 
@@ -253,12 +357,10 @@ export class ServerConnection {
 
     on_socket_close_callback(e) {
         if (this.server_status == ServerStatus.Connected) {
-            $.event.trigger({
-                type: "scrutiny.server.disconnected"
-            });
+            this.app.trigger_event("scrutiny.server.disconnected")
         }
 
-        this.set_disconnected();
+        this.set_disconnected()
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
 
@@ -268,7 +370,7 @@ export class ServerConnection {
     }
 
     on_socket_open_callback(e) {
-        $.event.trigger('scrutiny.server.disconnected')
+        //this.app.trigger_event('scrutiny.server.disconnected')
         this.server_status = ServerStatus.Connected
         this.device_status = DeviceStatus.NA
         this.update_ui();
@@ -276,16 +378,12 @@ export class ServerConnection {
 
         this.start_get_status_periodic_call()
 
-        $.event.trigger({
-            type: "scrutiny.server.connected"
-        });
+        this.app.trigger_event("scrutiny.server.connected")
     }
 
     on_socket_error_callback(e) {
         if (this.server_status == ServerStatus.Connected) {
-            $.event.trigger({
-                type: "scrutiny.server.disconnected"
-            });
+            this.app.trigger_event("scrutiny.server.disconnected")
         }
 
         this.set_disconnected();
@@ -328,10 +426,7 @@ export class ServerConnection {
                 console.error(error_message)
             } else { // Server is happy, spread the news
 
-                $.event.trigger({
-                    type: "scrutiny.api.rx." + obj.cmd,
-                    obj: obj
-                });
+                this.app.trigger_event("scrutiny.api.rx." + obj.cmd, {"obj": obj})
 
                 // Settle the Promise and delete it
                 if (obj.hasOwnProperty('reqid')) {
@@ -349,65 +444,84 @@ export class ServerConnection {
     }
 
     register_api_callback(cmd, callback) {
-        $(document).on('scrutiny.api.rx.' + cmd, function(e) {
+        this.app.on_event('scrutiny.api.rx.' + cmd, function(e) {
             callback(e.obj)
         })
     }
 
     // =====
     receive_watchable_list(data) {
-        if (this.active_sfd_download == null)
-            return
+        let reqid = data['reqid']
+        let download_type = null
 
-        if (this.sfd_download_complete)
+        if (this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.Var_Alias] !== null 
+            && this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.Var_Alias].reqid == reqid){
+                download_type = WATCHABLE_DOWNLOAD_TYPES.Var_Alias
+        }
+        else if (this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.RPV] !== null 
+            && this.active_donload_session[WATCHABLE_DOWNLOAD_TYPES.RPV].reqid == reqid){
+                download_type = WATCHABLE_DOWNLOAD_TYPES.RPV
+        }
+        else{
             return
+        }
 
-        if (this.sfd_download_error)
+        let download_session = this.active_donload_session[download_type];
+        if (download_session.is_canceled()){
             return
+        }
 
         try {
 
             if (this.server_status != ServerStatus.Connected) {
-                this.sfd_download_error = true
+                download_session.cancel()
             } else if (this.device_status != DeviceStatus.Connected) {
-                this.sfd_download_error = true
-            } else if (this.loaded_sfd == null) {
-                this.sfd_download_error = true
-            } else if (this.loaded_sfd['firmware_id'] != this.active_sfd_download['firmware_id']) {
-                this.sfd_download_error = true
-            } else if (this.expected_datastore_size == null) {
-                this.sfd_download_error = true
+                download_session.cancel()
             } else {
-                for (let i = 0; i < data['content']['var'].length; i++) {
-                    this.datastore.add_from_server_def(DatastoreEntryType.Var, data['content']['var'][i])
+                
+                if (download_type == WATCHABLE_DOWNLOAD_TYPES.Var_Alias){
+                    for (let i = 0; i < data['content']['var'].length; i++) {
+                        this.datastore.add_from_server_def(DatastoreEntryType.Var, data['content']['var'][i])
+                    }
+    
+                    for (let i = 0; i < data['content']['alias'].length; i++) {
+                        this.datastore.add_from_server_def(DatastoreEntryType.Alias, data['content']['alias'][i])
+                    }
+
+                    if (this.datastore.get_count(DatastoreEntryType.Alias) == download_session.get_required_datastore_size(DatastoreEntryType.Alias) &&
+                    this.datastore.get_count(DatastoreEntryType.Var) == download_session.get_required_datastore_size(DatastoreEntryType.Var)){
+                        this.datastore.set_ready(DatastoreEntryType.Var)
+                        this.datastore.set_ready(DatastoreEntryType.Alias)
+                    }else if (this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias) ||
+                    this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias)){
+                        download_session.cancel()
+                        console.error("Server gave more data than expected. Downlaod type = " + download_type)
+                    }
                 }
 
-                for (let i = 0; i < data['content']['alias'].length; i++) {
-                    this.datastore.add_from_server_def(DatastoreEntryType.Alias, data['content']['alias'][i])
-                }
+                if (download_type == WATCHABLE_DOWNLOAD_TYPES.RPV){
+                    for (let i = 0; i < data['content']['rpv'].length; i++) {
+                        this.datastore.add_from_server_def(DatastoreEntryType.RPV, data['content']['rpv'][i])
+                    }
 
-                var actual_count = this.datastore.get_count()
-
-                if (this.expected_datastore_size[DatastoreEntryType.Var] == actual_count[DatastoreEntryType.Var] &&
-                    this.expected_datastore_size[DatastoreEntryType.Alias] == actual_count[DatastoreEntryType.Alias]) {
-                    this.sfd_download_complete = true
-                    this.active_sfd_download = null
-                    this.datastore.set_ready()
-                } else {
-                    if (actual_count[DatastoreEntryType.Var] > this.expected_datastore_size[DatastoreEntryType.Var] ||
-                        actual_count[DatastoreEntryType.Alias] > this.expected_datastore_size[DatastoreEntryType.Alias]) {
-                        this.sfd_download_error = true
-                        console.error("Server gave more data than expected!")
+                    if (this.datastore.get_count(DatastoreEntryType.RPV) == download_session.get_required_datastore_size(DatastoreEntryType.RPV)){
+                        this.datastore.set_ready(DatastoreEntryType.RPV)
+                    }else if (this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias)){
+                        download_session.cancel()
+                        console.error("Server gave more data than expected. Downlaod type = " + download_type)
                     }
                 }
             }
 
+            if (download_session.is_canceled()){
+                this.active_donload_session[download_type] = null
+            }
+
         } catch (e) {
-            this.sfd_download_error = true
             console.error(e)
+            download_session.cancel()
         }
     }
-
 
 
     inform_server_status_callback(data) {
@@ -424,28 +538,23 @@ export class ServerConnection {
                 let new_device_status = device_status_str_to_obj[data.device_status];
                 if (new_device_status != this.device_status) {
                     if (new_device_status == DeviceStatus.Connected) {
-                        $.event.trigger({
-                            type: 'scrutiny.device.connected'
-                        })
+                        this.app.trigger_event('scrutiny.device.connected')
                     } else if (this.device_status == DeviceStatus.Connected) {
-                        $.event.trigger({
-                            type: 'scrutiny.device.disconnected'
-                        })
+                        this.app.trigger_event('scrutiny.device.disconnected')
                     }
                 }
 
                 this.device_status = new_device_status;
-            } catch {
+            } catch (e){
                 this.device_status = DeviceStatus.NA;
                 console.error('[inform_server_status] Received a bad device status')
+                console.debug(e)
             }
 
             try {
-
+                let raise_event = false;
                 if (data['loaded_sfd'] == null && this.loaded_sfd != null) {
-                    $.event.trigger({
-                        type: 'scrutiny.sfd.unloaded'
-                    })
+                    this.app.trigger_event('scrutiny.sfd.unloaded')
                 } else if (data['loaded_sfd'] != null) {
                     let must_reload = false
                     if (this.loaded_sfd == null) {
@@ -455,14 +564,14 @@ export class ServerConnection {
                     }
 
                     if (must_reload) {
-                        $.event.trigger({
-                            type: 'scrutiny.sfd.loaded',
-                            sfd: data['loaded_sfd']
-                        })
+                        raise_event = true  
                     }
                 }
 
                 this.loaded_sfd = data['loaded_sfd'];
+                if (raise_event){
+                    this.app.trigger_event('scrutiny.sfd.loaded', {"sfd": data['loaded_sfd']})
+                }
             } catch (e) {
                 this.loaded_sfd = null
                 console.error('[inform_server_status] Cannot read loaded firmware. ' + e)
@@ -491,7 +600,7 @@ export class ServerConnection {
 
                 try {
                     let entry = this.datastore.get_entry_from_server_id(server_id)
-                    this.datastore.set_value(entry, value)
+                    this.datastore.set_value(entry.entry_type, entry, value)
                 }
                 catch(e){
                     console.log(`Cannot update value of entry with server ID ${server_id}. ` + e)
