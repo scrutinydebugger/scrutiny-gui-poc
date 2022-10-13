@@ -287,10 +287,12 @@ export class UI {
     }
 
     register_widget(widget_class, app) {
+        widget_class.instance_id = 0
         // Add component to GoldenLayout
         this.widget_layout.registerComponent(widget_class.name(),
             function(container, state) {
-                let widget = new widget_class(container.getElement(), app)
+                widget_class.instance_id++
+                let widget = new widget_class(container.getElement(), app, widget_class.instance_id)
                 widget.initialize();
                 return widget
             });

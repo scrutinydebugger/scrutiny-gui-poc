@@ -2,25 +2,18 @@ import { DatastoreEntryType, AllDatastoreEntryTypes} from "/js/global_definition
 
 export class VarListWidget {
 
-    constructor(container, app) {
+    constructor(container, app, instance_id) {
         this.container = container
         this.app = app
+        this.instance_id = instance_id
     }
 
     initialize() {
-
-        if (typeof(VarListWidget.next_instance_id) === 'undefined') {
-            VarListWidget.next_instance_id = 0;
-        } else {
-            VarListWidget.next_instance_id++
-        }
-        this.instance_id = VarListWidget.next_instance_id
+        let that = this
         this.treename = 'varlist_tree_' + this.instance_id
         this.id_map = {}
-        this.nextid=0;
-
-        let that = this
-
+        this.next_tree_id=0;
+        
         this.container.html(this.app.get_template(this, 'varlist-content'));
 
         // Event handlers
@@ -51,8 +44,8 @@ export class VarListWidget {
     make_node_id(display_path) {
         if (!this.id_map.hasOwnProperty(display_path))
         {
-            this.id_map[display_path] = this.nextid
-            this.nextid++ 
+            this.id_map[display_path] = this.next_tree_id
+            this.next_tree_id++ 
         }
         return this.treename + '_' + this.id_map[display_path]
     }

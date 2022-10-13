@@ -12,9 +12,10 @@ export class WatchWidget {
         - Display hex value
      */
 
-    constructor(container, app) {
+    constructor(container, app, instance_id) {
         this.container = container
         this.app = app
+        this.instance_id = instance_id
     }
 
     initialize() {
@@ -27,13 +28,6 @@ export class WatchWidget {
         let display_table = this.app.get_template(this, 'display_table')
         block.append(display_table)
         this.display_table = display_table
-
-        if (typeof(WatchWidget.next_instance_id) === 'undefined') {
-            WatchWidget.next_instance_id = 0;
-        } else {
-            WatchWidget.next_instance_id++
-        }
-        this.instance_id = WatchWidget.next_instance_id
         this.next_line_instance = 0
 
         // todo : remove event handler on tabl close?
