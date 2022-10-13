@@ -76,6 +76,8 @@ export class ServerConnection {
 
         this.app = app
         this.ui = ui
+        this.logger = app.getLogger('server-manager')
+        this.comm_logger = app.getLogger('server-comm')
         this.datastore = datastore
         this.set_endpoint('127.0.0.1', 8765) // default
         this.socket = null
@@ -208,7 +210,7 @@ export class ServerConnection {
             }
             
         } catch(e){
-            console.error(e)
+            this.logger.error(e)
             this.cancel_watchable_download_if_any(download_type)    // This accepts garbage an won't throw
             return 
         }
@@ -266,11 +268,11 @@ export class ServerConnection {
                     params['cmd'] = cmd;
                     params['reqid'] = reqid;
                     let payload = JSON.stringify(params)
-                    console.debug('Sending: ' + payload)
+                    this.comm_logger.debug('Sending: ' + payload)
                     this.socket.send(payload)
                 } catch (e) {
                     reqid = null
-                    console.error('Cannot send request with command=' + cmd + '. Error: ' + e)
+                    this.logger.error('Cannot send request with command=' + cmd + '. Error: ' + e)
                 }
             }
         }
@@ -404,7 +406,7 @@ export class ServerConnection {
     // When we receive a datagram from the server
     on_socket_message_callback(msg) {
         try {
-            console.debug('Received: ' + msg)
+            this.comm_logger.debug('Received: ' + msg)
             let obj = JSON.parse(msg)
 
             // Server is angry. Try to understand why
@@ -423,7 +425,7 @@ export class ServerConnection {
                     }
                 }
 
-                console.error(error_message)
+                this.logger.error(error_message)
             } else { // Server is happy, spread the news
 
                 this.app.trigger_event("scrutiny.api.rx." + obj.cmd, {"obj": obj})
@@ -439,7 +441,7 @@ export class ServerConnection {
             }
         } catch (error) {
             // Server is drunk. Ignore him.
-            console.log('Error while processing message from server. ' + error)
+            this.logger.log('Error while processing message from server. ' + error)
         }
     }
 
@@ -495,7 +497,7 @@ export class ServerConnection {
                     }else if (this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias) ||
                     this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias)){
                         download_session.cancel()
-                        console.error("Server gave more data than expected. Downlaod type = " + download_type)
+                        this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
                     }
                 }
 
@@ -508,7 +510,7 @@ export class ServerConnection {
                         this.datastore.set_ready(DatastoreEntryType.RPV)
                     }else if (this.datastore.get_count(DatastoreEntryType.Alias) > download_session.get_required_datastore_size(DatastoreEntryType.Alias)){
                         download_session.cancel()
-                        console.error("Server gave more data than expected. Downlaod type = " + download_type)
+                        this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
                     }
                 }
             }
@@ -518,7 +520,7 @@ export class ServerConnection {
             }
 
         } catch (e) {
-            console.error(e)
+            this.logger.error(e)
             download_session.cancel()
         }
     }
@@ -547,8 +549,8 @@ export class ServerConnection {
                 this.device_status = new_device_status;
             } catch (e){
                 this.device_status = DeviceStatus.NA;
-                console.error('[inform_server_status] Received a bad device status')
-                console.debug(e)
+                this.logger.error('[inform_server_status] Received a bad device status')
+                this.logger.debug(e)
             }
 
             try {
@@ -574,18 +576,18 @@ export class ServerConnection {
                 }
             } catch (e) {
                 this.loaded_sfd = null
-                console.error('[inform_server_status] Cannot read loaded firmware. ' + e)
+                this.logger.error('[inform_server_status] Cannot read loaded firmware. ' + e)
             }
 
             try {
                 this.device_info = data['device_info'];
             } catch (e) {
                 this.device_info = null
-                console.error('[inform_server_status] Cannot read device info. ' + e)
+                this.logger.error('[inform_server_status] Cannot read device info. ' + e)
             }
 
         } catch (e) {
-            console.error('[inform_server_status] Unexpected error. ' + e)
+            this.logger.error('[inform_server_status] Unexpected error. ' + e)
         }
 
         this.update_ui()
@@ -603,12 +605,12 @@ export class ServerConnection {
                     this.datastore.set_value(entry.entry_type, entry, value)
                 }
                 catch(e){
-                    console.log(`Cannot update value of entry with server ID ${server_id}. ` + e)
+                    this.logger.log(`Cannot update value of entry with server ID ${server_id}. ` + e)
                 }
             }
         }catch(e)
         {
-            console.error('[receive_watchable_update] Received a bad update list. ' + e)
+            this.logger.error('[receive_watchable_update] Received a bad update list. ' + e)
         }
     }
 }

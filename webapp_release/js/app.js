@@ -1,23 +1,31 @@
 import { Datastore } from "./datastore.js";
 import { ServerConnection } from "./server_connection.js";
 import { UI } from "./ui.js";
+import {default as logging} from './logging.js';
 
 export class App {
     constructor(config) {
         this.config = config
         this.init_promises = [] // During init stage, multiple promises will be generated. App will be ready when they all complete
+        this.logger = logging.getLogger('App')
+        this.event_logger = logging.getLogger('events')
     }
 
+    getLogger(name){
+        return logging.getLogger(name)
+    }
+    
     // Add a layer of abstraction above event handling for easier unit testing without JQuery
     trigger_event(name, data_dict){
-        console.debug("Triggering event : " + name)
+        this.event_logger.debug("Triggering event : " + name)
         if (typeof(data_dict) == 'undefined') {data_dict = {}}
         $.event.trigger(Object.assign({}, {"type":name}, data_dict));
     }
 
     on_event(name, callback){
+        let that=this
         $(document).on(name, function(data) {
-            console.debug("Running event callback: " + name)
+            that.event_logger.debug("Running event callback: " + name)
             callback(data)
         })
     }
@@ -27,13 +35,13 @@ export class App {
         let that = this
         this.on_event('scrutiny.ready', function(data){
             $('#loading_mask').hide()
-            console.log('App ready.')
+            that.logger.log('App ready.')
         })
 
         Promise.all(this.init_promises).then(function(){
             that.trigger_event("scrutiny.ready")
         }).catch(function(){
-            console.error('App cannot start correctly.')
+            that.logger.error('App cannot start correctly.')
             // Let's trigger a ready anyway.
             // That will make debugging easier because we need the app to fail where there init 
             // error cause a problem.
@@ -65,13 +73,13 @@ export class App {
     load_template(template_id, template_file) {
         // Append the tempalte node to the DOM and register a promise for the init stage when 
         // the tmeplate is done loading through Ajax.
-
+        let that = this
         let promise = new Promise(function(resolve, reject){
             let template = $("<template id='" + template_id + "'></template>")
             $("#template_section").append(template)
             template.load(template_file, '', function(response, status, xhr) {
                 if (status == 'success'){
-                    console.debug(template_file + ' loaded')
+                    that.logger.debug(template_file + ' loaded')
                     resolve();
                 }
                 else{
