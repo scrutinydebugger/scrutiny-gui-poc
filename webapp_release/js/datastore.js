@@ -209,6 +209,7 @@ export class Datastore {
     }
 
     set_ready(entry_type) {
+        // Mark an entry type as available, i.e. loaded from the server
         if (this.ready[entry_type] == false) {
             this.app.trigger_event("scrutiny.datastore.ready", {'entry_type':entry_type})
         }
@@ -216,12 +217,12 @@ export class Datastore {
     }
 
     is_ready(entry_type) {
+        // Returns true if the entry type has been flagged ready (loaded from server, most likely)
         return this.ready[entry_type]
     }
 
     get_children(entry_type, path) {
-        let tree_objs = this.trees[entry_type].get_children(path)
-
+        // Returns the children under a path of a given type.
         let children = {
             'entries': {},
             'subfolders': []
@@ -231,9 +232,15 @@ export class Datastore {
             children['entries'][DatastoreEntryType[typeval]] = []
         })
 
-
-        let folders = tree_objs['subtrees'];
-        let nodes = tree_objs['nodes'];
+        let tree_children = null;
+        try{
+            tree_children = this.trees[entry_type].get_children(path)
+        }catch(e){  // Path does not exist, returns nothing
+            return children
+        }
+        
+        let folders = tree_children['subtrees'];
+        let nodes = tree_children['nodes'];
         let node_names = Object.keys(nodes).sort()
         let folder_names = Object.keys(folders).sort()
         for (let i = 0; i < node_names.length; i++) {

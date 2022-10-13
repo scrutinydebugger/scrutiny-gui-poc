@@ -115,15 +115,15 @@ export class ServerConnection {
             that.reload_datastore_from_server(WATCHABLE_DOWNLOAD_TYPES.RPV)
         })
 
-        this.app.on_event('scrutiny.device.diconnected', function(e) {
+        this.app.on_event('scrutiny.device.disconnected', function(e) {
             that.datastore.clear([DatastoreEntryType.RPV])
-            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.RPV)
-            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
+            that.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.RPV)
+            that.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
         })
 
         this.app.on_event('scrutiny.sfd.unloaded', function() {
             that.datastore.clear([DatastoreEntryType.Alias, DatastoreEntryType.Var])
-            this.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
+            that.cancel_watchable_download_if_any(WATCHABLE_DOWNLOAD_TYPES.Var_Alias)
         })
 
         this.app.on_event('scrutiny.server.disconnected', function() {

@@ -1,10 +1,5 @@
 import { DatastoreEntryType, AllDatastoreEntryTypes} from "/js/global_definitions.js"
 
-var ENTRY_TYPE_TREE_NAME = {}
-ENTRY_TYPE_TREE_NAME[DatastoreEntryType.Var] = 'tree-var'
-ENTRY_TYPE_TREE_NAME[DatastoreEntryType.Alias] = 'tree-alias'
-ENTRY_TYPE_TREE_NAME[DatastoreEntryType.RPV] = 'tree-rpv'
-
 export class VarListWidget {
 
     constructor(container, app) {
@@ -27,17 +22,6 @@ export class VarListWidget {
         let that = this
 
         this.container.html(this.app.get_template(this, 'varlist-content'));
-        this.container.find(".btn-alias").click(function(){
-            that.change_display_type(DatastoreEntryType.Alias)
-        })
-
-        this.container.find(".btn-rpv").click(function(){
-            that.change_display_type(DatastoreEntryType.RPV)
-        })
-
-        this.container.find(".btn-var").click(function(){
-            that.change_display_type(DatastoreEntryType.Var)
-        })
 
         // Event handlers
         $(document).on('scrutiny.datastore.ready', function(data) {
@@ -45,7 +29,7 @@ export class VarListWidget {
         })
 
         $(document).on('scrutiny.datastore.clear', function(data) {
-            that.clear_tree(data['entry_type'])
+            that.rebuild_tree(data['entry_type'])
         })
 
         // Setup
@@ -54,25 +38,10 @@ export class VarListWidget {
                 this.rebuild_tree(AllDatastoreEntryTypes[i])
             } else {}
         }
-    }
 
-    change_display_type(entry_type){
-        this.container.find("button.type-btn").removeClass('selected')
-        if (entry_type == DatastoreEntryType.Alias){
-            this.container.find("button.btn-alias").addClass('selected')
-        }
-        else if (entry_type == DatastoreEntryType.Var){
-            this.container.find("button.btn-var").addClass('selected')
-        }
-        else if (entry_type == DatastoreEntryType.RPV){
-            this.container.find("button.btn-rpv").addClass('selected')
-        }
-
-        let nb_entries = this.app.datastore.get_count(entry_type)
-        this.container.find(".entries-count-label").text(`(${nb_entries} entries)`)
-
-        this.container.find(".watchable-tree").hide()
-        this.get_tree_container(entry_type).show()
+        setTimeout(function(){
+            that.rebuild_tree()
+        })
     }
 
     destroy(){
@@ -88,7 +57,7 @@ export class VarListWidget {
         return this.treename + '_' + this.id_map[display_path]
     }
 
-    fetch_jstree_subnodes(entry_type, parent, callback) {
+    fetch_jstree_subnodes(parent, callback) {
         // jstree root has id="#"
 
         let node_type_map = {}
@@ -108,26 +77,27 @@ export class VarListWidget {
                 }
             }]);
         } else {
-            let children = this.app.datastore.get_children(entry_type, parent.li_attr.display_path)
             let jstree_childrens = []
-                // Add folders node
-            children['subfolders'].forEach(function(subfolder, i) {
-                let separator = (parent.li_attr.display_path === "/") ? "" : "/"
-                let display_path = parent.li_attr.display_path + separator + subfolder.name
-                jstree_childrens.push({
-                    'text': subfolder.name,
-                    'children': subfolder.children, // true if it has children
-                    'id': that.make_node_id(display_path),
-                    'li_attr': {
-                        "display_path": display_path
-                    }
-                })
-            })
 
-            // Add entries node
-            Object.keys(DatastoreEntryType).forEach(function(typeval, i) {
-                let entry_type = DatastoreEntryType[typeval]
-                    // Entries are organized by entry type
+            for (let i=0; i<AllDatastoreEntryTypes.length; i++)
+            {
+                let entry_type = AllDatastoreEntryTypes[i];
+                let children = this.app.datastore.get_children(entry_type, parent.li_attr.display_path)
+                // Add folders node
+                children['subfolders'].forEach(function(subfolder, i) {
+                    let separator = (parent.li_attr.display_path === "/") ? "" : "/"
+                    let display_path = parent.li_attr.display_path + separator + subfolder.name
+                    jstree_childrens.push({
+                        'text': subfolder.name,
+                        'children': subfolder.children, // true if it has children
+                        'id': that.make_node_id(display_path),
+                        'li_attr': {
+                            "display_path": display_path
+                        }
+                    })
+                })
+
+                // Entries are organized by entry type
                 children['entries'][entry_type].forEach(function(entry, i) {
                     jstree_childrens.push({
                         'text': entry.name,
@@ -139,14 +109,16 @@ export class VarListWidget {
                         "type": node_type_map[entry_type]
                     })
                 })
-            })
+            }
+                
+            // Add entries node
 
             callback(jstree_childrens) // This callback adds the subnodes
         }
     }
 
-    get_tree_container(entry_type) {
-        return this.container.find('.varlist-tree-container .' + ENTRY_TYPE_TREE_NAME[entry_type]);
+    get_tree_container() {
+        return this.container.find('.varlist-tree-container');
     }
 
 
@@ -159,7 +131,7 @@ export class VarListWidget {
             'plugins': ["dnd", "types"], // Drag and drop
             'core': {
                 'data': function(obj, cb) {
-                    that.fetch_jstree_subnodes(entry_type, obj, cb)
+                    that.fetch_jstree_subnodes(obj, cb)
                 },
                 'animation': 75,
                 'themes': {
@@ -185,13 +157,14 @@ export class VarListWidget {
             thetree.jstree().open_node(root_node_id)
         });
 
-        this.get_tree_container(entry_type).append(thetree)
+        this.get_tree_container().append(thetree)
 
     }
 
     // called on datastore clear event
     clear_tree(entry_type) {
-        this.get_tree_container(entry_type).html("")
+        // nothing to do with type as we have a single tree for them all.
+        this.get_tree_container().html("")
     }
 
     static name() {

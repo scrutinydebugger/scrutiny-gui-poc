@@ -1,48 +1,6 @@
-.varlist-type-select-container{
-    padding:5px;
-    width:100%;
-    margin:auto;
-    border-bottom:1px solid #ccc;
-}
-
-.varlist-type-select-container button {
-    padding:3px;
-    padding-left:10px;
-    padding-right:10px;
-    min-width:min(100px, 25%);
-    border-radius: 1px;
-    border:2px solid #ddd;
-    display: inline-block;
-}
 
 .entries-count{
     margin-left:10px;
-}
-
-
-.varlist-type-select-container button:hover {
-    border:2px solid #555;
-}
-
-.varlist-type-select-container button.selected {
-    border:2px solid #555;
-}
-
-.varlist-type-select-container button:active {
-    border:2px solid #555;
-    filter:brightness(0.8)
-}
-
-.varlist-type-select-container .btn-var{
-    background-color: rgb(244, 177, 131)
-}
-
-.varlist-type-select-container .btn-alias{
-    background-color: rgb(148, 169, 219)
-}
-
-.varlist-type-select-container .btn-rpv{
-    background-color: rgb(198, 224, 181)
 }
 
 ul.varlist-tree{
