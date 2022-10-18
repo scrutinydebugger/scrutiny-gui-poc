@@ -29,7 +29,9 @@ export class VarListWidget {
         for (let i=0; i<AllDatastoreEntryTypes.length; i++){
             if (this.app.datastore.is_ready(AllDatastoreEntryTypes[i])) {
                 this.rebuild_tree(AllDatastoreEntryTypes[i])
-            } else {}
+            } else {
+                // TODO complete this?
+            }
         }
 
         setTimeout(function(){

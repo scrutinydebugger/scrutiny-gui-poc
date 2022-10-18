@@ -62,7 +62,7 @@ export default class LoggingModule {
         default_formatter = formatter
         let logger_names = Object.keys(loggers)
         for (let i=0; i<logger_names.length; i++){
-            logger[logger_names[i]].set_formatter(formatter)
+            loggers[logger_names[i]].set_formatter(formatter)
         }
     }
 }

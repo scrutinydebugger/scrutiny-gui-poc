@@ -155,7 +155,7 @@ export class Datastore {
         try {
             this.trees[entry_type].get_obj(path)
             return true
-        } catch {
+        } catch (err) {
             return false
         }
     }

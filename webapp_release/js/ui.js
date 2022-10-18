@@ -103,19 +103,19 @@ export class UI {
 
             try {
                 project_name = this.loaded_sfd['metadata']['project_name']
-            } catch {}
+            } catch (err) {}
 
             try {
                 version = this.loaded_sfd['metadata']['version']
-            } catch {}
+            } catch (err) {}
 
             try {
                 author = this.loaded_sfd['metadata']['author']
-            } catch {}
+            } catch (err) {}
 
             try {
                 firmware_id = this.loaded_sfd['firmware_id']
-            } catch {}
+            } catch (err) {}
 
             try {
                 let timestamp = this.loaded_sfd['metadata']['generation_info']['time'];
@@ -129,14 +129,14 @@ export class UI {
                 let seconds = padLeft(String(date.getSeconds()), '0', 2);
 
                 generated_on = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-            } catch {}
+            } catch (err) {}
 
             try {
                 let python_version = this.loaded_sfd['metadata']['generation_info']['python_version']
                 let scrutiny_version = this.loaded_sfd['metadata']['generation_info']['scrutiny_version']
                 let system_type = this.loaded_sfd['metadata']['generation_info']['system_type']
                 generated_with = `Scrutiny V${scrutiny_version} & Python V${python_version} on ${system_type}`
-            } catch {}
+            } catch (err) {}
 
 
             this.show_modal('Firmware details', $("#template-firmware-details-table").html())
@@ -174,41 +174,41 @@ export class UI {
 
             try {
                 device_id = this.device_info['device_id']
-            } catch {}
+            } catch (err) {}
 
             try {
                 display_name = this.device_info['display_name']
-            } catch {}
+            } catch (err) {}
 
             try {
                 max_tx_data_size = this.device_info['max_tx_data_size'] + ' bytes'
-            } catch {}
+            } catch (err) {}
 
             try {
                 max_rx_data_size = this.device_info['max_rx_data_size'] + ' bytes'
-            } catch {}
+            } catch (err) {}
 
             try {
                 max_bitrate_bps = this.device_info['max_bitrate_bps'] + ' b/s'
-            } catch {}
+            } catch (err) {}
 
             try {
                 rx_timeout_us = this.device_info['rx_timeout_us'] + ' us'
-            } catch {}
+            } catch (err) {}
 
             try {
                 heartbeat_timeout_us = this.device_info['heartbeat_timeout_us'] + ' us'
-            } catch {}
+            } catch (err) {}
 
             try {
                 address_size_bits = this.device_info['address_size_bits'] + ' bits'
-            } catch {}
+            } catch (err) {}
 
             try {
                 let major = this.device_info['protocol_major'];
                 let minor = this.device_info['protocol_minor']
                 protocol_version = `V${major}.${minor}`;
-            } catch {}
+            } catch (err) {}
 
             try {
                 supported_feature_map_content = $('<ul></ul>');
@@ -216,7 +216,7 @@ export class UI {
                 supported_feature_map_content.append($('<li>Datalog acquisition: ' + (this.device_info['supported_feature_map']['datalog_acquire'] ? 'Yes' : 'No') + ' </li>'))
                 supported_feature_map_content.append($('<li>User command: ' + (this.device_info['supported_feature_map']['user_command'] ? 'Yes' : 'No') + ' </li>'))
                 supported_feature_map_content.addClass('list-no-margin')
-            } catch {
+            } catch (err) {
                 supported_feature_map_content = '-'
             }
 
@@ -234,7 +234,7 @@ export class UI {
                     }
                     readonly_memory_regions_content.addClass('list-no-margin')
                 }
-            } catch {
+            } catch (err) {
                 readonly_memory_regions_content = '-'
             }
 
@@ -253,7 +253,7 @@ export class UI {
                     }
                     forbidden_memory_regions_content.addClass('list-no-margin')
                 }
-            } catch {
+            } catch (err) {
                 forbidden_memory_regions_content = '-'
             }
 
@@ -391,15 +391,15 @@ export class UI {
 
             try {
                 project_name = loaded_sfd['metadata']['project_name']
-            } catch {}
+            } catch (err) {}
 
             try {
                 project_version = loaded_sfd['metadata']['version']
-            } catch {}
+            } catch (err) {}
 
             try {
                 this.loaded_sfd_id = loaded_sfd['firmware_id']
-            } catch {}
+            } catch (err) {}
 
             display_str = project_name + ' V' + project_version;
             $("#loaded_firmware_label").addClass('clickable_label');
