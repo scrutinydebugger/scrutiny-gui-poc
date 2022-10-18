@@ -17,6 +17,7 @@ function load_config() {
 
     // If launched through CEF, this will exist.
     if (typeof config_from_python !== 'undefined') {
+        // eslint-disable-next-line no-undef
         config = config_from_python
     }
 

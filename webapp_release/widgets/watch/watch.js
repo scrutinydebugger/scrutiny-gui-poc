@@ -69,6 +69,7 @@ export class WatchWidget {
     }
 
     destroy(){
+        const that = this
         // Remove all lines even if not selected
         $('table.watch-display tr').each(function(){
             that.remove_var($(this))
