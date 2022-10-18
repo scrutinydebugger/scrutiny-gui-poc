@@ -1,6 +1,6 @@
 // @ts-check
-"use strict"
-;(function ($) {
+"use strict";
+(function($) {
     // Scrutiny Tree Table plugin.
     // Custom made tree-table widget because all the one out there were either behind a paid license
     // or buggy and/or deprecated and/or not tailored to our need.
@@ -16,7 +16,7 @@
         indent: 10,
         expander_size: 12,
         col_index: 1,
-        load_fn: function () {
+        load_fn: function() {
             throw "No loader defined"
         },
     }
@@ -173,6 +173,7 @@
     }
 
     function _get_tree_cell($table, tr) {
+
         let tree_col_index = $table.data("options").col_index
         let first_cell = tr.find(`td:nth-child(${tree_col_index})`).first() // First cell, the one with the tree behavior
         if (first_cell.length == 0) {
@@ -233,12 +234,12 @@
     }
 
     function _make_expandable($table, tr) {
-        const first_cell = _get_tree_cell(tr)
+        const first_cell = _get_tree_cell($table, tr)
         if (first_cell.find(".stt-expander").length == 0) {
             const expander = $table.data("expander_closed").clone()
             first_cell.find(".stt-spacer").first().append(expander)
-            expander.click(function () {
-                _toggle_row(tr)
+            expander.click(function() {
+                _toggle_row($table, tr)
             })
         }
     }
@@ -252,7 +253,7 @@
     }
 
     function _show_children_of_expanded_recursive($table, tr) {
-        _get_children($table, tr).each(function () {
+        _get_children($table, tr).each(function() {
             const child = $(this)
             child.show()
             if (_is_expanded($table, child)) {
@@ -265,7 +266,7 @@
         const children = _load_or_show_children($table, tr)
         if (children.length > 0) {
             // Iterate all immediate children
-            children.each(function () {
+            children.each(function() {
                 const child = $(this)
                 child.show()
                 _load_or_show_children($table, child)
@@ -287,7 +288,7 @@
     }
 
     function _hide_children($table, tr) {
-        _get_children($table, tr).each(function () {
+        _get_children($table, tr).each(function() {
             const child = $(this)
             child.hide()
             _hide_children($table, child)
@@ -300,28 +301,28 @@
     }
 
     function _expand_all($table) {
-        $table.find(`tr[${ATTR_ROOT}]`).each(function () {
+        $table.find(`tr[${ATTR_ROOT}]`).each(function() {
             _expand_descendent($table, $(this))
         })
     }
 
     function _expand_descendent($table, tr) {
         _expand_row($table, tr)
-        _get_children($table, tr).each(function () {
+        _get_children($table, tr).each(function() {
             _expand_descendent($table, $(this))
         })
     }
 
     function _collapse_all($table, tr) {
         if (typeof tr == "undefined") {
-            $table.find(`tr[${ATTR_ROOT}]`).each(function () {
+            $table.find(`tr[${ATTR_ROOT}]`).each(function() {
                 _collapse_all($table, $(this))
                 if (_is_expanded($table, $(this))) {
                     _collapse_row($table, $(this))
                 }
             })
         } else {
-            _get_children($table, tr).each(function () {
+            _get_children($table, tr).each(function() {
                 const child = $(this)
                 _collapse_all($table, child) // Recursion before collapse to start by the end leaf
                 if (_is_expanded($table, child)) {
@@ -366,7 +367,7 @@
                 throw "No parent node with ID " + parent_id
             }
             actual_level = parseInt(parent.attr(ATTR_LEVEL)) + 1 // Level below the parent.
-            // Since the table is flat, the insertion point is after the last element that share the same parent
+                // Since the table is flat, the insertion point is after the last element that share the same parent
 
             let previous_row = parent
             let actual_row = parent.next()
@@ -391,7 +392,7 @@
 
     function _delete_node($table, tr) {
         const children = _get_children($table, tr)
-        children.each(function () {
+        children.each(function() {
             _delete_single_row($table, $(this))
         })
 
@@ -457,9 +458,9 @@
         collapse_all: collapse_all,
     }
 
-    $.fn.scrutiny_treetable = function (...args) {
+    $.fn.scrutiny_treetable = function(...args) {
         let hasResults = false
-        const results = $(this).map(function () {
+        const results = $(this).map(function() {
             const $table = $(this).find("tbody")
 
             // Jquery plugin like approach.
