@@ -1,0 +1,19 @@
+{
+    
+    "env": {
+        "browser": true,
+        "es6": true
+    },
+    "extends": ["eslint:recommended"],
+    "globals": {
+        "jQuery": true,
+        "$": true
+    },
+    "ignorePatterns": [
+        "webapp_release/libs/**/*.js",
+        "tests/**/*.js"
+    ],
+    "parserOptions": {
+        "sourceType": "module"
+    }
+}
