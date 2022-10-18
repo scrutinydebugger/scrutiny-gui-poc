@@ -1,9 +1,9 @@
-/* eslint-disable no-prototype-builtins */
 // @ts-check
-(function($) {
-    // Scrutiny Tree Table plugin. 
+"use strict"
+;(function ($) {
+    // Scrutiny Tree Table plugin.
     // Custom made tree-table widget because all the one out there were either behind a paid license
-    // or buggy and/or deprecated and/or not tailored to our need. 
+    // or buggy and/or deprecated and/or not tailored to our need.
 
     const ATTR_ID = "stt-id"
     const ATTR_PARENT = "stt-parent-id"
@@ -16,17 +16,15 @@
         indent: 10,
         expander_size: 12,
         col_index: 1,
-        load_fn: function() {
+        load_fn: function () {
             throw "No loader defined"
-        }
+        },
     }
 
     const SPACER_TEMPLATE = $("<span class='stt-spacer'></span>")
 
-
-
     /***  Public functions *** */
-    
+
     function add_root_node($table, node_id, tr) {
         _add_node($table, null, node_id, tr)
         _load_or_show_children($table, tr)
@@ -91,11 +89,14 @@
     }
 
     function _is_child_of(tr, parent_id) {
-        return typeof(tr.attr(ATTR_PARENT)) !== "undefined" && tr.attr(ATTR_PARENT) === parent_id
+        return (
+            typeof tr.attr(ATTR_PARENT) !== "undefined" &&
+            tr.attr(ATTR_PARENT) === parent_id
+        )
     }
 
     function _find_row($table, node_id) {
-        let node_cache = $table.data('node_cache')
+        let node_cache = $table.data("node_cache")
         if (node_cache.hasOwnProperty(node_id)) {
             return node_cache[node_id]
         }
@@ -106,10 +107,10 @@
         node_cache[node_id] = row
         return row
     }
-    
+
     function _get_row_from_node_or_row($table, arg) {
         let tr = null
-        if (typeof(arg) === 'string') {
+        if (typeof arg === "string") {
             tr = _find_row($table, arg)
         } else {
             tr = arg
@@ -128,7 +129,7 @@
         }
 
         let parent_id = tr.attr(ATTR_PARENT)
-        if (typeof(parent_id) === 'undefined') {
+        if (typeof parent_id === "undefined") {
             return null
         }
 
@@ -137,7 +138,7 @@
 
     function _is_root(tr) {
         let attr = tr.attr(ATTR_ROOT)
-        return (typeof(attr) !== 'undefined' && attr == 'true')
+        return typeof attr !== "undefined" && attr == "true"
     }
 
     function _is_children_loaded(tr) {
@@ -150,7 +151,10 @@
 
     function _is_expanded($table, tr) {
         try {
-            return (_get_tree_cell($table, tr).find(".stt-expander").attr('src') === $table.data('expander_opened').attr('src'))
+            return (
+                _get_tree_cell($table, tr).find(".stt-expander").attr("src") ===
+                $table.data("expander_opened").attr("src")
+            )
         } catch (err) {
             return false
         }
@@ -169,10 +173,10 @@
     }
 
     function _get_tree_cell($table, tr) {
-        let tree_col_index = $table.data('options').col_index
+        let tree_col_index = $table.data("options").col_index
         let first_cell = tr.find(`td:nth-child(${tree_col_index})`).first() // First cell, the one with the tree behavior
         if (first_cell.length == 0) {
-            throw 'No cell in row'
+            throw "No cell in row"
         }
         return first_cell
     }
@@ -182,13 +186,16 @@
     }
 
     function _close_expander($table, tr) {
-        _get_tree_cell($table, tr).find(".stt-expander").attr('src', $table.data('expander_closed').attr('src'))
+        _get_tree_cell($table, tr)
+            .find(".stt-expander")
+            .attr("src", $table.data("expander_closed").attr("src"))
     }
 
     function _open_expander($table, tr) {
-        _get_tree_cell($table, tr).find(".stt-expander").attr('src', $table.data('expander_opened').attr('src'))
+        _get_tree_cell($table, tr)
+            .find(".stt-expander")
+            .attr("src", $table.data("expander_opened").attr("src"))
     }
-
 
     // Main modifier functions
     function _load_or_show_children($table, tr) {
@@ -198,20 +205,20 @@
 
         // Not loaded yet. Must load
         const node_id = _get_node_id(tr)
-        let loaded_children = $table.data('options')['load_fn'](node_id, tr)
-        if (typeof(loaded_children) === 'undefined') {
+        let loaded_children = $table.data("options")["load_fn"](node_id, tr)
+        if (typeof loaded_children === "undefined") {
             loaded_children = []
         }
         const children_output = []
         for (let i = 0; i < loaded_children.length; i++) {
-            const child_node_id = loaded_children[i]['id']
-            const child_node_tr = loaded_children[i]['tr']
+            const child_node_id = loaded_children[i]["id"]
+            const child_node_tr = loaded_children[i]["tr"]
 
-            if (typeof(child_node_id) == "undefined") {
+            if (typeof child_node_id == "undefined") {
                 throw "Missing key 'id' in load_fn under " + node_id
             }
 
-            if (typeof(child_node_tr) == "undefined") {
+            if (typeof child_node_tr == "undefined") {
                 throw "Missing key 'tr' in load_fn under " + node_id
             }
 
@@ -227,26 +234,25 @@
 
     function _make_expandable($table, tr) {
         const first_cell = _get_tree_cell(tr)
-        if (first_cell.find('.stt-expander').length == 0) {
-            const expander = $table.data('expander_closed').clone();
-            first_cell.find('.stt-spacer').first().append(expander)
-            expander.click(function() {
+        if (first_cell.find(".stt-expander").length == 0) {
+            const expander = $table.data("expander_closed").clone()
+            first_cell.find(".stt-spacer").first().append(expander)
+            expander.click(function () {
                 _toggle_row(tr)
             })
         }
     }
 
-
     function _make_non_expandable($table, tr) {
         const first_cell = _get_tree_cell($table, tr)
-        const expander = first_cell.find('.stt-expander')
+        const expander = first_cell.find(".stt-expander")
         if (expander.length > 0) {
             expander.remove()
         }
     }
 
     function _show_children_of_expanded_recursive($table, tr) {
-        _get_children($table, tr).each(function() {
+        _get_children($table, tr).each(function () {
             const child = $(this)
             child.show()
             if (_is_expanded($table, child)) {
@@ -259,11 +265,11 @@
         const children = _load_or_show_children($table, tr)
         if (children.length > 0) {
             // Iterate all immediate children
-            children.each(function() {
+            children.each(function () {
                 const child = $(this)
                 child.show()
                 _load_or_show_children($table, child)
-                _show_children_of_expanded_recursive($table, tr) // If 
+                _show_children_of_expanded_recursive($table, tr) // If
             })
 
             _open_expander($table, tr)
@@ -281,7 +287,7 @@
     }
 
     function _hide_children($table, tr) {
-        _get_children($table, tr).each(function() {
+        _get_children($table, tr).each(function () {
             const child = $(this)
             child.hide()
             _hide_children($table, child)
@@ -294,28 +300,28 @@
     }
 
     function _expand_all($table) {
-        $table.find(`tr[${ATTR_ROOT}]`).each(function() {
+        $table.find(`tr[${ATTR_ROOT}]`).each(function () {
             _expand_descendent($table, $(this))
         })
     }
 
     function _expand_descendent($table, tr) {
         _expand_row($table, tr)
-        _get_children($table, tr).each(function() {
+        _get_children($table, tr).each(function () {
             _expand_descendent($table, $(this))
         })
     }
 
     function _collapse_all($table, tr) {
-        if (typeof(tr) == 'undefined') {
-            $table.find(`tr[${ATTR_ROOT}]`).each(function() {
+        if (typeof tr == "undefined") {
+            $table.find(`tr[${ATTR_ROOT}]`).each(function () {
                 _collapse_all($table, $(this))
                 if (_is_expanded($table, $(this))) {
                     _collapse_row($table, $(this))
                 }
             })
         } else {
-            _get_children($table, tr).each(function() {
+            _get_children($table, tr).each(function () {
                 const child = $(this)
                 _collapse_all($table, child) // Recursion before collapse to start by the end leaf
                 if (_is_expanded($table, child)) {
@@ -343,23 +349,24 @@
         }
     }
 
-
     function _add_node($table, parent_id, node_id, tr) {
         const first_cell = _get_tree_cell($table, tr)
 
         let actual_level = 0 // Start at 0 for root node
         _set_node_id(tr, node_id)
-        if (parent_id === null) { // We are adding a root node
+        if (parent_id === null) {
+            // We are adding a root node
             tr.attr(ATTR_ROOT, true)
             $table.append(tr)
             tr.show()
-        } else { // We are adding a subnode
+        } else {
+            // We are adding a subnode
             const parent = _find_row($table, parent_id) // Find the parent row
             if (parent.length == 0) {
                 throw "No parent node with ID " + parent_id
             }
             actual_level = parseInt(parent.attr(ATTR_LEVEL)) + 1 // Level below the parent.
-                // Since the table is flat, the insertion point is after the last element that share the same parent
+            // Since the table is flat, the insertion point is after the last element that share the same parent
 
             let previous_row = parent
             let actual_row = parent.next()
@@ -375,15 +382,16 @@
         }
         tr.attr(ATTR_LEVEL, actual_level)
 
-        const options = $table.data('options')
+        const options = $table.data("options")
         const expander_size = options.expander_size
-        const spacer_width = (options.indent * actual_level) + expander_size + "px"
-        first_cell.prepend(SPACER_TEMPLATE.clone().css('width', spacer_width))
+        const spacer_width =
+            options.indent * actual_level + expander_size + "px"
+        first_cell.prepend(SPACER_TEMPLATE.clone().css("width", spacer_width))
     }
 
     function _delete_node($table, tr) {
         const children = _get_children($table, tr)
-        children.each(function() {
+        children.each(function () {
             _delete_single_row($table, $(this))
         })
 
@@ -391,7 +399,7 @@
     }
 
     function _delete_single_row($table, tr) {
-        const node_cache = $table.data('node_cache')
+        const node_cache = $table.data("node_cache")
         const node_id = _get_node_id(tr)
         const parent = _get_parent($table, tr)
         if (node_cache.hasOwnProperty(node_id)) {
@@ -405,62 +413,67 @@
     }
 
     function init($table, config) {
-        let options = $.extend({}, DEFAULT_OPTIONS, config);
+        let options = $.extend({}, DEFAULT_OPTIONS, config)
         let expander_size = options.expander_size
-        if (typeof(expander_size) === 'number') {
-            expander_size = '' + expander_size + 'px'
+        if (typeof expander_size === "number") {
+            expander_size = "" + expander_size + "px"
         } else {
-            throw "Unsupported data type for options 'expander_size' : " + typeof(expander_size)
+            throw (
+                "Unsupported data type for options 'expander_size' : " +
+                typeof expander_size
+            )
         }
 
-        let expander_opened = $("<img width='16px' height='16px' class='stt-expander' src='expander-opened.png' />")
-        let expander_closed = $("<img width='16px' height='16px' class='stt-expander' src='expander-closed.png' />")
+        let expander_opened = $(
+            "<img width='16px' height='16px' class='stt-expander' src='expander-opened.png' />"
+        )
+        let expander_closed = $(
+            "<img width='16px' height='16px' class='stt-expander' src='expander-closed.png' />"
+        )
         let node_cache = {}
 
-        expander_opened.attr('width', expander_size)
-        expander_opened.attr('height', expander_size)
-        expander_closed.attr('width', expander_size)
-        expander_closed.attr('height', expander_size)
+        expander_opened.attr("width", expander_size)
+        expander_opened.attr("height", expander_size)
+        expander_closed.attr("width", expander_size)
+        expander_closed.attr("height", expander_size)
 
-
-        $table.data('expander_closed', expander_closed)
-        $table.data('expander_opened', expander_opened)
-        $table.data('node_cache', node_cache)
-        $table.data('options', options)
+        $table.data("expander_closed", expander_closed)
+        $table.data("expander_opened", expander_opened)
+        $table.data("node_cache", node_cache)
+        $table.data("options", options)
     }
 
     // public functions
     const public_funcs = {
-        'add_root_node': add_root_node,
+        add_root_node: add_root_node,
         //'is_root': is_root,
-        'get_children': get_children,
+        get_children: get_children,
         //'get_children_count': get_children_count,
-        'get_parent': get_parent,
-        'delete_node': delete_node,
-        'expand_node': expand_node,
-        'expand_all': expand_all,
-        'collapse_node': collapse_node,
-        'collapse_all': collapse_all
+        get_parent: get_parent,
+        delete_node: delete_node,
+        expand_node: expand_node,
+        expand_all: expand_all,
+        collapse_node: collapse_node,
+        collapse_all: collapse_all,
     }
 
-    $.fn.scrutiny_treetable = function(...args) {
-        let hasResults = false;
-        const results = $(this).map(function() {
-            const $table = $(this).find('tbody');
+    $.fn.scrutiny_treetable = function (...args) {
+        let hasResults = false
+        const results = $(this).map(function () {
+            const $table = $(this).find("tbody")
 
             // Jquery plugin like approach.
-            if (args.length < 1)
-                throw 'Missing arguments';
+            if (args.length < 1) throw "Missing arguments"
 
-            if (typeof(args[0]) === 'string') {
-                const funcname = args[0];
+            if (typeof args[0] === "string") {
+                const funcname = args[0]
                 if (!public_funcs.hasOwnProperty(funcname)) {
-                    throw 'Unknown function ' + funcname;
+                    throw "Unknown function " + funcname
                 }
                 const result = public_funcs[funcname]($table, ...args.slice(1))
-                if (typeof(result) !== 'undefined') {
-                    hasResults = true;
-                    return result;
+                if (typeof result !== "undefined") {
+                    hasResults = true
+                    return result
                 }
             } else {
                 init($table, ...args)
@@ -468,20 +481,19 @@
         })
 
         // When no result were provided, return the same `this` that we received
-        if(!hasResults) {
-            return this;
+        if (!hasResults) {
+            return this
         }
         // optionnaly, when there was only one item targeted, return the result
         // directly
-        else if(results.length===1) {
-            return results[0];
+        else if (results.length === 1) {
+            return results[0]
         }
         // otherwise return the jQuery mapped results.
         else {
-            return results;
+            return results
         }
     }
 
-
-// @ts-ignore
-})(jQuery);
+    // @ts-ignore
+})(jQuery)
