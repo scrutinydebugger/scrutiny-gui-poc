@@ -7,18 +7,18 @@ table.stt-table .stt-expander{
 }
 
 table.stt-table .stt-expander-opened{
-    background-image: url("expander-opened.png");
+    background-image: url("assets/expander-opened.png");
 }
 
 table.stt-table .stt-expander-closed{
-    background-image: url("expander-closed.png");
+    background-image: url("assets/expander-closed.png");
 }
 
 table.stt-table .stt-dragger{
     height: 12px;
     width: 12px;
     cursor:move;
-    background-image: url("dragger.png");
+    background-image: url("assets/dragger.png");
     background-repeat: no-repeat;
     margin-right:4px;
     background-size: 12px;

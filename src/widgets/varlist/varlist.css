@@ -1,0 +1,24 @@
+
+.entries-count{
+    margin-left:10px;
+}
+
+ul.varlist-tree{
+    padding: 0;
+    margin: 0;
+    font-family: "Arial, sans-serif";
+}
+
+
+li.varlist-tree-node{
+    font-size: 12px;
+    padding: 0;
+    margin: 0;
+    list-style: outside;
+    padding-left: 15px;
+    font-family: "Arial, sans-serif";
+}
+
+li.varlist-tree-node[draggable=true]{
+    cursor: copy;
+}
