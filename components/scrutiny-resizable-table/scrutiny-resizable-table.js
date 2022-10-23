@@ -1,16 +1,20 @@
 // @ts-check
 "use strict";
 (function($) {
+    const ATTR_HAS_WIDTH = 'srt-has-width'
+    
     const CLASS_TABLE = "srt-table"
     const CLASS_RESIZE_HANDLE = "srt-resize-handle"
     const CLASS_RESIZABLE = "srt-resizable"
     const CLASS_NOWRAP = 'srt-nowrap'
+    
 
     const DATAKEY_OPTIONS = 'srt-options'
 
     const DEFAULT_OPTIONS = {
         resize_zone_width:4,
         table_width_constrained:false,
+        column_min_width:0,
         nowrap:true,
         load_fn: function() {
             throw "No loader defined"
@@ -35,23 +39,16 @@
             $table.addClass(CLASS_NOWRAP)
         }
 
+
         $table.data(DATAKEY_OPTIONS, options)
-        _set_resizable($table)
-    }
-
-    function _get_options($table){
-        return $table.data(DATAKEY_OPTIONS)
-    }
-
-    function _set_resizable($table){
-        let options =  _get_options($table)
-
         $table.addClass(CLASS_RESIZABLE)
 
         let ths = $table.find("thead th")
         if (ths.length == 0){
             throw "<thead> with cells is required for a resizable table"
         }
+
+        ths.css('min-width', ''+options.column_min_width+'px')
         
         if (options.table_width_constrained == false){
             $table.css('width', 'auto')
@@ -60,14 +57,15 @@
         }
 
         $(document).ready(function(){
-            ths.each(function(){
-                $(this).width($(this).width())
-            })
-
+            _recompute_col_width($table)
             _update_sizes($table)
         })
 
         _install_resize_handles($table)
+    }
+
+    function _get_options($table){
+        return $table.data(DATAKEY_OPTIONS)
     }
     
     function _install_resize_handles($table){
@@ -77,6 +75,8 @@
         if (options.table_width_constrained == true){
             ths = ths.slice(0, ths.length-1)
         }
+
+        ths.attr(`${ATTR_HAS_WIDTH}`, true)
 
         ths.each(function(){
             let th = $(this)
@@ -89,34 +89,109 @@
                 th.append(handle)
 
                 let pressed = false;
-                let mouse_start_x = null
-                let col_start_w = null;
+                let last_cursor_x = null
                 handle.on('mousedown',function(e){
                     _make_text_unselectable($table)
                     pressed = true
-                    mouse_start_x = e.pageX;
-                    col_start_w = th.width();
+                    last_cursor_x = e.pageX;
                 })
 
                 $(window).on('mouseup',function(e){
                     pressed = false
+                    last_cursor_x = null
                     _update_sizes($table);
                 })
 
                 $(window).on('mousemove', function(e){
+                    let options = _get_options($table)
                     if (pressed){
-                        let delta_x = e.pageX - mouse_start_x
-                        let max_delta = $(window).width() - mouse_start_x
-                        delta_x = Math.min(max_delta, delta_x)
-                        th.width(col_start_w + delta_x)
+                        let new_cursor_x = e.pageX
+                        let delta_w = (new_cursor_x - last_cursor_x)
+                        last_cursor_x = new_cursor_x
+                        
+                        if (delta_w > 0){
+                            _increase_size($table, th, delta_w)
+                        }else if(delta_w < 0){
+                            _decrease_size($table, th, delta_w)
+                        }
+
+                        _recompute_col_width($table)
                         _make_text_selectable($table)
                     }
                 })
-
             }
         })
 
         _update_sizes($table);
+    }
+
+    function _increase_size($table, th, delta_w){
+        let is_last_col = (th.next().length == 0)
+        if (is_last_col){
+            delta_w = Math.min(delta_w, _allowed_table_expansion($table))
+        }
+
+        // Reduce other cols before expanding this one if we are at max
+        if (_is_table_width_max($table) && delta_w>0){
+            let width_to_remove = delta_w;
+            let width_removed = 0
+            let next_th = th.next(`th[${ATTR_HAS_WIDTH}]`)
+            while (next_th.length > 0){
+                let w = next_th.outerWidth()
+                let w2 = Math.max(0, w-width_to_remove)
+                next_th.outerWidth(w2)
+                _recompute_col_width($table)
+                let applied_w = next_th.outerWidth()
+                let applied_delta = (w-applied_w)
+                width_removed += applied_delta
+                width_to_remove -= applied_delta
+                next_th = next_th.next(`th[${ATTR_HAS_WIDTH}]`)
+                if (width_to_remove == 0){
+                    break
+                }
+            }
+
+            delta_w = width_removed
+        }
+
+        let cannot_resize = ( _is_table_width_max($table) && is_last_col && delta_w>0)
+
+        if (!cannot_resize){
+            let new_width = th.outerWidth() + delta_w
+            th.outerWidth(new_width)
+        }
+    }
+
+    function _decrease_size($table, th, delta_w){
+        let new_width = th.outerWidth() + delta_w
+        th.outerWidth(new_width)
+        if (delta_w < 0){
+            let remaing_delta_w = new_width-th.outerWidth()
+            let previous_col = th.prev()
+            
+            while (previous_col.length > 0 && remaing_delta_w<0){
+                let initial_width = previous_col.outerWidth()
+                new_width = previous_col.outerWidth() + remaing_delta_w
+                previous_col.outerWidth(new_width)
+                remaing_delta_w += (initial_width-previous_col.outerWidth())
+                previous_col=previous_col.prev()
+            }
+        }
+    }
+
+    function _recompute_col_width($table){
+        let options = _get_options($table)
+        $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function(){
+            $(this).width($(this).width())
+        })
+    }
+
+    function _allowed_table_expansion($table){
+        return  Math.max(0, $table.parent().innerWidth() - $table.outerWidth())
+    }
+
+    function _is_table_width_max($table){
+        return _allowed_table_expansion($table) == 0
     }
 
     function _make_text_unselectable($table){

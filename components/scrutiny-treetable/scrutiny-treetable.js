@@ -18,6 +18,11 @@
     const CLASS_EXPANDER_OPENED = "stt-expander-opened"
     const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
 
+    const DATAKEY_OPTIONS = 'stt-dk-options'
+    const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'
+    const DATAKEY_EXPANDER_CLOSED = 'stt-dk-expander_closed'
+    const DATAKEY_EXPANDER_OPENED = 'stt-dk-expander_opened'
+
     const EVENT_COLLAPSED = 'stt.collapsed'
     const EVENT_EXPANDED = 'stt.expanded'
   
@@ -107,7 +112,7 @@
     }
 
     function _find_row($table, node_id) {
-        let node_cache = $table.data("node_cache")
+        let node_cache = $table.data(DATAKEY_NODE_CACHE)
         if (node_cache.hasOwnProperty(node_id)) {
             return node_cache[node_id]
         }
@@ -184,7 +189,7 @@
 
     function _get_tree_cell($table, tr) {
 
-        let tree_col_index = $table.data("options").col_index
+        let tree_col_index =_get_options($table).col_index
         let first_cell = tr.find(`td:nth-child(${tree_col_index})`).first() // First cell, the one with the tree behavior
         if (first_cell.length == 0) {
             throw "No cell in row"
@@ -210,6 +215,10 @@
             .addClass(`${CLASS_EXPANDER_OPENED}`)
     }
 
+    function _get_options($table){
+        return $table.data(DATAKEY_OPTIONS)
+    }
+
     // Main modifier functions
     function _load_or_show_children($table, tr) {
         if (_is_children_loaded(tr)) {
@@ -218,7 +227,7 @@
 
         // Not loaded yet. Must load
         const node_id = _get_node_id(tr)
-        let loaded_children = $table.data("options")["load_fn"](node_id, tr)
+        let loaded_children =_get_options($table)["load_fn"](node_id, tr)
         if (typeof loaded_children === "undefined") {
             loaded_children = []
         }
@@ -248,7 +257,7 @@
     function _make_expandable($table, tr) {
         const tree_cell = _get_tree_cell($table, tr)
         if (tree_cell.find(`.${CLASS_EXPANDER}`).length == 0) {
-            const expander = $table.data("expander_closed").clone()
+            const expander = $table.data(DATAKEY_EXPANDER_CLOSED).clone()
             tree_cell.find(`.${CLASS_SPACER}`).first().append(expander)
             expander.click(function() {
                 _toggle_row($table, tr)
@@ -397,7 +406,7 @@
         }
         tr.attr(ATTR_LEVEL, actual_level)
 
-        const options = $table.data("options")
+        const options =_get_options($table)
         const expander_size = options.expander_size
         const spacer_width = options.indent * actual_level + expander_size + "px"
         first_cell.prepend(SPACER_TEMPLATE.clone().css("width", spacer_width))
@@ -413,7 +422,7 @@
     }
 
     function _delete_single_row($table, tr) {
-        const node_cache = $table.data("node_cache")
+        const node_cache = $table.data(DATAKEY_NODE_CACHE)
         const node_id = _get_node_id(tr)
         const parent = _get_parent($table, tr)
         if (node_cache.hasOwnProperty(node_id)) {
@@ -429,9 +438,6 @@
     function init($table, config) {
         let options = $.extend({}, DEFAULT_OPTIONS, config)
         $table.addClass(CLASS_TABLE)
-        if (options.nowrap){
-            $table.addClass(CLASS_NOWRAP)
-        }
 
         let expander_size = options.expander_size
         if (typeof expander_size === "number") {
@@ -452,10 +458,10 @@
         expander_closed.css("width", expander_size).css('background-size', expander_size)
         expander_closed.css("height", expander_size).css('background-size', expander_size)
         
-        $table.data("expander_closed", expander_closed)
-        $table.data("expander_opened", expander_opened)
-        $table.data("node_cache", node_cache)
-        $table.data("options", options)
+        $table.data(DATAKEY_EXPANDER_CLOSED, expander_closed)
+        $table.data(DATAKEY_EXPANDER_OPENED, expander_opened)
+        $table.data(DATAKEY_NODE_CACHE, node_cache)
+        $table.data(DATAKEY_OPTIONS, options)
     }
 
     // public functions

@@ -6,6 +6,12 @@ table.srt-table.srt-nowrap th{
 
 table.srt-table.srt-resizable th{
     position: relative;
+    user-drag: none; 
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
 }
 
 table.srt-table.srt-resizable .srt-resize-handle{
@@ -19,7 +25,7 @@ table.srt-table.srt-resizable .srt-resize-handle{
     width:1px;  /* Overriden by JS*/
     right:0;    /* Overriden by JS*/
 
-    background-color: rgba(255,0,0,0.2);
+   /* background-color: rgba(255,0,0,0.2); */
 }
 
 table.srt-table.srt-resizable .srt-resize-handle:hover{
