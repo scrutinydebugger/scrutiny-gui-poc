@@ -12,6 +12,15 @@
     const ATTR_CHILDREN_LOADED = "stt-children-loaded"
     const ATTR_ROOT = "stt-root"
 
+    const CLASS_TABLE = "stt-table"
+    const CLASS_SPACER = "stt-spacer"
+    const CLASS_EXPANDER = "stt-expander"
+    const CLASS_EXPANDER_OPENED = "stt-expander-opened"
+    const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
+
+    const EVENT_COLLAPSED = 'stt.collapsed'
+    const EVENT_EXPANDED = 'stt.expanded'
+  
     const DEFAULT_OPTIONS = {
         indent: 10,
         expander_size: 12,
@@ -21,7 +30,9 @@
         },
     }
 
-    const SPACER_TEMPLATE = $("<span class='stt-spacer'></span>")
+    const SPACER_TEMPLATE = $(`<span class='${CLASS_SPACER}'></span>`)
+    const EXPANDER_OPENED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPANDER_OPENED}' />`)
+    const EXPANDER_CLOSED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPANDER_CLOSED}' />`)
 
     /***  Public functions *** */
 
@@ -102,7 +113,7 @@
         }
         let row = $table.find(`tr[${ATTR_ID}="${node_id}"`).first() // expensive search
         if (row.length == 0) {
-            throw 'Node "' + node_id + '" not found'
+            throw `Node "${node_id}" not found`
         }
         node_cache[node_id] = row
         return row
@@ -152,8 +163,7 @@
     function _is_expanded($table, tr) {
         try {
             return (
-                _get_tree_cell($table, tr).find(".stt-expander").attr("src") ===
-                $table.data("expander_opened").attr("src")
+                _get_tree_cell($table, tr).find(`.${CLASS_EXPANDER}`).hasClass(`${CLASS_EXPANDER_OPENED}`)
             )
         } catch (err) {
             return false
@@ -188,14 +198,16 @@
 
     function _close_expander($table, tr) {
         _get_tree_cell($table, tr)
-            .find(".stt-expander")
-            .attr("src", $table.data("expander_closed").attr("src"))
+            .find(`.${CLASS_EXPANDER}`)
+            .removeClass(`${CLASS_EXPANDER_OPENED}`)
+            .addClass(`${CLASS_EXPANDER_CLOSED}`)
     }
 
     function _open_expander($table, tr) {
         _get_tree_cell($table, tr)
-            .find(".stt-expander")
-            .attr("src", $table.data("expander_opened").attr("src"))
+            .find(`.${CLASS_EXPANDER}`)
+            .removeClass(`${CLASS_EXPANDER_CLOSED}`)
+            .addClass(`${CLASS_EXPANDER_OPENED}`)
     }
 
     // Main modifier functions
@@ -234,10 +246,10 @@
     }
 
     function _make_expandable($table, tr) {
-        const first_cell = _get_tree_cell($table, tr)
-        if (first_cell.find(".stt-expander").length == 0) {
+        const tree_cell = _get_tree_cell($table, tr)
+        if (tree_cell.find(`.${CLASS_EXPANDER}`).length == 0) {
             const expander = $table.data("expander_closed").clone()
-            first_cell.find(".stt-spacer").first().append(expander)
+            tree_cell.find(`.${CLASS_SPACER}`).first().append(expander)
             expander.click(function() {
                 _toggle_row($table, tr)
             })
@@ -245,8 +257,8 @@
     }
 
     function _make_non_expandable($table, tr) {
-        const first_cell = _get_tree_cell($table, tr)
-        const expander = first_cell.find(".stt-expander")
+        const tree_cell = _get_tree_cell($table, tr)
+        const expander = tree_cell.find(`.${CLASS_EXPANDER}`)
         if (expander.length > 0) {
             expander.remove()
         }
@@ -274,6 +286,7 @@
             })
 
             _open_expander($table, tr)
+            tr.trigger(EVENT_EXPANDED, {node_id : _get_node_id(tr)})
         } else {
             //throw 'Cannot expand row with no children'
         }
@@ -298,6 +311,7 @@
     function _collapse_row($table, tr) {
         _hide_children($table, tr) // Just hide, no collapse to keep state of children
         _close_expander($table, tr)
+        tr.trigger(EVENT_COLLAPSED, {node_id : _get_node_id(tr)})
     }
 
     function _expand_all($table) {
@@ -385,8 +399,7 @@
 
         const options = $table.data("options")
         const expander_size = options.expander_size
-        const spacer_width =
-            options.indent * actual_level + expander_size + "px"
+        const spacer_width = options.indent * actual_level + expander_size + "px"
         first_cell.prepend(SPACER_TEMPLATE.clone().css("width", spacer_width))
     }
 
@@ -415,6 +428,11 @@
 
     function init($table, config) {
         let options = $.extend({}, DEFAULT_OPTIONS, config)
+        $table.addClass(CLASS_TABLE)
+        if (options.nowrap){
+            $table.addClass(CLASS_NOWRAP)
+        }
+
         let expander_size = options.expander_size
         if (typeof expander_size === "number") {
             expander_size = "" + expander_size + "px"
@@ -425,19 +443,15 @@
             )
         }
 
-        let expander_opened = $(
-            "<img width='16px' height='16px' class='stt-expander' src='expander-opened.png' />"
-        )
-        let expander_closed = $(
-            "<img width='16px' height='16px' class='stt-expander' src='expander-closed.png' />"
-        )
+        let expander_opened = EXPANDER_OPENED_TEMPLATE.clone()
+        let expander_closed = EXPANDER_CLOSED_TEMPLATE.clone()
         let node_cache = {}
 
-        expander_opened.attr("width", expander_size)
-        expander_opened.attr("height", expander_size)
-        expander_closed.attr("width", expander_size)
-        expander_closed.attr("height", expander_size)
-
+        expander_opened.css("width", expander_size).css('background-size', expander_size)
+        expander_opened.css("height", expander_size).css('background-size', expander_size)
+        expander_closed.css("width", expander_size).css('background-size', expander_size)
+        expander_closed.css("height", expander_size).css('background-size', expander_size)
+        
         $table.data("expander_closed", expander_closed)
         $table.data("expander_opened", expander_opened)
         $table.data("node_cache", node_cache)
@@ -461,7 +475,7 @@
     $.fn.scrutiny_treetable = function(...args) {
         let hasResults = false
         const results = $(this).map(function() {
-            const $table = $(this).find("tbody")
+            const $table = $(this)
 
             // Jquery plugin like approach.
             if (args.length < 1) throw "Missing arguments"

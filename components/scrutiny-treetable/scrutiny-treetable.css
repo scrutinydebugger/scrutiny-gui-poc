@@ -1,0 +1,26 @@
+table.stt-table .stt-spacer{
+    display: inline-block;
+    padding: 0;
+    margin: 0;
+    margin-right: 2px;
+}
+
+table.stt-table .stt-expander{
+    height: 100%;
+    cursor: pointer;
+    float: right;
+    clear: right;
+    background-repeat: no-repeat;
+   
+    background-size: 12px;  /* Overriden by JS*/
+    width:12px;             /* Overriden by JS*/
+    height:12px;            /* Overriden by JS*/
+}
+
+table.stt-table .stt-expander-opened{
+    background-image: url("expander-opened.png");
+}
+
+table.stt-table .stt-expander-closed{
+    background-image: url("expander-closed.png");
+}

@@ -1,0 +1,27 @@
+table.srt-table.srt-nowrap td,
+table.srt-table.srt-nowrap th{
+    white-space:nowrap;
+}
+
+
+table.srt-table.srt-resizable th{
+    position: relative;
+}
+
+table.srt-table.srt-resizable .srt-resize-handle{
+    top:0;
+    position:absolute;
+    border:0;
+    padding:0;
+    margin:0;
+    height:0;
+    
+    width:1px;  /* Overriden by JS*/
+    right:0;    /* Overriden by JS*/
+
+    background-color: rgba(255,0,0,0.2);
+}
+
+table.srt-table.srt-resizable .srt-resize-handle:hover{
+    cursor: col-resize;
+}
