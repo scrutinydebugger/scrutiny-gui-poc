@@ -1,33 +1,29 @@
 table.srt-table.srt-nowrap td,
 table.srt-table.srt-nowrap th{
-    white-space:nowrap;
+    white-space:nowrap; /*Default behavior*/
 }
 
-
-table.srt-table.srt-resizable th{
+table.srt-table th{
     position: relative;
-    user-drag: none; 
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-drag: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
 }
 
-table.srt-table.srt-resizable .srt-resize-handle{
+table.srt-table .srt-resize-handle{
+    /*That's a dive that float above each column separator*/
     top:0;
     position:absolute;
     border:0;
     padding:0;
     margin:0;
     height:0;
-    
-    width:1px;  /* Overriden by JS*/
-    right:0;    /* Overriden by JS*/
+    width:4px;
 
-   /* background-color: rgba(255,0,0,0.2); */
+    /* background-color: rgba(255,0,0,0.2);  */
 }
 
-table.srt-table.srt-resizable .srt-resize-handle:hover{
+/* When we hover a separator when not resizing or if a separator is set "active" by Javascript*/
+table.srt-table .srt-resize-handle.srt-handle-active,
+table.srt-table:not(.srt-resizing) .srt-resize-handle:hover
+{
     cursor: col-resize;
+    /* background-color: #eee */
 }
