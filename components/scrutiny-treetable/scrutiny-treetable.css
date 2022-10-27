@@ -11,10 +11,6 @@ table.stt-table .stt-expander{
     float: right;
     clear: right;
     background-repeat: no-repeat;
-   
-    background-size: 12px;  /* Overriden by JS*/
-    width:12px;             /* Overriden by JS*/
-    height:12px;            /* Overriden by JS*/
 }
 
 table.stt-table .stt-expander-opened{
@@ -23,4 +19,23 @@ table.stt-table .stt-expander-opened{
 
 table.stt-table .stt-expander-closed{
     background-image: url("expander-closed.png");
+}
+
+table.stt-table .stt-dragger{
+    height: 12px;
+    width: 12px;
+    display: inline-block;
+    cursor:move;
+    background-image: url("dragger.png");
+    background-repeat: no-repeat;
+    margin-right:4px;
+    background-size: 12px;
+}
+
+table.stt-table tr.stt-insert-below td{
+    border-bottom-color: red;
+}
+
+table.stt-table tr.stt-insert-into td{
+    background-color: #ccc;
 }

@@ -17,17 +17,26 @@
     const CLASS_EXPANDER = "stt-expander"
     const CLASS_EXPANDER_OPENED = "stt-expander-opened"
     const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
+    const CLASS_DRAGGER = 'stt-dragger'
+    const CLASS_INSERT_BELOW = 'stt-insert-below'
+    const CLASS_INSERT_INTO = 'stt-insert-into'
 
     const DATAKEY_OPTIONS = 'stt-dk-options'
     const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'
     const DATAKEY_EXPANDER_CLOSED = 'stt-dk-expander_closed'
     const DATAKEY_EXPANDER_OPENED = 'stt-dk-expander_opened'
+    const DATAKEY_DROP_ROW = 'stt-dk-droprow'
 
     const EVENT_COLLAPSED = 'stt.collapsed'
     const EVENT_EXPANDED = 'stt.expanded'
+
+    const INSERT_POINT_BELOW = 0
+    const INSERT_POINT_INTO = 1
   
     const DEFAULT_OPTIONS = {
         indent: 10,
+        droppable:false,
+        draggable:false,
         expander_size: 12,
         col_index: 1,
         load_fn: function() {
@@ -38,6 +47,7 @@
     const SPACER_TEMPLATE = $(`<span class='${CLASS_SPACER}'></span>`)
     const EXPANDER_OPENED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPANDER_OPENED}' />`)
     const EXPANDER_CLOSED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPANDER_CLOSED}' />`)
+    const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
 
     /***  Public functions *** */
 
@@ -190,11 +200,11 @@
     function _get_tree_cell($table, tr) {
 
         let tree_col_index =_get_options($table).col_index
-        let first_cell = tr.find(`td:nth-child(${tree_col_index})`).first() // First cell, the one with the tree behavior
-        if (first_cell.length == 0) {
+        let tree_cell = tr.find(`td:nth-child(${tree_col_index})`).first() // First cell, the one with the tree behavior
+        if (tree_cell.length == 0) {
             throw "No cell in row"
         }
-        return first_cell
+        return tree_cell
     }
 
     function _is_visible(tr) {
@@ -374,7 +384,7 @@
     }
 
     function _add_node($table, parent_id, node_id, tr) {
-        const first_cell = _get_tree_cell($table, tr)
+        const tree_cell = _get_tree_cell($table, tr)
 
         let actual_level = 0 // Start at 0 for root node
         _set_node_id(tr, node_id)
@@ -405,11 +415,85 @@
             tr.hide()
         }
         tr.attr(ATTR_LEVEL, actual_level)
-
         const options =_get_options($table)
+
+        
+        
+        
+        let tr_drop=null
+        if (options.draggable)
+        {
+            let dragger = DRAGGER_TEMPLATE.clone()
+            tree_cell.prepend(dragger)
+            dragger.attr('draggable', true)
+            dragger.on('dragstart',function(e){
+                e.originalEvent.dataTransfer.setData("somedata", "allo");
+                e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0)
+            })
+
+            dragger.on('dragend', function(e){
+                console.log('dragend')
+                if (options.droppable){
+                    $table.find('tr').removeClass(CLASS_INSERT_BELOW).removeClass(CLASS_INSERT_INTO)
+                    if (tr_drop != null){
+                        debugger
+                    }
+                }
+
+                console.log(e.originalEvent.dataTransfer.getData('somedata'))
+                console.log(e.originalEvent.dataTransfer.getData('target'))
+            })
+        }
+
+        if (options.droppable){
+            tr.on('dragenter', function(e){
+                //$table.data(DATAKEY_DROP_ROW, tr)
+                tr_drop = tr;
+                console.log("dragenter")
+            })
+
+            tr.on('dragover', function(e){
+                let insert_point = _get_row_insert_point( e.pageY, tr)
+
+                if(insert_point == INSERT_POINT_BELOW){
+                    tr.addClass(CLASS_INSERT_BELOW)
+                    tr.removeClass(CLASS_INSERT_INTO)
+                }else if (insert_point == INSERT_POINT_INTO){
+                    tr.removeClass(CLASS_INSERT_BELOW)
+                    tr.addClass(CLASS_INSERT_INTO)
+                }
+            })
+
+            tr.on('drop', function(){
+                console.log('drop!')
+            })
+
+            tr.on('dragexit', function(){
+                tr_drop = null
+                console.log('dragexit')
+            })
+
+            tr.on('dragleave', function(e){
+                tr.removeClass(CLASS_INSERT_BELOW)
+                tr.removeClass(CLASS_INSERT_INTO)
+            })
+        }
+
         const expander_size = options.expander_size
         const spacer_width = options.indent * actual_level + expander_size + "px"
-        first_cell.prepend(SPACER_TEMPLATE.clone().css("width", spacer_width))
+        tree_cell.prepend(SPACER_TEMPLATE.clone().css("width", spacer_width))
+        
+    }
+
+    function _get_row_insert_point(cursorY, tr){
+        let relativeY = cursorY - tr.offset().top
+        let below_threshold = 2/3*tr.height()
+        if(relativeY> below_threshold){
+            return INSERT_POINT_BELOW
+        }
+        else{
+            return INSERT_POINT_INTO
+        }
     }
 
     function _delete_node($table, tr) {
@@ -462,6 +546,11 @@
         $table.data(DATAKEY_EXPANDER_OPENED, expander_opened)
         $table.data(DATAKEY_NODE_CACHE, node_cache)
         $table.data(DATAKEY_OPTIONS, options)
+        
+
+        if (options.droppable){
+            $table.data(DATAKEY_DROP_ROW, null)
+        }
     }
 
     // public functions
