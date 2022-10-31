@@ -15,7 +15,7 @@ table.srt-table .srt-resize-handle{
     padding:0;
     margin:0;
     height:0;
-    width:4px;
+    width:6px;
 
     /* background-color: rgba(255,0,0,0.2);  */
 }
@@ -25,5 +25,5 @@ table.srt-table .srt-resize-handle.srt-handle-active,
 table.srt-table:not(.srt-resizing) .srt-resize-handle:hover
 {
     cursor: col-resize;
-    /* background-color: #eee */
+    /* background-color: #eaa ; */
 }
