@@ -81,9 +81,7 @@
             if (existing_handle.length == 0){
                 let handle = RESIZE_HANDLE_TEMPLATE.clone();
                 th.append(handle)
-                let right_offset = handle.width()/2
-                handle.css('right', `-${right_offset}px`)
-
+                
                 let pressed = false;
                 let last_cursor_x = null
                 handle.on('mousedown',function(e){
@@ -95,11 +93,13 @@
                 })
 
                 $(window).on('mouseup',function(e){
-                    $table.removeClass(CLASS_RESIZING)
-                    $table.find('thead').find(`.${CLASS_RESIZE_HANDLE}`).removeClass(CLASS_HANDLE_ACTIVE)
-                    pressed = false
-                    last_cursor_x = null
-                    _update_sizes($table);
+                    if (pressed){
+                        $table.removeClass(CLASS_RESIZING)
+                        $table.find('thead').find(`.${CLASS_RESIZE_HANDLE}`).removeClass(CLASS_HANDLE_ACTIVE)
+                        last_cursor_x = null
+                        _update_sizes($table);
+                        pressed = false
+                    }
                 })
 
                 $(window).on('mousemove', function(e){
@@ -177,7 +177,7 @@
                 }
                 th.outerWidth(th.outerWidth() + extra_w_for_last_col)
                 let unapplied_width_on_last_col = extra_w_for_last_col - (last_col_initial_width-last_col.outerWidth())
-                th.outerWidth(th.outerWidth() - unapplied_width_on_last_col);   // Fixme. Last column jiggle here.
+                th.outerWidth(th.outerWidth() - unapplied_width_on_last_col);   // Fixme. Last column can jiggle here.
             }
         }
     }
@@ -209,7 +209,6 @@
     }
 
     function _recompute_col_width($table){
-        let options = _get_options($table)
         $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function(){
             $(this).width($(this).width())
         })
@@ -238,10 +237,24 @@
     }
 
     function _update_sizes($table){
-        let table_height = $table.height()
-        let column_handles = $table.find(`thead .${CLASS_RESIZE_HANDLE}`)
-        
-        column_handles.height(table_height)
+        let first_row = $table.find('tr:visible:first') 
+        let last_row = $table.find('tr:visible:last')
+        let table_height = (last_row.offset().top + last_row.outerHeight()) - first_row.offset().top
+
+        let thead = $table.find('thead')
+        let column_handles = thead.find(`.${CLASS_RESIZE_HANDLE}`)
+        let th = thead.find('th').first()
+        let top = -(th.outerHeight() - th.innerHeight())/2
+        column_handles.outerHeight(table_height)
+        column_handles.css('top', `${top}px`)
+
+        column_handles.each(function(){
+            let handle = $(this)
+            let right_offset = 0;
+            let border_avg_width = (th.outerWidth() - th.innerWidth())/2
+            right_offset = handle.width()/2 + border_avg_width/2 // half handle size + half cell border size
+            handle.css('right', `-${right_offset}px`)
+        })
     }
 
     // public functions

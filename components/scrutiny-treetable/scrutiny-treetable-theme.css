@@ -25,18 +25,18 @@ table.stt-table .stt-dragger{
 }
 
 table.stt-table tr.stt-insert-below td{
-    border-bottom-color: red;
+    border-bottom-color: rgb(72, 156, 252);
 }
 
-table.stt-table tr.stt-highligted,
-table.stt-table tr.stt-insert-into td{
-    background-color: #ddd;
+table.stt-table tr.stt-highligted{
+    background-color: rgb(124, 199, 250);
 }
 
 table.stt-table tr.stt-just-dropped{
-    background-color: aqua;
+    background-color: rgb(124, 199, 250);
 }
 
-table.stt-table tr.stt-just-dropped-transition {
-    transition: background-color 0.4s;
+table.stt-table tr.stt-drop-impossible td{
+    background-color: #ddd;
 }
+
