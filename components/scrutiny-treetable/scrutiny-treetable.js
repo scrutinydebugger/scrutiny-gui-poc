@@ -22,7 +22,8 @@
     const CLASS_HIGHLIGTED = 'stt-highligted'
     const CLASS_JUST_DROPPED = 'stt-just-dropped'
     const CLASS_HEADER = 'stt-cell-header'
-    const CLASS_DROP_IMPOSSIBLE = 'stt-drop-impossible'
+    const CLASS_DISABLED = 'stt-disabled'
+    const CLASS_NO_CHILDREN = 'stt-no-children'
 
     const DATAKEY_OPTIONS = 'stt-dk-options'
     const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'
@@ -296,6 +297,7 @@
         for (let i = 0; i < loaded_children.length; i++) {
             const child_node_id = loaded_children[i]["id"]
             const child_node_tr = loaded_children[i]["tr"]
+            const no_children = loaded_children[i]["nochildren"]
 
             if (typeof child_node_id == "undefined") {
                 throw "Missing key 'id' in load_fn under " + node_id
@@ -305,7 +307,8 @@
                 throw "Missing key 'tr' in load_fn under " + node_id
             }
 
-            _add_node($table, node_id, child_node_id, child_node_tr)
+
+            _add_node($table, node_id, child_node_id, child_node_tr, no_children)
             children_output.push(child_node_tr)
         }
 
@@ -330,6 +333,18 @@
         _get_root_nodes($table).each(function() {
             _load_descendant($table, $(this))
         })
+    }
+
+    function _is_children_allowed(tr){
+        return !tr.hasClass(CLASS_NO_CHILDREN)
+    }
+
+    function _disallow_children(tr){
+        tr.addClass(CLASS_NO_CHILDREN)
+    }
+
+    function _allow_children(tr){
+        tr.removeClass(CLASS_NO_CHILDREN)
     }
 
     function _make_expandable($table, tr) {
@@ -455,8 +470,17 @@
         }
     }
 
-    function _add_node($table, parent_id, node_id, tr) {
+    
+
+    function _add_node($table, parent_id, node_id, tr, no_children) {
+        if (typeof no_children === 'undeined'){
+            no_children = false
+        }
         const tree_cell = _get_tree_cell($table, tr)
+
+        if (no_children){
+            _disallow_children(tr)
+        }
 
         let actual_level = 0 // Start at 0 for root node
         _set_node_id(tr, node_id)
@@ -470,6 +494,11 @@
             if (parent.length == 0) {
                 throw "No parent node with ID " + parent_id
             }
+
+            if (!_is_children_allowed(parent)){
+                throw `Cannot add node ${node_id}. Node id ${parent_id} cannot have children`
+            }
+
             actual_level = parseInt(parent.attr(ATTR_LEVEL)) + 1 // Level below the parent.
                 // Since the table is flat, the insertion point is after the last element that share the same parent
 
@@ -500,17 +529,16 @@
                 e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0);
 
                 if (options.droppable) {
-                    _select_all_loaded_descendant($table, tr).addClass(CLASS_DROP_IMPOSSIBLE)
+                    _select_all_loaded_descendant($table, tr).addClass(CLASS_DISABLED)
                 }
             })
 
             dragger.on('dragend', function(e) {
                 if (options.droppable) {
-                    $table.find(`tr.${CLASS_DROP_IMPOSSIBLE}`).removeClass(CLASS_DROP_IMPOSSIBLE)
+                    $table.find(`tr.${CLASS_DISABLED}`).removeClass(CLASS_DISABLED)
                 }
                 $table.find(`.${CLASS_HIGHLIGTED}`).removeClass(CLASS_HIGHLIGTED)
             })
-
         }
 
         if (options.droppable) {
@@ -737,14 +765,24 @@
     }
 
     function _get_row_insert_type(tr, cursorY) {
-        let relativeY = cursorY - tr.offset().top
-        let fraction_height = 1 / 4 * tr.outerHeight()
-        if (relativeY < 1*fraction_height) {
-            return INSERT_TYPE_ABOVE
-        } else if (relativeY > 3 * fraction_height) {
-            return INSERT_TYPE_BELOW
+        const children_allowed = _is_children_allowed(tr)
+        const relativeY = cursorY - tr.offset().top
+        if (children_allowed){
+            const fraction_height = 1 / 4 * tr.outerHeight()
+            if (relativeY < 1*fraction_height) {
+                return INSERT_TYPE_ABOVE
+            } else if (relativeY > 3 * fraction_height) {
+                return INSERT_TYPE_BELOW
+            } else {
+                return INSERT_TYPE_INTO
+            }
         } else {
-            return INSERT_TYPE_INTO
+            const fraction_height = 1 / 2 * tr.outerHeight()
+            if (relativeY < fraction_height) {
+                return INSERT_TYPE_ABOVE
+            } else { 
+                return INSERT_TYPE_BELOW
+            } 
         }
     }
 
@@ -779,8 +817,8 @@
     function _move_row($table, tr, new_parent_id, after_node_id) {
         let tr_id = _get_node_id(tr)
         //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
-        let tree_to_move = _select_all_loaded_descendant($table, tr)
-        let tr_original_parent = _get_parent($table, tr)
+        const tree_to_move = _select_all_loaded_descendant($table, tr)
+        const tr_original_parent = _get_parent($table, tr)
         let new_nesting_level = null
         if (new_parent_id == null) {
             new_nesting_level = 0
@@ -806,6 +844,10 @@
         } else {
             let new_parent_row = _find_row($table, new_parent_id)
 
+            if (!_is_children_allowed(new_parent_row)){
+                throw `Cannot move node ${tr_id}. Node ${new_parent_id} does not allow children`
+            }
+
             tree_to_move.each(function() {
                 if ($(this).is(new_parent_row)) {
                     throw 'Cannot move a tree within itself'
@@ -820,7 +862,7 @@
             } else {
                 let after_tr = _find_row($table, after_node_id)
                 let after_parent_row = _get_parent($table, after_tr)
-
+                
                 if (after_parent_row == null || !after_parent_row.is(new_parent_row)) {
                     throw 'Given "after_row" is not a child of given "parent_row"'
                 }

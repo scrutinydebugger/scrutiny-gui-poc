@@ -25,7 +25,8 @@ table.stt-table .stt-dragger{
 }
 
 table.stt-table tr.stt-insert-below td{
-    border-bottom-color: rgb(72, 156, 252);
+    border-bottom-color: rgb(252, 72, 243);
+    
 }
 
 table.stt-table tr.stt-insert-above td{
@@ -36,7 +37,7 @@ table.stt-table tr.stt-highligted{
     background-color: rgb(124, 199, 250);
 }
 
-table.stt-table tr.stt-drop-impossible td{
+table.stt-table tr.stt-disabled td{
     background-color: #ddd;
 }
 
