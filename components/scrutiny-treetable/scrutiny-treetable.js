@@ -18,6 +18,7 @@
     const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
     const CLASS_DRAGGER = 'stt-dragger'
     const CLASS_INSERT_BELOW = 'stt-insert-below'
+    const CLASS_INSERT_ABOVE = 'stt-insert-above'
     const CLASS_HIGHLIGTED = 'stt-highligted'
     const CLASS_JUST_DROPPED = 'stt-just-dropped'
     const CLASS_HEADER = 'stt-cell-header'
@@ -499,9 +500,7 @@
                 e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0);
 
                 if (options.droppable) {
-                    if (_get_children($table, tr).length > 0){
-                        _select_all_loaded_descendant($table, tr).addClass(CLASS_DROP_IMPOSSIBLE)
-                    }
+                    _select_all_loaded_descendant($table, tr).addClass(CLASS_DROP_IMPOSSIBLE)
                 }
             })
 
@@ -532,6 +531,7 @@
                 }
 
                 $table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
+                $table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
 
                 if (result == null){
                     $table.find('tr').removeClass(CLASS_HIGHLIGTED)
@@ -543,14 +543,22 @@
                     let new_parent_tr = _find_row($table, result.new_parent_id)
                     let descendant = _select_all_loaded_descendant($table, new_parent_tr)
                     descendant.addClass(CLASS_HIGHLIGTED)
+                } else {
+                    $table.find('tr').removeClass(CLASS_HIGHLIGTED)
                 }
 
                 if (result.insert_line_display.row_id != null){
                     let insert_line_tr = _find_row($table, result.insert_line_display.row_id)
                     if (result.insert_line_display.insert_type == INSERT_TYPE_ABOVE){
-                        insert_line_tr.prevAll('tr:visible').first().addClass(CLASS_INSERT_BELOW)
+                        insert_line_tr.addClass(CLASS_INSERT_ABOVE)
+                        let prev_row = insert_line_tr.prevAll('tr:visible').first()
+                        if (prev_row.length == 0){
+                            prev_row = $table.find('thead:first tr:last').first()
+                        }
+                        prev_row.addClass(CLASS_INSERT_BELOW)
                     } else if (result.insert_line_display.insert_type == INSERT_TYPE_BELOW){
                         insert_line_tr.addClass(CLASS_INSERT_BELOW)
+                        insert_line_tr.nextAll('tr:visible').first().addClass(CLASS_INSERT_ABOVE)
                     } else{
                         _remove_all_insert_lines($table)
                     }
@@ -595,6 +603,7 @@
 
     function _stop_drop($table){
         $table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
+        $table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
         $table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(`${CLASS_HIGHLIGTED}`)
     }
 

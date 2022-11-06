@@ -28,6 +28,10 @@ table.stt-table tr.stt-insert-below td{
     border-bottom-color: rgb(72, 156, 252);
 }
 
+table.stt-table tr.stt-insert-above td{
+    border-top-color: rgb(72, 156, 252);
+}
+
 table.stt-table tr.stt-highligted{
     background-color: rgb(124, 199, 250);
 }
