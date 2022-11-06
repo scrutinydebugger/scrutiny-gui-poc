@@ -603,7 +603,6 @@
             Returns the correct move action according to where we hover the drag n drop.
             Expects hover_tr to have its children loaded.
         */
-            $("#code_branch").text('')
         if (hover_tr.is(dragged_tr) || _is_descendant($table, hover_tr, dragged_tr)){
             return null
         }
@@ -618,7 +617,6 @@
         let result = {
             'new_parent_id': null,
             'after_tr_id': null,
-            'insert_type': null,
             'insert_line_display' : {
                 'row_id' : null,
                 'insert_type' : null
@@ -636,24 +634,19 @@
         result.insert_line_display.insert_type = insert_type
         
         if (insert_type == INSERT_TYPE_INTO) {
-            $("#code_branch").text('Branch A')
             let last_child = _get_children($table, hover_tr).last();
             result.new_parent_id = hover_tr_id
             result.after_tr_id = (last_child.length == 0) ? null : _get_node_id(last_child);
-            result.insert_type = 'into'
             result.insert_line_display.row_id = null
         } else if (insert_type == INSERT_TYPE_BELOW){
-            result.insert_type = 'below'
             result.insert_line_display.row_id = hover_tr_id    // Display the insert line after the hover line
             if (hover_next_tr_id == null){
                 // Last line of table
-                $("#code_branch").text('Branch B')
                 let last_root_node = _get_root_nodes($table).last()
                 result.new_parent_id = null        // Make a root node
                 result.after_tr_id =  (last_root_node.length == 0) ? null : _get_node_id(last_root_node)  // Right after the hoverring row
 
             } else {
-                $("#code_branch").text('Branch C')
                 let next_tr_parent = _get_parent($table, hover_next_tr)
                 let next_tr_prev_same_level = _get_prev_same_level(hover_next_tr)
                 result.new_parent_id = (next_tr_parent == null) ? null : _get_node_id(next_tr_parent)
@@ -663,13 +656,10 @@
 
         else if (insert_type == INSERT_TYPE_ABOVE){
             result.insert_line_display.row_id = hover_tr_id
-            result.insert_type = 'above'
             if (hover_prev_tr_id == null){
-                $("#code_branch").text('Branch D')
                 result.new_parent_id = null    // Make a root node
                 result.after_tr_id = null      // First root node
             } else{
-                $("#code_branch").text('Branch E')
                 let hover_tr_parent = _get_parent($table, hover_tr)
                 let hover_tr_prev_same_level = _get_prev_same_level(hover_tr)
                 result.new_parent_id = (hover_tr_parent == null) ? null : _get_node_id(hover_tr_parent)
@@ -779,7 +769,7 @@
 
     function _move_row($table, tr, new_parent_id, after_node_id) {
         let tr_id = _get_node_id(tr)
-        console.log(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
+        //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
         let tree_to_move = _select_all_loaded_descendant($table, tr)
         let tr_original_parent = _get_parent($table, tr)
         let new_nesting_level = null

@@ -1,0 +1,6 @@
+/* When we hover a separator when not resizing or if a separator is set "active" by Javascript*/
+table.srt-table .srt-resize-handle.srt-handle-active,
+table.srt-table:not(.srt-resizing) .srt-resize-handle:hover
+{
+    background-color: rgb(124, 199, 250);
+}

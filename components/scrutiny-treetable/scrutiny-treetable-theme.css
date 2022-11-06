@@ -32,11 +32,10 @@ table.stt-table tr.stt-highligted{
     background-color: rgb(124, 199, 250);
 }
 
-table.stt-table tr.stt-just-dropped{
-    background-color: rgb(124, 199, 250);
-}
-
 table.stt-table tr.stt-drop-impossible td{
     background-color: #ddd;
 }
 
+table.stt-table tr.stt-just-dropped{
+    background-color: rgb(124, 199, 250);
+}
