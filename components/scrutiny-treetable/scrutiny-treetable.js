@@ -12,6 +12,7 @@
     const ATTR_MOVING = 'stt-moving'
 
     const CLASS_TABLE = "stt-table"
+    const CLASS_ROW = "stt-row"
     const CLASS_SPACER = "stt-spacer"
     const CLASS_EXPANDER = "stt-expander"
     const CLASS_EXPANDER_OPENED = "stt-expander-opened"
@@ -24,11 +25,13 @@
     const CLASS_HEADER = 'stt-cell-header'
     const CLASS_DISABLED = 'stt-disabled'
     const CLASS_NO_CHILDREN = 'stt-no-children'
+    const CLASS_TREE_CELL = 'stt-tree-cell'
 
     const DATAKEY_OPTIONS = 'stt-dk-options'
     const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'
     const DATAKEY_EXPANDER_CLOSED = 'stt-dk-expander_closed'
     const DATAKEY_EXPANDER_OPENED = 'stt-dk-expander_opened'
+    const DATAKEY_USER_DATA = 'stt-dk-userdata'
 
     const EVENT_COLLAPSED = 'stt.collapsed'
     const EVENT_EXPANDED = 'stt.expanded'
@@ -48,6 +51,7 @@
         load_fn: function() {
             throw "No loader defined"
         },
+        transfer_fn : null
     }
 
     const SPACER_TEMPLATE = $(`<span class='${CLASS_SPACER}'></span>`)
@@ -133,6 +137,15 @@
 
     /***  Private functions *** */
 
+    function _make_unique_id($table){
+        if( typeof _make_unique_id.counter == 'undefined' ) {
+            _make_unique_id.counter = 0;
+        }
+        const counter = _make_unique_id.counter++        
+        const timestamp = Date.now()
+        const table_id = $table.attr('id')
+        return `stt_uid_${table_id}_${counter}_${timestamp}`
+    }
     // Basic accessors
     function _get_node_id(tr) {
         return tr.attr(ATTR_ID)
@@ -189,16 +202,24 @@
     }
 
     function _get_parent($table, tr) {
-        if (_is_root(tr)) {
-            return null
-        }
-
-        let parent_id = tr.attr(ATTR_PARENT)
-        if (typeof parent_id === "undefined") {
+        const parent_id = _get_parent_id(tr)
+        if (parent_id == null) {
             return null
         }
 
         return _find_row($table, parent_id)
+    }
+
+    function _get_parent_id(tr){
+        if (_is_root(tr)) {
+            return null
+        }
+        const parent_id = tr.attr(ATTR_PARENT)
+        if (typeof parent_id === "undefined") {
+            return null
+        }
+
+        return parent_id
     }
 
     function _is_root(tr) {
@@ -298,6 +319,7 @@
             const child_node_id = loaded_children[i]["id"]
             const child_node_tr = loaded_children[i]["tr"]
             const no_children = loaded_children[i]["nochildren"]
+            const user_data = loaded_children[i]["user_data"]
 
             if (typeof child_node_id == "undefined") {
                 throw "Missing key 'id' in load_fn under " + node_id
@@ -307,12 +329,14 @@
                 throw "Missing key 'tr' in load_fn under " + node_id
             }
 
+            if (typeof user_data !== "undefined") {
+                child_node_tr.data(DATAKEY_USER_DATA, user_data)
+            }
 
             _add_node($table, node_id, child_node_id, child_node_tr, no_children)
             children_output.push(child_node_tr)
         }
 
-        _increase_children_count($table, tr, children_output.length)
         tr.attr(ATTR_CHILDREN_LOADED, true)
 
         return $(children_output)
@@ -470,13 +494,17 @@
         }
     }
 
-    
-
     function _add_node($table, parent_id, node_id, tr, no_children) {
         if (typeof no_children === 'undeined'){
             no_children = false
         }
+
+        if (node_id == null){
+            node_id = _make_unique_id($table)
+        }
+
         const tree_cell = _get_tree_cell($table, tr)
+        tree_cell.addClass(CLASS_TREE_CELL)
 
         if (no_children){
             _disallow_children(tr)
@@ -484,6 +512,7 @@
 
         let actual_level = 0 // Start at 0 for root node
         _set_node_id(tr, node_id)
+        tr.addClass(CLASS_ROW)
         if (parent_id === null) {
             // We are adding a root node
             $table.append(tr)
@@ -513,6 +542,7 @@
 
             tr.attr(ATTR_PARENT, parent_id)
             tr.hide()
+            _increase_children_count($table, parent, 1)
         }
 
         let header_block = $("<div/>").addClass(CLASS_HEADER)
@@ -525,6 +555,7 @@
             header_block.prepend(dragger)
             dragger.attr('draggable', true)
             dragger.on('dragstart', function(e) {
+                e.originalEvent.dataTransfer.setData("table_id", $table.attr('id'));
                 e.originalEvent.dataTransfer.setData("node_id", _get_node_id(tr));
                 e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0);
 
@@ -543,52 +574,54 @@
 
         if (options.droppable) {
             tr.on('dragover', function(e) {
-                let dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
-                let dragged_tr = _find_row($table, dragged_row_id)
-                let result = _get_dragndrop_result($table, dragged_tr, tr, e.pageY)
-                if (result != null){
-
-                    $('#new_parent_id').text(result.new_parent_id)
-                    $('#insert_after_id').text(result.after_tr_id)
-                    $('#insert_type').text(result.insert_type)
+                const source_table_id = e.originalEvent.dataTransfer.getData('table_id')
+                const source_table = $(`#${source_table_id}`)
+                const dest_table = $table
+                const dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
+                const dragged_tr = _find_row(source_table, dragged_row_id)
+                const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
+                const dest_options = _get_options(dest_table)
+                if (!dest_table.is(source_table)){
+                    if (dest_options.allow_transfer_fn == null){
+                        return
+                    }
+                    const transfer_allowed = dest_options.allow_transfer_fn(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                    if (!transfer_allowed){
+                        return
+                    }
                 }
-                else{
-                    $('#new_parent_id').text("N/A")
-                    $('#insert_after_id').text("N/A")
-                    $('#insert_type').text("N/A")
-                }
 
-                $table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
-                $table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
+                dest_table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
+                dest_table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
 
-                if (result == null){
-                    $table.find('tr').removeClass(CLASS_HIGHLIGTED)
+                if (dnd_result == null){
+                    dest_table.find('tr').removeClass(CLASS_HIGHLIGTED)
                     return
                 }
                 
-                if (result.new_parent_id != null){
-                    $table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(CLASS_HIGHLIGTED)
-                    let new_parent_tr = _find_row($table, result.new_parent_id)
-                    let descendant = _select_all_loaded_descendant($table, new_parent_tr)
+                if (dnd_result.new_parent_id != null){
+                    dest_table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(CLASS_HIGHLIGTED)
+                    const new_parent_tr = _find_row(dest_table, dnd_result.new_parent_id)
+                    const descendant = _select_all_loaded_descendant(dest_table, new_parent_tr)
                     descendant.addClass(CLASS_HIGHLIGTED)
                 } else {
-                    $table.find('tr').removeClass(CLASS_HIGHLIGTED)
+                    dest_table.find('tr').removeClass(CLASS_HIGHLIGTED)
                 }
 
-                if (result.insert_line_display.row_id != null){
-                    let insert_line_tr = _find_row($table, result.insert_line_display.row_id)
-                    if (result.insert_line_display.insert_type == INSERT_TYPE_ABOVE){
+                if (dnd_result.insert_line_display.row_id != null){
+                    const insert_line_tr = _find_row(dest_table, dnd_result.insert_line_display.row_id)
+                    if (dnd_result.insert_line_display.insert_type == INSERT_TYPE_ABOVE){
                         insert_line_tr.addClass(CLASS_INSERT_ABOVE)
                         let prev_row = insert_line_tr.prevAll('tr:visible').first()
                         if (prev_row.length == 0){
-                            prev_row = $table.find('thead:first tr:last').first()
+                            prev_row = dest_table.find('thead:first tr:last').first()
                         }
                         prev_row.addClass(CLASS_INSERT_BELOW)
-                    } else if (result.insert_line_display.insert_type == INSERT_TYPE_BELOW){
+                    } else if (dnd_result.insert_line_display.insert_type == INSERT_TYPE_BELOW){
                         insert_line_tr.addClass(CLASS_INSERT_BELOW)
                         insert_line_tr.nextAll('tr:visible').first().addClass(CLASS_INSERT_ABOVE)
                     } else{
-                        _remove_all_insert_lines($table)
+                        _remove_all_insert_lines(dest_table)
                     }
                 }
 
@@ -597,11 +630,19 @@
 
             tr.on('drop', function(e) {
                 if (options.droppable) {
-                        let dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
-                        let dragged_tr = _find_row($table, dragged_row_id)
-                        let result = _get_dragndrop_result($table, dragged_tr, tr, e.pageY)
-
-                        let moved_rows = _move_row($table, dragged_tr, result.new_parent_id, result.after_tr_id)
+                    const dest_table = $table
+                    try{
+                        const source_table_id = e.originalEvent.dataTransfer.getData('table_id')
+                        const source_table = $(`#${source_table_id}`)
+                        const dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
+                        const dragged_tr = _find_row(source_table, dragged_row_id)
+                        const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
+                        let moved_rows = null;
+                        if (dest_table.is(source_table)){
+                            moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                        }else{
+                            moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                        }
                         moved_rows.addClass(CLASS_JUST_DROPPED)
                         
                         setTimeout(function() {
@@ -613,10 +654,13 @@
                                 }, options.just_dropped_transition_length * 1000)
                             }, 0)
                         }, 0)
-
-                        _stop_drop($table)
-                    }
-                })
+                    } catch (e){
+                        _stop_drop(dest_table)
+                        throw e
+                    } 
+                    _stop_drop(dest_table)
+                }
+            })
 
             tr.on('dragexit', function() {
                 _stop_drop($table)
@@ -751,8 +795,6 @@
         return null
     }
 
-
-
     function _set_nesting_level($table, tr, level) {
         let options = _get_options($table)
         const expander_size = options.expander_size
@@ -768,7 +810,7 @@
         const children_allowed = _is_children_allowed(tr)
         const relativeY = cursorY - tr.offset().top
         if (children_allowed){
-            const fraction_height = 1 / 4 * tr.outerHeight()
+            const fraction_height = tr.outerHeight() / 4
             if (relativeY < 1*fraction_height) {
                 return INSERT_TYPE_ABOVE
             } else if (relativeY > 3 * fraction_height) {
@@ -777,7 +819,7 @@
                 return INSERT_TYPE_INTO
             }
         } else {
-            const fraction_height = 1 / 2 * tr.outerHeight()
+            const fraction_height = tr.outerHeight() / 2
             if (relativeY < fraction_height) {
                 return INSERT_TYPE_ABOVE
             } else { 
@@ -894,7 +936,100 @@
         return tree_to_move
     }
 
+    function _transfer_row(source_table, dest_table, tr, new_parent_id, after_node_id){
+        /*Transfer a node from a table to another one */
+        const dest_options = _get_options(dest_table)
+        
+        if (dest_options.allow_transfer_fn == null){
+            throw "Node transfer from another table is not supported"
+        }
+        const transfer_allowed = dest_options.allow_transfer_fn(source_table, dest_table, tr, new_parent_id, after_node_id)
+        if (transfer_allowed == false){
+            return
+        }
+
+        if (dest_options.transfer_fn == null){
+            throw "Node transfer from another table is not supported"
+        }
+
+        const lines_to_moves = _load_and_select_all_descendant(source_table, tr)
+        let old_id_to_new_id_map = {}
+        let new_tr_by_new_id = {}
+
+        lines_to_moves.each(function(){
+            const original_line = $(this)
+            const original_id = _get_node_id(original_line)
+            const original_parent_id =  _get_parent_id(original_line)
+            const original_user_data = $(original_line).data(DATAKEY_USER_DATA)
+            const bare_line = _make_bare_node_copy(original_line)
+            const meta = {
+                'original_id' : original_id,
+                'original_parent_id' : original_parent_id,
+                'user_data' : original_user_data
+            }
+            const transferred_row_data = dest_options.transfer_fn(source_table, bare_line, meta)
+
+            let new_id = transferred_row_data["id"]
+            const new_tr = transferred_row_data["tr"]
+
+            if (typeof new_tr == "undefined") {
+                throw "Missing key 'tr' in transfer_fn under " + new_id
+            }
+
+            if (typeof new_id == "undefined" || new_id == null ) {
+                new_id = _make_unique_id(dest_table)
+            }
+            
+            old_id_to_new_id_map[original_id] = new_id
+            new_tr.data(DATAKEY_USER_DATA,  $(original_line).data(DATAKEY_USER_DATA))
+            new_tr_by_new_id[new_id] = new_tr
+           
+        })
+
+        lines_to_moves.each(function(){
+            const original_line = $(this)
+            const original_parent_id =  _get_parent_id(original_line)
+            const no_children = !_is_children_allowed(original_line)
+            const original_id = _get_node_id(original_line)
+            const new_id = old_id_to_new_id_map[original_id]
+            const new_tr = new_tr_by_new_id[new_id]
+
+            let converted_parent_id = null
+            if (original_parent_id != null && old_id_to_new_id_map.hasOwnProperty(original_parent_id)){
+                converted_parent_id = old_id_to_new_id_map[original_parent_id]
+            }
+
+            new_tr.attr(ATTR_CHILDREN_LOADED, original_line.attr(ATTR_CHILDREN_LOADED)) // Transfer loads all
+            _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children) 
+        })
+
+        const new_top_node_id = old_id_to_new_id_map[_get_node_id(tr)]
+        const new_top_row = _find_row(dest_table, new_top_node_id)
+
+        return _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
+    }
+
+    function _make_bare_node_copy(tr){
+        tr = tr.clone()
+        tr.find(`.${CLASS_HEADER}`).remove()
+        tr.removeClass(CLASS_DISABLED)
+            .removeClass(CLASS_HIGHLIGTED)
+            .removeClass(CLASS_INSERT_ABOVE)
+            .removeClass(CLASS_INSERT_BELOW)
+            .removeClass(CLASS_ROW)
+            .removeClass(CLASS_NO_CHILDREN)
+            .removeAttr(ATTR_ID)
+            .removeAttr(ATTR_LEVEL)
+            .removeAttr(ATTR_CHILDREN_COUNT)
+            .removeAttr(ATTR_CHILDREN_LOADED)
+            .removeAttr(ATTR_MOVING)
+            .removeAttr(ATTR_PARENT)
+        tr.find(`.${CLASS_TREE_CELL}`).removeClass(CLASS_TREE_CELL)
+        return $(tr[0])
+    }
+
     function _select_all_loaded_descendant($table, tr, filter, arr) {
+        /* Select a node and all its descendant, only the loaded ones */
         let return_val = false
         if (typeof arr === 'undefined') {
             arr = []
@@ -943,6 +1078,10 @@
 
     function init($table, config) {
         let options = $.extend({}, DEFAULT_OPTIONS, config)
+        let table_id = $table.attr('id')
+        if (typeof table_id === 'undefined'){
+            throw "TreeTable requires a id attribute work properly"
+        }
         $table.addClass(CLASS_TABLE)
 
         let expander_size = options.expander_size
