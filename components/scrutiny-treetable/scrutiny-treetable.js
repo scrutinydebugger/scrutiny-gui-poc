@@ -48,6 +48,8 @@
         expander_size: 12,
         just_dropped_transition_length: 0.6,
         col_index: 1,
+        resizable:false,
+        resize_options:{},
         load_fn: function() {
             throw "No loader defined"
         },
@@ -495,7 +497,7 @@
     }
 
     function _add_node($table, parent_id, node_id, tr, no_children) {
-        if (typeof no_children === 'undeined'){
+        if (typeof no_children === 'undefined'){
             no_children = false
         }
 
@@ -555,8 +557,12 @@
             header_block.prepend(dragger)
             dragger.attr('draggable', true)
             dragger.on('dragstart', function(e) {
-                e.originalEvent.dataTransfer.setData("table_id", $table.attr('id'));
-                e.originalEvent.dataTransfer.setData("node_id", _get_node_id(tr));
+                data = {
+                    "source_table_id" : $table.attr('id'),
+                    "dragged_row_id" : _get_node_id(tr)
+                }
+
+                $.fn.scrutiny_treetable.dragdata = data
                 e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0);
 
                 if (options.droppable) {
@@ -565,6 +571,7 @@
             })
 
             dragger.on('dragend', function(e) {
+                $.fn.scrutiny_treetable.dragdata = null
                 if (options.droppable) {
                     $table.find(`tr.${CLASS_DISABLED}`).removeClass(CLASS_DISABLED)
                 }
@@ -574,10 +581,14 @@
 
         if (options.droppable) {
             tr.on('dragover', function(e) {
-                const source_table_id = e.originalEvent.dataTransfer.getData('table_id')
+                const dropdata = $.fn.scrutiny_treetable.dragdata
+                if (dropdata == null){
+                    throw "Failed to receive dragged data"
+                }
+                const source_table_id = dropdata.source_table_id
+                const dragged_row_id = dropdata.dragged_row_id
                 const source_table = $(`#${source_table_id}`)
                 const dest_table = $table
-                const dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
                 const dragged_tr = _find_row(source_table, dragged_row_id)
                 const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                 const dest_options = _get_options(dest_table)
@@ -631,12 +642,16 @@
             tr.on('drop', function(e) {
                 if (options.droppable) {
                     const dest_table = $table
+                    const dropdata = $.fn.scrutiny_treetable.dragdata
+                    if (dropdata == null){
+                        throw "Failed to receive dragged data"
+                    }
+                    const source_table_id = dropdata.source_table_id
+                    const source_table = $(`#${source_table_id}`)
+                    const dragged_row_id = dropdata.dragged_row_id
+                    const dragged_tr = _find_row(source_table, dragged_row_id)
+                    const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                     try{
-                        const source_table_id = e.originalEvent.dataTransfer.getData('table_id')
-                        const source_table = $(`#${source_table_id}`)
-                        const dragged_row_id = e.originalEvent.dataTransfer.getData('node_id')
-                        const dragged_tr = _find_row(source_table, dragged_row_id)
-                        const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                         let moved_rows = null;
                         if (dest_table.is(source_table)){
                             moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
@@ -659,6 +674,7 @@
                         throw e
                     } 
                     _stop_drop(dest_table)
+                    _stop_drop(source_table)
                 }
             })
 
@@ -1108,6 +1124,21 @@
         $table.data(DATAKEY_NODE_CACHE, node_cache)
         $table.data(DATAKEY_OPTIONS, options)
 
+        if (options.resizable){
+            if (typeof $table.scrutiny_resizable_table === 'undefined'){
+                throw "Cannot make a resizable table. The scrutiny_resizable_table plugin is not available"
+            }
+
+            $table.scrutiny_resizable_table(options.resize_options)
+        
+            $table.on('stt.collapsed', function(){
+                $(this).scrutiny_resizable_table('refresh')
+             })
+        
+             $table.on('stt.expanded', function(e, data){
+                $(this).scrutiny_resizable_table('refresh')
+             })
+        }
     }
 
     // public functions
@@ -1163,6 +1194,8 @@
             return results
         }
     }
+
+    
 
     // @ts-ignore
 })(jQuery)
