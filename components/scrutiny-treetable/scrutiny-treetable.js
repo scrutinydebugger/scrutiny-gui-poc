@@ -35,6 +35,7 @@
 
     const EVENT_COLLAPSED = 'stt.collapsed'
     const EVENT_EXPANDED = 'stt.expanded'
+    const EVENT_DROPPED = 'stt.dropped'
 
     const INSERT_TYPE_BELOW = 0
     const INSERT_TYPE_INTO = 1
@@ -557,12 +558,13 @@
             header_block.prepend(dragger)
             dragger.attr('draggable', true)
             dragger.on('dragstart', function(e) {
-                data = {
+                // Most reliable way to pass data is to store in global.
+                // Attaching to the even is not reliable because chrome has some strict security policy
+                // that makes the data unavailable in the dragmove event.
+                $.fn.scrutiny_treetable.dragdata = {
                     "source_table_id" : $table.attr('id'),
                     "dragged_row_id" : _get_node_id(tr)
                 }
-
-                $.fn.scrutiny_treetable.dragdata = data
                 e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0);
 
                 if (options.droppable) {
@@ -582,14 +584,12 @@
         if (options.droppable) {
             tr.on('dragover', function(e) {
                 const dropdata = $.fn.scrutiny_treetable.dragdata
-                if (dropdata == null){
-                    throw "Failed to receive dragged data"
+                if (dropdata == null || typeof(dropdata) !== 'object'){
+                    return
                 }
-                const source_table_id = dropdata.source_table_id
-                const dragged_row_id = dropdata.dragged_row_id
-                const source_table = $(`#${source_table_id}`)
+                const source_table = $(`#${dropdata.source_table_id}`)
                 const dest_table = $table
-                const dragged_tr = _find_row(source_table, dragged_row_id)
+                const dragged_tr = _find_row(source_table, dropdata.dragged_row_id)
                 const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                 const dest_options = _get_options(dest_table)
                 if (!dest_table.is(source_table)){
@@ -641,15 +641,13 @@
 
             tr.on('drop', function(e) {
                 if (options.droppable) {
-                    const dest_table = $table
                     const dropdata = $.fn.scrutiny_treetable.dragdata
-                    if (dropdata == null){
-                        throw "Failed to receive dragged data"
+                    if (dropdata == null || typeof(dropdata) !== 'object'){
+                        return
                     }
-                    const source_table_id = dropdata.source_table_id
-                    const source_table = $(`#${source_table_id}`)
-                    const dragged_row_id = dropdata.dragged_row_id
-                    const dragged_tr = _find_row(source_table, dragged_row_id)
+                    const dest_table = $table
+                    const source_table = $(`#${dropdata.source_table_id}`)
+                    const dragged_tr = _find_row(source_table, dropdata.dragged_row_id)
                     const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                     try{
                         let moved_rows = null;
@@ -659,7 +657,13 @@
                             moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
                         }
                         moved_rows.addClass(CLASS_JUST_DROPPED)
-                        
+
+                        dest_table.trigger(EVENT_DROPPED, {
+                            'source_table' : source_table,
+                            'dest_table' : dest_table,
+                            'rows' : moved_rows
+                        })
+
                         setTimeout(function() {
                             moved_rows.css('transition', `background-color ${options.just_dropped_transition_length}s`)
                             setTimeout(function() {
