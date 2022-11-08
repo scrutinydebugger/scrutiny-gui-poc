@@ -4,57 +4,59 @@
     // Custom made tree-table widget because all the one out there were either behind a paid license
     // or buggy and/or deprecated and/or not tailored to our need.
 
-    const ATTR_ID = "stt-id"
-    const ATTR_PARENT = "stt-parent-id"
-    const ATTR_LEVEL = "stt-level"
-    const ATTR_CHILDREN_COUNT = "stt-children-count"
-    const ATTR_CHILDREN_LOADED = "stt-children-loaded"
-    const ATTR_MOVING = 'stt-moving'
+    const ATTR_ID = "stt-id"                // The row ID
+    const ATTR_PARENT = "stt-parent-id"     // The parent row ID
+    const ATTR_LEVEL = "stt-level"          // Nesting level. Integer (0,1,2,3). Bigger is deeper
+    const ATTR_CHILDREN_COUNT = "stt-children-count"        // Number of children for a row
+    const ATTR_CHILDREN_LOADED = "stt-children-loaded"      // Boolean indicating if the children of this node has been laoded
+    const ATTR_MOVING = 'stt-moving'            // Temporary boolean to handle edge case when moving rows
 
-    const CLASS_TABLE = "stt-table"
-    const CLASS_ROW = "stt-row"
-    const CLASS_SPACER = "stt-spacer"
-    const CLASS_EXPANDER = "stt-expander"
-    const CLASS_EXPANDER_OPENED = "stt-expander-opened"
-    const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
-    const CLASS_DRAGGER = 'stt-dragger'
-    const CLASS_INSERT_BELOW = 'stt-insert-below'
-    const CLASS_INSERT_ABOVE = 'stt-insert-above'
-    const CLASS_HIGHLIGTED = 'stt-highligted'
-    const CLASS_JUST_DROPPED = 'stt-just-dropped'
-    const CLASS_HEADER = 'stt-cell-header'
-    const CLASS_DISABLED = 'stt-disabled'
-    const CLASS_NO_CHILDREN = 'stt-no-children'
-    const CLASS_TREE_CELL = 'stt-tree-cell'
+    const CLASS_TABLE = "stt-table"             // Applied on the table
+    const CLASS_ROW = "stt-row"                 // Applied on each row
+    const CLASS_SPACER = "stt-spacer"           // Applied on the spaced that create the nesting effect
+    const CLASS_EXPANDER = "stt-expander"       // Applied on the div element that serves as an expand button
+    const CLASS_EXPANDER_OPENED = "stt-expander-opened" // Applied on the expander when it must how an expanded state
+    const CLASS_EXPANDER_CLOSED = "stt-expander-closed" // Applied on the expander when it must how an collapsed state
+    const CLASS_DRAGGER = 'stt-dragger'     // Applied on the dra-n-drop handle
+    const CLASS_INSERT_BELOW = 'stt-insert-below'   // Applied on a row when we want to drag-n-dop just below it
+    const CLASS_INSERT_ABOVE = 'stt-insert-above'   // Applied on a row when we want to drag-n-dop just above it
+    const CLASS_HIGHLIGTED = 'stt-highligted'       // Applied on a row that must be highligted
+    const CLASS_JUST_DROPPED = 'stt-just-dropped'   // Applied for a short amount of time on a row that just has been dropped after a drag-n-dop
+    const CLASS_HEADER = 'stt-cell-header'      // Applied on the div that contains all plugin elements in the row (expander, spacer)
+    const CLASS_DISABLED = 'stt-disabled'       // Applied on a row that must appear as disabled. Used when dragging an element.
+    const CLASS_NO_CHILDREN = 'stt-no-children' // Applied on a row that does not accept children
+    const CLASS_TREE_CELL = 'stt-tree-cell'     // Applied on the cell that contains the tree element
 
-    const DATAKEY_OPTIONS = 'stt-dk-options'
-    const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'
-    const DATAKEY_EXPANDER_CLOSED = 'stt-dk-expander_closed'
-    const DATAKEY_EXPANDER_OPENED = 'stt-dk-expander_opened'
-    const DATAKEY_USER_DATA = 'stt-dk-userdata'
+    const DATAKEY_OPTIONS = 'stt-dk-options'            // To store the plugin options
+    const DATAKEY_NODE_CACHE = 'stt-dk-node-cache'      // To store a dict of already loaded nodes
+    const DATAKEY_EXPANDER_CLOSED = 'stt-dk-expander_closed'    // Stores the expander template (can be configured through options)
+    const DATAKEY_EXPANDER_OPENED = 'stt-dk-expander_opened'    // Stores the expander template (can be configured through options)
+    const DATAKEY_USER_DATA = 'stt-dk-userdata'     // User data associated with a row
 
-    const EVENT_COLLAPSED = 'stt.collapsed'
-    const EVENT_EXPANDED = 'stt.expanded'
-    const EVENT_DROPPED = 'stt.dropped'
+    const EVENT_COLLAPSED = 'stt.collapsed' // Triggered when a row is collapsed
+    const EVENT_EXPANDED = 'stt.expanded'   // Triggered when a row is expanded
+    const EVENT_DROPPED = 'stt.dropped'     // Triggered when a row is dropped after a drag-n-drop
+    const EVENT_SIZE_CHANGED = 'stt.size-changed'
 
-    const INSERT_TYPE_BELOW = 0
+    // Enum-ish for drag-n-drop
+    const INSERT_TYPE_BELOW = 0 
     const INSERT_TYPE_INTO = 1
     const INSERT_TYPE_ABOVE = 2
 
     const DEFAULT_OPTIONS = {
-        indent: 10,
-        droppable: false,
-        draggable: false,
-        move_allowed: true,
-        expander_size: 12,
-        just_dropped_transition_length: 0.6,
-        col_index: 1,
-        resizable:false,
-        resize_options:{},
-        load_fn: function() {
+        indent: 10,             // Indentation caused by each nesting
+        droppable: false,       // Indicate that we can drop rows on this table
+        draggable: false,       // Indicate that we can drag rows from this table
+        move_allowed: true,     // Allow rows to be moved within a table
+        expander_size: 12,      // The size in pixel of the expander.
+        just_dropped_transition_length: 0.6,    // When a row is dropped, length of the temporary highlight
+        col_index: 1,   // The index (left to right) of the cell that will contain the tree header
+        resizable:false,        // Makes the table resizable using the scrutiny_resiable_table plugin
+        resize_options:{},      // Options passed to the scrutiny_resiable_table plugin
+        load_fn: function() {   // Loading function to dynamically load the table
             throw "No loader defined"
         },
-        transfer_fn : null
+        transfer_fn : null  // A function called to convert a row when a row is moved from one table to another table.
     }
 
     const SPACER_TEMPLATE = $(`<span class='${CLASS_SPACER}'></span>`)
@@ -115,7 +117,7 @@
         return _is_root(tr)
     }
 
-    function move_node($table, arg, new_parent_id, after_node_id) {
+    function move_node($table, row_id, new_parent_id, after_node_id) {
         let options = _get_options($table)
         if (!options.move_allowed) {
             throw 'Moving node is not allowed'
@@ -129,9 +131,39 @@
             after_node_id = null
         }
 
-        let tr = _get_row_from_node_or_row($table, arg)
+        const tr = _get_row_from_node_or_row($table, row_id)
 
         _move_row($table, tr, new_parent_id, after_node_id)
+    }
+
+    function transfer_node($table, dest_table, row_id, new_parent_id, after_node_id){
+        if (typeof dest_table == 'string'){
+            dest_table = $(`${dest_table}`)
+        }
+
+        if (dest_table.length != 1){
+            return
+        }
+
+        if (typeof new_parent_id === 'undefined') {
+            new_parent_id = null
+        }
+
+        if (typeof after_node_id === 'undefined') {
+            after_node_id = null
+        }
+        const tr = _get_row_from_node_or_row($table, row_id)
+
+        const dest_options = _get_options(dest_table)
+        if (dest_options.allow_transfer_fn == null){
+            return
+        }
+        const transfer_allowed = dest_options.allow_transfer_fn($table, dest_table, tr, new_parent_id, after_node_id)
+        if (!transfer_allowed){
+            return
+        }
+
+        _transfer_row($table, dest_table, tr, new_parent_id, after_node_id)
     }
 
     function load_all($table) {
@@ -418,6 +450,8 @@
             tr.trigger(EVENT_EXPANDED, {
                 node_id: _get_node_id(tr)
             })
+
+            $table.trigger(EVENT_SIZE_CHANGED)
         } else {
             //throw 'Cannot expand row with no children'
         }
@@ -445,6 +479,8 @@
         tr.trigger(EVENT_COLLAPSED, {
             node_id: _get_node_id(tr)
         })
+
+        $table.trigger(EVENT_SIZE_CHANGED)
     }
 
     function _expand_all($table) {
@@ -520,6 +556,7 @@
             // We are adding a root node
             $table.append(tr)
             tr.show()
+            $table.trigger(EVENT_SIZE_CHANGED)
         } else {
             // We are adding a subnode
             const parent = _find_row($table, parent_id) // Find the parent row
@@ -865,6 +902,7 @@
             delete node_cache[node_id]
         }
         tr.remove()
+        $table.trigger(EVENT_SIZE_CHANGED)
 
         if (parent !== null) {
             _increase_children_count($table, parent, -1)
@@ -953,6 +991,7 @@
             _set_nesting_level($table, $(this), _get_nesting_level($(this)) + delta_nesting_level)
         })
 
+        $table.trigger(EVENT_SIZE_CHANGED);
         return tree_to_move
     }
 
@@ -1135,11 +1174,7 @@
 
             $table.scrutiny_resizable_table(options.resize_options)
         
-            $table.on('stt.collapsed', function(){
-                $(this).scrutiny_resizable_table('refresh')
-             })
-        
-             $table.on('stt.expanded', function(e, data){
+            $table.on(EVENT_SIZE_CHANGED, function(){
                 $(this).scrutiny_resizable_table('refresh')
              })
         }
@@ -1158,7 +1193,8 @@
         'collapse_node': collapse_node,
         'collapse_all': collapse_all,
         'move_node': move_node,
-        'load_all': load_all
+        'load_all': load_all,
+        'transfer_node' : transfer_node
     }
 
     $.fn.scrutiny_treetable = function(...args) {
