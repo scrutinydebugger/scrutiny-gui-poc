@@ -67,56 +67,76 @@
     /***  Public functions *** */
 
     function add_root_node($table, node_id, tr) {
+        // Add a root node to the table
         _add_node($table, null, node_id, tr)
         _load_children($table, tr)
     }
 
-    function get_children($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function get_children($table, node) {
+        // Return the list of immediates children rows
+        let tr = _get_row_from_node_or_row($table, node)
         return _get_children($table, tr)
     }
 
-    function get_parent($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function get_parent($table, node) {
+        // Returns the parent row of the given row
+        let tr = _get_row_from_node_or_row($table, node)
         _get_parent($table, tr)
     }
 
     // eslint-disable-next-line no-unused-vars
-    function get_children_count($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function get_children_count($table, node) {
+        // Returns the number of immediate children rows
+        let tr = _get_row_from_node_or_row($table, node)
         return _get_children_count(tr)
     }
 
-    function delete_node($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function delete_node($table, node) {
+        // Delete a row and all its descendants from the table
+        let tr = _get_row_from_node_or_row($table, node)
         _delete_node($table, tr)
     }
 
-    function expand_node($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function expand_node($table, node) {
+        // Expand a row so that the immediate children are displayed
+        let tr = _get_row_from_node_or_row($table, node)
         if (_is_visible(tr)) {
             _expand_row($table, tr)
         }
     }
 
     function expand_all($table) {
+        // Expand everything in the table
         _expand_all($table)
     }
 
-    function collapse_node($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    function collapse_node($table, node) {
+        //  Collapase a row so that all the descendant are hidden
+        let tr = _get_row_from_node_or_row($table, node)
         _collapse_row($table, tr)
     }
 
-    function collapse_all($table, arg) {
-        _collapse_all($table, arg)
+    function collapse_all($table, node) {
+        // Collapase every rows in the table
+        _collapse_all($table, node)
     }
-
-    function is_root($table, arg) {
-        let tr = _get_row_from_node_or_row($table, arg)
+    
+    function is_root($table, node) {
+        // Returns a boolean indicating if the node is a root node
+        let tr = _get_row_from_node_or_row($table, node)
         return _is_root(tr)
     }
 
+    /**
+     * Moves a row within the same table under an optional parent row  and after an optional reference row 
+     * 
+     * @param {JQuery} $table Jquery table object
+     * @param {string} row_id The ID of the row in the source table to transfer
+     * @param {string|null} [new_parent_id] The ID of the new parent row in the table. If not set or null, the row 
+     * will become a root node
+     * @param {string|null} [after_node_id] The row after which the moved row will be inserted. If not set or null,
+     * the moved row will be set in last position
+     */
     function move_node($table, row_id, new_parent_id, after_node_id) {
         let options = _get_options($table)
         if (!options.move_allowed) {
@@ -136,12 +156,24 @@
         _move_row($table, tr, new_parent_id, after_node_id)
     }
 
+    /**
+     * Moves a row from the table to the given destination table under an optional parent row
+     * and after an optional reference row.
+     * 
+     * @param {JQuery} $table Source table
+     * @param {string|JQuery} dest_table Destination table
+     * @param {string} row_id The ID of the row in the source table to transfer 
+     * @param {string|null} [new_parent_id] The ID of the new parent row in the destination table. If not set or null, the row 
+     * will become a root node in the destination table
+     * @param {string|null} [after_node_id] The row after which the transferred row will be inserted. If not set or null,
+     * the transfered row will be set in last position
+     */
     function transfer_node($table, dest_table, row_id, new_parent_id, after_node_id){
         if (typeof dest_table == 'string'){
             dest_table = $(`${dest_table}`)
         }
 
-        if (dest_table.length != 1){
+        if (dest_table.length != 1){    // Can only be done on a single table
             return
         }
 
@@ -155,23 +187,32 @@
         const tr = _get_row_from_node_or_row($table, row_id)
 
         const dest_options = _get_options(dest_table)
-        if (dest_options.allow_transfer_fn == null){
+        if (dest_options.allow_transfer_fn == null){    // User didn't define an  allow_transfer func. We can't do anything
             return
         }
         const transfer_allowed = dest_options.allow_transfer_fn($table, dest_table, tr, new_parent_id, after_node_id)
         if (!transfer_allowed){
-            return
+            return  // User disallowed the transfer
         }
 
         _transfer_row($table, dest_table, tr, new_parent_id, after_node_id)
     }
 
+    /**
+     * Load the whole table by querying the user load_fn
+     * @param {JQuery} $table The Jquery table
+     */
     function load_all($table) {
         _load_all($table)
     }
 
     /***  Private functions *** */
 
+    /**
+     * Generate a unique ID string for this table.
+     * @param {JQuery} $table The Jquery table
+     * @returns Unique ID
+     */
     function _make_unique_id($table){
         if( typeof _make_unique_id.counter == 'undefined' ) {
             _make_unique_id.counter = 0;
@@ -181,15 +222,34 @@
         const table_id = $table.attr('id')
         return `stt_uid_${table_id}_${counter}_${timestamp}`
     }
+
     // Basic accessors
+
+    /**
+     * Get the treetable ID (not the HTML ID)
+     * @param {JQuery} tr Node row object
+     * @returns Node ID
+     */
     function _get_node_id(tr) {
         return tr.attr(ATTR_ID)
     }
 
+    /**
+     * Set the treetable ID not HTML ID) on a row
+     * @param {JQuery} tr Node row object
+     * @param {string} node_id The ID to set on the node
+     * @returns The same row object received as input
+     */
     function _set_node_id(tr, node_id) {
         return tr.attr(ATTR_ID, node_id)
     }
 
+    /**
+     * Tells if a row is the child of another specific row  
+     * @param {JQuery} tr Node row object
+     * @param {string} parent_id The ID of the parent
+     * @returns True if the row is child of the row with the given parent ID
+     */
     function _is_child_of(tr, parent_id) {
         return (
             typeof tr.attr(ATTR_PARENT) !== "undefined" &&
@@ -197,6 +257,13 @@
         )
     }
 
+    /**
+     * Tells if the given row is a descendant (non-immediate child) of the given parent row
+     * @param {*} $table 
+     * @param {JQuery} child_candidate_tr The row that is tested to be a descendant of another
+     * @param {JQuery} parent_tr The parent row used for the test
+     * @returns True if the row is a descendant of the parent
+     */
     function _is_descendant($table, child_candidate_tr, parent_tr){
         let child_parent_tr = _get_parent($table, child_candidate_tr)
         while (child_parent_tr !== null){
@@ -208,6 +275,7 @@
         return false
     }
 
+    
     function _find_row($table, node_id) {
         let node_cache = $table.data(DATAKEY_NODE_CACHE)
         if (node_cache.hasOwnProperty(node_id)) {
