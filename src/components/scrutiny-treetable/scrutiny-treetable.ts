@@ -1,3 +1,12 @@
+
+// @ts-check
+"use strict";
+
+
+// Scrutiny Tree Table plugin.
+// Custom made tree-table widget because all the one out there were either behind a paid license
+// or buggy and/or deprecated and/or not tailored to our need.
+
 import * as $ from "jquery"
 
 export interface LoadFunctionInterface {
@@ -14,7 +23,6 @@ export interface TransferFunctionInterface {
     (source_table: JQueryTable, bare_line: JQueryRow, meta:TransferFunctionMetadataInterface): JQueryRow
 }
 
-
 export interface TransferAllowedFunctionInterface {
     (
         source_table: JQueryTable, 
@@ -25,13 +33,20 @@ export interface TransferAllowedFunctionInterface {
         ): boolean
 }
 
+interface DragData {
+    source_table_id:string,
+    dragged_row_id: string
+}
+
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
 
-// Scrutiny Tree Table plugin.
-// Custom made tree-table widget because all the one out there were either behind a paid license
-// or buggy and/or deprecated and/or not tailored to our need.
+interface JQueryResizableTable extends JQueryTable{
+    scrutiny_resizable_table?:any
+}
+
+var gbl_drag_data:DragData|null = null;
 
 const ATTR_ID = "stt-id" // The row ID
 const ATTR_PARENT = "stt-parent-id" // The parent row ID
@@ -99,15 +114,25 @@ const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
 
 /***  Public functions *** */
 
+/**
+ * Adds a row as a root node.
+ * @param $table The JQuery table
+ * @param node_id Node ID to assign to the row
+ * @param tr The row to add
+ */
 function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
-    // Add a root node to the table
     _add_node($table, null, node_id, tr)
     _load_children($table, tr)
 }
 
+/**
+ * Returns the immediate children of the given row
+ * @param $table The JQuery table
+ * @param node The row from which to fetch the children
+ * @returns The row children
+ */
 function get_children($table: JQueryTable, node: string | JQuery): JQueryRow {
-    // Return the list of immediates children rows
-    let tr = _get_row_from_node_or_row($table, node)
+     let tr = _get_row_from_node_or_row($table, node)
     return _get_children($table, tr)
 }
 
@@ -696,7 +721,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             // Most reliable way to pass data is to store in global.
             // Attaching to the even is not reliable because chrome has some strict security policy
             // that makes the data unavailable in the dragmove event.
-            $.fn.scrutiny_treetable.dragdata = {
+            gbl_drag_data = {
                 source_table_id: $table.attr("id"),
                 dragged_row_id: _get_node_id(tr),
             }
@@ -708,7 +733,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
         })
 
         dragger.on("dragend", function (e) {
-            $.fn.scrutiny_treetable.dragdata = null
+            gbl_drag_data = null
             if (options.droppable) {
                 $table.find(`tr.${CLASS_DISABLED}`).removeClass(CLASS_DISABLED)
             }
@@ -718,13 +743,12 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
     if (options.droppable) {
         tr.on("dragover", function (e) {
-            const dropdata = $.fn.scrutiny_treetable.dragdata
-            if (dropdata == null || typeof dropdata !== "object") {
+            if (gbl_drag_data == null) {
                 return
             }
-            const source_table = $(`#${dropdata.source_table_id}`) as JQueryTable
+            const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
             const dest_table = $table
-            const dragged_tr = _find_row(source_table, dropdata.dragged_row_id)
+            const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
             const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
             const dest_options = _get_options(dest_table)
             if (!dest_table.is(source_table)) {
@@ -782,13 +806,12 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
         tr.on("drop", function (e) {
             if (options.droppable) {
-                const dropdata = $.fn.scrutiny_treetable.dragdata
-                if (dropdata == null || typeof dropdata !== "object") {
+                if (gbl_drag_data == null) {
                     return
                 }
                 const dest_table = $table
-                const source_table = $(`#${dropdata.source_table_id}`) as JQueryTable
-                const dragged_tr = _find_row(source_table, dropdata.dragged_row_id)
+                const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
+                const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
                 const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
                 try {
                     let moved_rows = null
@@ -1278,14 +1301,15 @@ function init($table: JQueryTable, config: Partial<typeof DEFAULT_OPTIONS>) : vo
     $table.data(DATAKEY_OPTIONS, options)
 
     if (options.resizable) {
-        if (typeof $table.scrutiny_resizable_table === "undefined") {
+        const resizableTable = $table as JQueryResizableTable
+        if (typeof resizableTable.scrutiny_resizable_table === "undefined") {
             throw "Cannot make a resizable table. The scrutiny_resizable_table plugin is not available"
         }
 
-        $table.scrutiny_resizable_table(options.resize_options)
+        resizableTable.scrutiny_resizable_table(options.resize_options)
 
-        $table.on(EVENT_SIZE_CHANGED, function () {
-            $(this).scrutiny_resizable_table("refresh")
+        resizableTable.on(EVENT_SIZE_CHANGED, function () {
+            ($(this) as JQueryResizableTable).scrutiny_resizable_table("refresh")
         })
     }
 }
