@@ -6,12 +6,9 @@
     },
     "extends": ["eslint:recommended"],
     "globals": {
-        "jQuery": true,
-        "$": true,
-        "GoldenLayout": true
     },
     "ignorePatterns": [
-        "webapp_release/libs/**/*.js",
+        "webapp_release/**/*.js",
         "tests/**/*.js"
     ],
     "parserOptions": {
@@ -20,6 +17,7 @@
     "rules": {
         "no-prototype-builtins": 0,
         "no-unused-vars": ["error", { "vars": "all", "args": "none", "ignoreRestSiblings": false }],
-        "no-empty": ["error", { "allowEmptyCatch": true }]
+        "no-empty": ["error", { "allowEmptyCatch": true }],
+        "no-extra-semi": 0
     }
 }
