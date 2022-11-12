@@ -136,19 +136,35 @@ function get_children($table: JQueryTable, node: string | JQuery): JQueryRow {
     return _get_children($table, tr)
 }
 
+/**
+ * Returns the parent of a node
+ * @param $table The JQuery table
+ * @param node The child node
+ * @returns The parent if node
+ */
 function get_parent($table: JQueryTable, node: string | JQuery): JQueryRow {
     // Returns the parent row of the given row
     let tr = _get_row_from_node_or_row($table, node)
     return _get_parent($table, tr)
 }
 
-// eslint-disable-next-line no-unused-vars
+/**
+ * Returns the immediate children of the given parent node
+ * @param $table The JQuery table
+ * @param node The parent node
+ * @returns The immediate children nodes
+ */
 function get_children_count($table: JQueryTable, node: string | JQueryRow): number {
     // Returns the number of immediate children rows
     let tr = _get_row_from_node_or_row($table, node)
     return _get_children_count(tr)
 }
 
+/**
+ * 
+ * @param $table The JQuery table
+ * @param node 
+ */
 function delete_node($table: JQueryTable, node: string | JQueryRow): void {
     // Delete a row and all its descendants from the table
     let tr = _get_row_from_node_or_row($table, node)
@@ -656,7 +672,7 @@ function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: num
     }
 }
 
-function _add_node($table: JQueryTable, parent_id: string | null, node_id: string, tr: JQueryRow, no_children?: boolean) : void {
+function _add_node($table: JQueryTable, parent_id: string | null, node_id: string | null, tr: JQueryRow, no_children?: boolean) : void {
     if (typeof no_children === "undefined") {
         no_children = false
     }
@@ -750,6 +766,9 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             const dest_table = $table
             const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
             const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
+            if (dnd_result == null){
+                return
+            }
             const dest_options = _get_options(dest_table)
             if (!dest_table.is(source_table)) {
                 if (dest_options.allow_transfer_fn == null) {
@@ -813,8 +832,11 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                 const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
                 const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
                 const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
+                if (dnd_result == null){
+                    return
+                }
                 try {
-                    let moved_rows = null
+                    let moved_rows : JQueryRow|null = null
                     if (dest_table.is(source_table)) {
                         moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
                     } else {
@@ -870,7 +892,7 @@ interface DragNDropResult {
     }
 }
 
-function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number) : DragNDropResult{
+function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number) : DragNDropResult | null{
     /*
         Returns the correct move action according to where we hover the drag n drop.
         Expects hover_tr to have its children loaded.
@@ -1219,11 +1241,15 @@ function _make_bare_node_copy(tr: JQueryRow) : JQueryRow{
 }
 
 function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filter?: string) : JQueryRow
-{
-    return _select_all_loaded_descendant_recursive($table, tr, filter) as JQueryRow
+{   
+    const result = _select_all_loaded_descendant_recursive($table, tr, filter)
+    if (result == null){
+        throw "Did not get descendant results"  // for static analyzer
+    }
+    return result as JQueryRow
 }
 
-function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, filter?: string, arr?: HTMLTableRowElement[]) : JQueryRow | void {
+function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, filter?: string, arr?: HTMLTableRowElement[]) : JQueryRow | null {
     /* Select a node and all its descendant, only the loaded ones */
     let return_val = false
     if (typeof arr === "undefined") {
@@ -1251,6 +1277,9 @@ function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQuery
     if (return_val) {
         return $(arr)
     }
+    else{
+        return null // make static analyzer happy
+    }
 }
 
 function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | void {
@@ -1271,7 +1300,7 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
     }
 }
 
-function init($table: JQueryTable, config: Partial<typeof DEFAULT_OPTIONS>) : void{
+function init($table: JQueryTable, config: PluginOptions) : void{
     const options = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {

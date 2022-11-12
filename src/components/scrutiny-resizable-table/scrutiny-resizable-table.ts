@@ -3,6 +3,10 @@ import * as $ from "jquery"
 // @ts-check
 "use strict";
 
+type JQueryRow = JQuery<HTMLTableRowElement>
+type JQueryTable = JQuery<HTMLTableElement>
+type JQueryCell = JQuery<HTMLTableCellElement>
+
 const ATTR_HAS_WIDTH = 'srt-has-width'
 
 const CLASS_TABLE = "srt-table"
@@ -16,70 +20,38 @@ const DATAKEY_OPTIONS = 'srt-options'
 const DEFAULT_OPTIONS = {
     table_width_constrained: false,
     column_min_width: 0,
-    nowrap: true,
-    load_fn: function () {
-        throw "No loader defined"
-    },
+    nowrap: true
 }
+
+export type PluginOptions = Partial<typeof DEFAULT_OPTIONS>
 
 const RESIZE_HANDLE_TEMPLATE = $(`<div class='${CLASS_RESIZE_HANDLE}' />`)
 
 /***  Public functions *** */
 
-function refresh($table) {
+function refresh($table : JQueryTable) {
     _update_sizes($table)
 }
 
 /***  Private functions *** */
-function init($table, config) {
-    let options = $.extend({}, DEFAULT_OPTIONS, config)
-    $table.addClass(CLASS_TABLE)
 
-    if (options.nowrap) {
-        $table.addClass(CLASS_NOWRAP)
-    }
-
-
-    $table.data(DATAKEY_OPTIONS, options)
-
-    let ths = $table.find("thead th")
-    if (ths.length == 0) {
-        throw "<thead> with cells is required for a resizable table"
-    }
-
-    ths.css('min-width', '' + options.column_min_width + 'px')
-
-    if (options.table_width_constrained == false) {
-        $table.css('width', 'auto')
-    } else {
-        ths = ths.slice(0, ths.length - 1)
-    }
-
-    $(document).ready(function () {
-        _recompute_col_width($table)
-        _update_sizes($table)
-    })
-
-    _install_resize_handles($table)
+function _get_options($table  : JQueryTable) : PluginOptions {
+    return $table.data(DATAKEY_OPTIONS) as PluginOptions
 }
 
-function _get_options($table) {
-    return $table.data(DATAKEY_OPTIONS)
-}
-
-function _install_resize_handles($table) {
+function _install_resize_handles($table  : JQueryTable) : void {
     let options = _get_options($table)
 
-    let ths = $table.find("thead th")
+    let ths = $table.find("thead th") as JQueryCell
     if (options.table_width_constrained == true) {
         ths = ths.slice(0, ths.length - 1)
     }
 
-    ths.attr(`${ATTR_HAS_WIDTH}`, true)
+    ths.attr(`${ATTR_HAS_WIDTH}`, "1")
 
     ths.each(function () {
         let th = $(this)
-        let existing_handle = th.find(`.${CLASS_RESIZE_HANDLE}`)
+        let existing_handle = th.find(`.${CLASS_RESIZE_HANDLE}`) as JQueryCell
         if (existing_handle.length == 0) {
             let handle = RESIZE_HANDLE_TEMPLATE.clone();
             th.append(handle)
@@ -126,7 +98,7 @@ function _install_resize_handles($table) {
     _update_sizes($table);
 }
 
-function _increase_size($table, th, delta_w) {
+function _increase_size($table  : JQueryTable, th : JQueryCell, delta_w : number) : void {
     delta_w = Math.abs(delta_w)
     let options = _get_options($table)
     let is_last_col = false
@@ -184,7 +156,7 @@ function _increase_size($table, th, delta_w) {
     }
 }
 
-function _decrease_size($table, th, delta_w) {
+function _decrease_size($table  : JQueryTable, th : JQueryCell, delta_w : number) : void{
     delta_w = -Math.abs(delta_w)
     let options = _get_options($table)
 
@@ -210,13 +182,13 @@ function _decrease_size($table, th, delta_w) {
     }
 }
 
-function _recompute_col_width($table) {
+function _recompute_col_width($table  : JQueryTable) : void {
     $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function () {
         $(this).width($(this).width())
     })
 }
 
-function _allowed_table_expansion($table) {
+function _allowed_table_expansion($table  : JQueryTable) : number {
     let options = _get_options($table)
     if (options.table_width_constrained) {
         return 0
@@ -224,28 +196,28 @@ function _allowed_table_expansion($table) {
     return Math.max(0, $table.parent().innerWidth() - $table.outerWidth())
 }
 
-function _table_can_grow($table) {
+function _table_can_grow($table : JQueryTable) : boolean {
     return _allowed_table_expansion($table) > 0
 }
 
-function _make_text_unselectable($table) {
+function _make_text_unselectable($table : JQueryTable) : void {
     $table.attr('unselectable', 'on')
         .css('user-select', 'none')
 }
 
-function _make_text_selectable($table) {
+function _make_text_selectable($table  : JQueryTable) : void {
     $table.attr('unselectable', '')
         .css('user-select', '')
 }
 
-function _update_sizes($table) {
-    let first_row = $table.find('tr:visible:first')
-    let last_row = $table.find('tr:visible:last')
+function _update_sizes($table : JQueryTable) : void{
+    let first_row = $table.find('tr:visible:first') as JQueryRow
+    let last_row = $table.find('tr:visible:last') as JQueryRow
     let table_height = (last_row.offset().top + last_row.outerHeight()) - first_row.offset().top
 
-    let thead = $table.find('thead')
+    let thead = $table.find('thead') as JQuery<HTMLTableSectionElement>
     let column_handles = thead.find(`.${CLASS_RESIZE_HANDLE}`)
-    let th = thead.find('th').first()
+    let th = thead.find('th').first() as JQueryCell
     let top = -(th.outerHeight() - th.innerHeight()) / 2
     column_handles.outerHeight(table_height)
     column_handles.css('top', `${top}px`)
@@ -259,13 +231,44 @@ function _update_sizes($table) {
     })
 }
 
+function init($table  : JQueryTable, config : PluginOptions) : void{
+    let options = $.extend({}, DEFAULT_OPTIONS, config)
+    $table.addClass(CLASS_TABLE)
+
+    if (options.nowrap) {
+        $table.addClass(CLASS_NOWRAP)
+    }
+
+    $table.data(DATAKEY_OPTIONS, options)
+
+    let ths = $table.find("thead th") as JQueryCell
+    if (ths.length == 0) {
+        throw "<thead> with cells is required for a resizable table"
+    }
+
+    ths.css('min-width', '' + options.column_min_width + 'px')
+
+    if (options.table_width_constrained == false) {
+        $table.css('width', 'auto')
+    } else {
+        ths = ths.slice(0, ths.length - 1)
+    }
+
+    $(document).ready(function () {
+        _recompute_col_width($table)
+        _update_sizes($table)
+    })
+
+    _install_resize_handles($table)
+}
+
+
 // public functions
 const public_funcs = {
     "refresh": refresh
 }
 
-
-export function scrutiny_treetable(...args) {
+export function scrutiny_resizable_table(...args) {
     let hasResults = false
     const results = $(this).map(function () {
         const $table = $(this)
@@ -284,7 +287,7 @@ export function scrutiny_treetable(...args) {
                 return result
             }
         } else {
-            init($table, ...args)
+            init($table, args[0])
         }
     })
 
