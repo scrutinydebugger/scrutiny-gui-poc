@@ -1,4 +1,4 @@
-import {Tree} from "#appjs/tree.js"
+import {Tree} from "#appjs/tree.ts"
 import {default as assert} from 'assert'
 import {assert_list_equal_unordered} from "./testing_tools.js"
 

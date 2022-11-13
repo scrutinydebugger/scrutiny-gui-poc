@@ -1,4 +1,4 @@
-import {DeviceStatus, ServerStatus, DatastoreEntryType, AllDatastoreEntryTypes} from "./global_definitions.js"
+import {DeviceStatus, ServerStatus, DatastoreEntryType, AllDatastoreEntryTypes} from "./global_definitions.ts"
 
 
 var WATCHABLE_DOWNLOAD_TYPES = {

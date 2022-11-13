@@ -1,4 +1,4 @@
-import {DatastoreEntryType, AllDatastoreEntryTypes} from "#appjs/global_definitions.js"
+import {DatastoreEntryType, AllDatastoreEntryTypes} from "#appjs/global_definitions.ts"
 import {Datastore, DatastoreEntry} from "#appjs/datastore.js"
 import {assert_list_equal_unordered} from "./testing_tools.js"
 import {default as assert} from 'assert'

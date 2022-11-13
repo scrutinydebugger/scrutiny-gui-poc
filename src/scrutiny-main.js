@@ -1,5 +1,5 @@
 import { App } from "./app.js"
-import { get_url_param } from "./tools.js"
+import { get_url_param } from "./tools.ts"
 
 import { VarListWidget } from "./widgets/varlist/varlist.js"
 import { WatchWidget } from "./widgets/watch/watch.js"

@@ -1,7 +1,7 @@
 import {
     DatastoreEntryType,
     AllDatastoreEntryTypes,
-} from "../../global_definitions.js"
+} from "../../global_definitions.ts"
 import $ from "jquery"
 
 export class VarListWidget {

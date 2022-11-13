@@ -1,4 +1,4 @@
-import { ServerStatus, DeviceStatus } from "./global_definitions.js"
+import { ServerStatus, DeviceStatus } from "./global_definitions.ts"
 import GoldenLayout from "golden-layout"
 import $ from "jquery"
 
