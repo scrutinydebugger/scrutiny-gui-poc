@@ -4,7 +4,7 @@ import CopyPlugin from "copy-webpack-plugin"
 export default {
     context: resolve("src"),
     devtool: "source-map",
-    entry: "./scrutiny-main.js",
+    entry: "./scrutiny-main.ts",
     mode: "development",
     module: {
         rules: [

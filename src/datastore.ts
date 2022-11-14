@@ -1,20 +1,25 @@
-import { App } from "./app.js"
-import { Tree } from "./tree"
-import { DatastoreEntryType, AllDatastoreEntryTypes, EnumDefinition, ValueDataType } from "./global_definitions"
-import { trim } from "./tools"
-
 // @ts-check
 ;("use strict")
 
-export interface DatastoreEntryServerDefinition {
-    id: string
-    display_path: string
-    datatype: ValueDataType
-    enum?: EnumDefinition
-}
+import { App } from "./app"
+import { Tree } from "./tree"
+import { trim } from "./tools"
+import * as API from "./server_api"
 
 type ValueChangeCallback = (val: number) => void
 
+export enum DatastoreEntryType {
+    Var = "var",
+    Alias = "alias",
+    RPV = "rpv",
+}
+
+export var AllDatastoreEntryTypes = [] as DatastoreEntryType[]
+
+let keys = Object.keys(DatastoreEntryType)
+for (let i = 0; i < keys.length; i++) {
+    AllDatastoreEntryTypes.push(DatastoreEntryType[keys[i]])
+}
 
 /**
  * Represent an entry in the datastore. Each entry represent an interface to something that can be read and/or written
@@ -31,10 +36,10 @@ export class DatastoreEntry {
     display_path: string
 
     /** The datatype of the embedded value associated with this entry (uint32, float64, etc.) */
-    datatype: ValueDataType
+    datatype: API.ValueDataType
 
     /** The definition of the enum if it exists. null if no enum is associated with this entry */
-    enumdef: EnumDefinition | null
+    enumdef: API.EnumDefinition | null
 
     /** The numberical value of the entry */
     value: number
@@ -48,8 +53,8 @@ export class DatastoreEntry {
         entry_type: DatastoreEntryType,
         server_id: string,
         display_path: string,
-        datatype: ValueDataType,
-        enumdef: EnumDefinition | null = null
+        datatype: API.ValueDataType,
+        enumdef: API.EnumDefinition | null = null
     ) {
         this.entry_type = entry_type
         this.server_id = server_id
@@ -66,8 +71,8 @@ export class DatastoreEntry {
      * @param data The data gotten from the server
      * @returns A datastore entry that match the server definition
      */
-    static from_server_def(entry_type: DatastoreEntryType, data: DatastoreEntryServerDefinition): DatastoreEntry {
-        let enumdef: EnumDefinition | null = null
+    static from_server_def(entry_type: DatastoreEntryType, data: API.WatchableEntryServerDefinition): DatastoreEntry {
+        let enumdef: API.EnumDefinition | null = null
         if (data.hasOwnProperty("enum")) {
             enumdef = data["enum"]
         }
@@ -140,8 +145,8 @@ type DatastoreTreesType = Record<DatastoreEntryType, Tree>
 type DatastoreReadyType = Record<DatastoreEntryType, boolean>
 
 export interface DatastorePathChildren {
-    entries : Record<string, DatastoreEntry>,
-    subfolders : string[]
+    entries: Record<string, DatastoreEntry>
+    subfolders: string[]
 }
 
 /**
@@ -154,7 +159,7 @@ export class Datastore {
 
     /** A dictionary used to cache the entries read by a given display path and avoid searching every time. One cache by entry type */
     entry_cache: DatastoreEntryCacheType
-    
+
     /** A list of Tree object (one per datastore entry type) */
     trees: DatastoreTreesType
 
@@ -185,10 +190,10 @@ export class Datastore {
     }
 
     /**
-     * Delete all the entries with the given entry types. Trigger an event 
+     * Delete all the entries with the given entry types. Trigger an event
      * @param entry_types The entry types to delete from the datastore. All if omitted
      */
-    clear(entry_types?:DatastoreEntryType[]) {
+    clear(entry_types?: DatastoreEntryType[]) {
         if (typeof entry_types === "undefined") {
             entry_types = AllDatastoreEntryTypes
         }
@@ -196,7 +201,7 @@ export class Datastore {
 
         for (let i = 0; i < entry_types.length; i++) {
             const entry_type = entry_types[i]
-            this.app.trigger_event("scrutiny.datastore.clear", {'entry_type' : entry_type})
+            this.app.trigger_event("scrutiny.datastore.clear", { entry_type: entry_type })
         }
     }
 
@@ -228,9 +233,9 @@ export class Datastore {
      * @param entry_type The type of the entry to watch
      * @param entry The display path of the entry
      * @param watcher A string identifying the watcher
-     * @param callback The callback to call when the value of the entry changes 
+     * @param callback The callback to call when the value of the entry changes
      */
-    watch(entry_type: DatastoreEntryType, entry: DatastoreEntry|string, watcher: string, callback: ValueChangeCallback): void {
+    watch(entry_type: DatastoreEntryType, entry: DatastoreEntry | string, watcher: string, callback: ValueChangeCallback): void {
         entry = this.get_entry(entry_type, entry)
         entry.watch(watcher, callback)
         if (!this.watcher2entry.hasOwnProperty(watcher)) {
@@ -320,7 +325,7 @@ export class Datastore {
      * @param entry_type The type of the entry to add
      * @param def The server definition of the entry
      */
-    add_from_server_def(entry_type: DatastoreEntryType, def: DatastoreEntryServerDefinition): void {
+    add_from_server_def(entry_type: DatastoreEntryType, def: API.WatchableEntryServerDefinition): void {
         this.add(DatastoreEntry.from_server_def(entry_type, def))
     }
 
@@ -337,9 +342,9 @@ export class Datastore {
      * Return the server id of an entry from its display path
      * @param entry_type The type of the entry
      * @param display_path  The display path used for tree storage
-     * @returns The server ID 
+     * @returns The server ID
      */
-    get_server_id(entry_type: DatastoreEntryType, display_path:string) : string {
+    get_server_id(entry_type: DatastoreEntryType, display_path: string): string {
         return this.trees[entry_type].get_obj(display_path).server_id
     }
 
@@ -348,7 +353,7 @@ export class Datastore {
      * @param server_id The server ID of the entry
      * @returns the datastore entry
      */
-    get_entry_from_server_id(server_id:string) : DatastoreEntry {
+    get_entry_from_server_id(server_id: string): DatastoreEntry {
         if (!this.serverid2entry.hasOwnProperty(server_id)) {
             throw "No entry with server ID " + server_id + " in datastore"
         }
@@ -360,27 +365,37 @@ export class Datastore {
      * @param entry_type The type of the entries
      * @returns Array of entries
      */
-    get_entries(entry_type: DatastoreEntryType) : DatastoreEntry[] {
+    get_entries(entry_type: DatastoreEntryType): DatastoreEntry[] {
         return this.trees[entry_type].get_all_obj()
     }
 
     /**
-     * Write the value of the given entry in the datastore
+     * Write the value of the given entry in the datastore identified by its tree path
      * @param entry_type  The type of the entries
-     * @param entry_path The display path used for tree storage. 
-     * @param val Value to set  
+     * @param entry_path The display path used for tree storage.
+     * @param val Value to set
      */
-    set_value(entry_type: DatastoreEntryType, entry_path:string, val:number) : void {
+    set_value(entry_type: DatastoreEntryType, entry_path: string, val: number): void {
         this.get_entry(entry_type, entry_path).set_value(val)
+    }
+
+    /**
+     * Write the value of the given entry in the datastore identified by its server od
+     * @param server_id The server ID of the entry
+     * @param val Value to set
+     */
+    set_value_from_server_id(server_id: string, val: number): void {
+        const entry = this.get_entry_from_server_id(server_id)
+        this.get_entry(entry.entry_type, entry).set_value(val)
     }
 
     /**
      * REads the value of the given entry in the datastore
      * @param entry_type  The type of the entries
-     * @param entry_path The display path used for tree storage. 
+     * @param entry_path The display path used for tree storage.
      * @returns  The actual value of the entrye
      */
-    get_value(entry_type: DatastoreEntryType, entry_path:string) : number {
+    get_value(entry_type: DatastoreEntryType, entry_path: string): number {
         return this.get_entry(entry_type, entry_path).get_value()
     }
 
@@ -389,7 +404,7 @@ export class Datastore {
      * @param entry_type The type of the entries
      * @returns The number of entries
      */
-    get_count(entry_type?:DatastoreEntryType) : number | Record<DatastoreEntryType, number> {
+    get_count(entry_type?: DatastoreEntryType): number | Record<DatastoreEntryType, number> {
         if (typeof entry_type == "undefined") {
             let obj_out = {} as Record<DatastoreEntryType, number>
             for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
@@ -406,7 +421,7 @@ export class Datastore {
      * Will launch a scrutiny.datastore.read event
      * @param entry_type The type of the entries
      */
-    set_ready(entry_type: DatastoreEntryType) : void {
+    set_ready(entry_type: DatastoreEntryType): void {
         if (this.ready[entry_type] == false) {
             this.app.trigger_event("scrutiny.datastore.ready", { entry_type: entry_type })
         }
@@ -418,17 +433,17 @@ export class Datastore {
      * @param entry_type The type of the entries
      * @returns true if the entry type has been flagged ready
      */
-    is_ready(entry_type: DatastoreEntryType) : boolean {
+    is_ready(entry_type: DatastoreEntryType): boolean {
         return this.ready[entry_type]
     }
 
     /**
-     * Returns the children under a path of a given type. 
+     * Returns the children under a path of a given type.
      * @param entry_type The type of the entries
-     * @param path The display path used for tree storage. 
+     * @param path The display path used for tree storage.
      * @returns The information about what is stored at the given level
      */
-    get_children(entry_type: DatastoreEntryType, path:string) :  DatastorePathChildren {
+    get_children(entry_type: DatastoreEntryType, path: string): DatastorePathChildren {
         let children = {
             entries: {},
             subfolders: [],

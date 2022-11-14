@@ -61,24 +61,17 @@ export class UI {
         let menubar_height = $("#menubar").outerHeight()
         let statusbar_height = $("#statusbar").outerHeight()
         let sidemenu_width = sidemenu.outerWidth()
-        let sidemenu_height =
-            $(window).height() - menubar_height - statusbar_height
+        let sidemenu_height = $(window).height() - menubar_height - statusbar_height
 
-        let golden_layout_width =
-            $(window).width() - sidemenu_width - golden_layout_margin
+        let golden_layout_width = $(window).width() - sidemenu_width - golden_layout_margin
         $("#sidemenu").outerHeight(sidemenu_height)
         $("#sidemenu").css("top", menubar_height)
         $("#menubar_corner_filler").outerWidth(sidemenu_width)
-        this.container.outerWidth(
-            golden_layout_width - 2 * golden_layout_margin
-        )
+        this.container.outerWidth(golden_layout_width - 2 * golden_layout_margin)
         this.container.outerHeight(sidemenu_height - 2 * golden_layout_margin)
         this.container.css("top", menubar_height + golden_layout_margin)
         this.container.css("left", sidemenu_width + golden_layout_margin)
-        this.widget_layout.updateSize(
-            this.container.width(),
-            this.container.height()
-        )
+        this.widget_layout.updateSize(this.container.width(), this.container.height())
     }
 
     show_modal(title, content) {
@@ -122,8 +115,7 @@ export class UI {
             } catch (err) {}
 
             try {
-                let timestamp =
-                    this.loaded_sfd["metadata"]["generation_info"]["time"]
+                let timestamp = this.loaded_sfd["metadata"]["generation_info"]["time"]
                 let date = new Date(timestamp * 1000) // timestamp in millisec
 
                 let year = String(date.getFullYear())
@@ -137,33 +129,19 @@ export class UI {
             } catch (err) {}
 
             try {
-                let python_version =
-                    this.loaded_sfd["metadata"]["generation_info"][
-                        "python_version"
-                    ]
-                let scrutiny_version =
-                    this.loaded_sfd["metadata"]["generation_info"][
-                        "scrutiny_version"
-                    ]
-                let system_type =
-                    this.loaded_sfd["metadata"]["generation_info"][
-                        "system_type"
-                    ]
+                let python_version = this.loaded_sfd["metadata"]["generation_info"]["python_version"]
+                let scrutiny_version = this.loaded_sfd["metadata"]["generation_info"]["scrutiny_version"]
+                let system_type = this.loaded_sfd["metadata"]["generation_info"]["system_type"]
                 generated_with = `Scrutiny V${scrutiny_version} & Python V${python_version} on ${system_type}`
             } catch (err) {}
 
-            this.show_modal(
-                "Firmware details",
-                $("#template-firmware-details-table").html()
-            )
+            this.show_modal("Firmware details", $("#template-firmware-details-table").html())
             $("#modal-content td[label-name='project-name']").text(project_name)
             $("#modal-content td[label-name='version']").text(version)
             $("#modal-content td[label-name='author']").text(author)
             $("#modal-content td[label-name='firmware_id']").text(firmware_id)
             $("#modal-content td[label-name='generated-on']").text(generated_on)
-            $("#modal-content td[label-name='generated-with']").text(
-                generated_with
-            )
+            $("#modal-content td[label-name='generated-with']").text(generated_with)
         }
     }
 
@@ -195,13 +173,11 @@ export class UI {
             } catch (err) {}
 
             try {
-                max_tx_data_size =
-                    this.device_info["max_tx_data_size"] + " bytes"
+                max_tx_data_size = this.device_info["max_tx_data_size"] + " bytes"
             } catch (err) {}
 
             try {
-                max_rx_data_size =
-                    this.device_info["max_rx_data_size"] + " bytes"
+                max_rx_data_size = this.device_info["max_rx_data_size"] + " bytes"
             } catch (err) {}
 
             try {
@@ -213,13 +189,11 @@ export class UI {
             } catch (err) {}
 
             try {
-                heartbeat_timeout_us =
-                    this.device_info["heartbeat_timeout_us"] + " us"
+                heartbeat_timeout_us = this.device_info["heartbeat_timeout_us"] + " us"
             } catch (err) {}
 
             try {
-                address_size_bits =
-                    this.device_info["address_size_bits"] + " bits"
+                address_size_bits = this.device_info["address_size_bits"] + " bits"
             } catch (err) {}
 
             try {
@@ -231,37 +205,17 @@ export class UI {
             try {
                 supported_feature_map_content = $("<ul></ul>")
                 supported_feature_map_content.append(
-                    $(
-                        "<li>Memory Write : " +
-                            (this.device_info["supported_feature_map"][
-                                "memory_write"
-                            ]
-                                ? "Yes"
-                                : "No") +
-                            " </li>"
-                    )
+                    $("<li>Memory Write : " + (this.device_info["supported_feature_map"]["memory_write"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.append(
                     $(
                         "<li>Datalog acquisition: " +
-                            (this.device_info["supported_feature_map"][
-                                "datalog_acquire"
-                            ]
-                                ? "Yes"
-                                : "No") +
+                            (this.device_info["supported_feature_map"]["datalog_acquire"] ? "Yes" : "No") +
                             " </li>"
                     )
                 )
                 supported_feature_map_content.append(
-                    $(
-                        "<li>User command: " +
-                            (this.device_info["supported_feature_map"][
-                                "user_command"
-                            ]
-                                ? "Yes"
-                                : "No") +
-                            " </li>"
-                    )
+                    $("<li>User command: " + (this.device_info["supported_feature_map"]["user_command"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.addClass("list-no-margin")
             } catch (err) {
@@ -269,38 +223,20 @@ export class UI {
             }
 
             try {
-                let address_size_bytes = Math.round(
-                    this.device_info["address_size_bits"] / 8
-                )
+                let address_size_bytes = Math.round(this.device_info["address_size_bits"] / 8)
                 if (this.device_info["readonly_memory_regions"].length == 0) {
                     readonly_memory_regions_content = "None"
                 } else {
                     readonly_memory_regions_content = $("<ul></ul>")
-                    for (
-                        let i = 0;
-                        i < this.device_info["readonly_memory_regions"].length;
-                        i++
-                    ) {
-                        let start =
-                            this.device_info["readonly_memory_regions"][i][
-                                "start"
-                            ]
-                        let end =
-                            this.device_info["readonly_memory_regions"][i][
-                                "end"
-                            ]
+                    for (let i = 0; i < this.device_info["readonly_memory_regions"].length; i++) {
+                        let start = this.device_info["readonly_memory_regions"][i]["start"]
+                        let end = this.device_info["readonly_memory_regions"][i]["end"]
                         let display_str =
                             "0x" +
-                            padLeft(
-                                start.toString(16),
-                                "0",
-                                address_size_bytes
-                            ) +
+                            padLeft(start.toString(16), "0", address_size_bytes) +
                             " - 0x" +
                             padLeft(end.toString(16), "0", address_size_bytes)
-                        readonly_memory_regions_content.append(
-                            $("<li>" + display_str + "</li>")
-                        )
+                        readonly_memory_regions_content.append($("<li>" + display_str + "</li>"))
                     }
                     readonly_memory_regions_content.addClass("list-no-margin")
                 }
@@ -309,38 +245,20 @@ export class UI {
             }
 
             try {
-                let address_size_bytes = Math.round(
-                    this.device_info["address_size_bits"] / 8
-                )
+                let address_size_bytes = Math.round(this.device_info["address_size_bits"] / 8)
                 if (this.device_info["forbidden_memory_regions"].length == 0) {
                     forbidden_memory_regions_content = "None"
                 } else {
                     forbidden_memory_regions_content = $("<ul></ul>")
-                    for (
-                        let i = 0;
-                        i < this.device_info["forbidden_memory_regions"].length;
-                        i++
-                    ) {
-                        let start =
-                            this.device_info["forbidden_memory_regions"][i][
-                                "start"
-                            ]
-                        let end =
-                            this.device_info["forbidden_memory_regions"][i][
-                                "end"
-                            ]
+                    for (let i = 0; i < this.device_info["forbidden_memory_regions"].length; i++) {
+                        let start = this.device_info["forbidden_memory_regions"][i]["start"]
+                        let end = this.device_info["forbidden_memory_regions"][i]["end"]
                         let display_str =
                             "0x" +
-                            padLeft(
-                                start.toString(16),
-                                "0",
-                                address_size_bytes
-                            ) +
+                            padLeft(start.toString(16), "0", address_size_bytes) +
                             " - 0x" +
                             padLeft(end.toString(16), "0", address_size_bytes)
-                        forbidden_memory_regions_content.append(
-                            $("<li>" + display_str + "</li>")
-                        )
+                        forbidden_memory_regions_content.append($("<li>" + display_str + "</li>"))
                     }
                     forbidden_memory_regions_content.addClass("list-no-margin")
                 }
@@ -348,41 +266,20 @@ export class UI {
                 forbidden_memory_regions_content = "-"
             }
 
-            this.show_modal(
-                "Device Information",
-                $("#template-device-info-table").html()
-            )
+            this.show_modal("Device Information", $("#template-device-info-table").html())
             $("#modal-content [label-name='device_id']").text(device_id)
             $("#modal-content [label-name='display_name']").text(display_name)
-            $("#modal-content [label-name='max_tx_data_size']").text(
-                max_tx_data_size
-            )
-            $("#modal-content [label-name='max_rx_data_size']").text(
-                max_rx_data_size
-            )
-            $("#modal-content [label-name='max_bitrate_bps']").text(
-                max_bitrate_bps
-            )
+            $("#modal-content [label-name='max_tx_data_size']").text(max_tx_data_size)
+            $("#modal-content [label-name='max_rx_data_size']").text(max_rx_data_size)
+            $("#modal-content [label-name='max_bitrate_bps']").text(max_bitrate_bps)
             $("#modal-content [label-name='rx_timeout_us']").text(rx_timeout_us)
-            $("#modal-content [label-name='heartbeat_timeout_us']").text(
-                heartbeat_timeout_us
-            )
-            $("#modal-content [label-name='address_size_bits']").text(
-                address_size_bits
-            )
-            $("#modal-content [label-name='protocol_version']").text(
-                protocol_version
-            )
+            $("#modal-content [label-name='heartbeat_timeout_us']").text(heartbeat_timeout_us)
+            $("#modal-content [label-name='address_size_bits']").text(address_size_bits)
+            $("#modal-content [label-name='protocol_version']").text(protocol_version)
 
-            $("#modal-content td[label-name='supported_feature_map']").html(
-                supported_feature_map_content
-            )
-            $("#modal-content td[label-name='readonly_memory_regions']").html(
-                readonly_memory_regions_content
-            )
-            $("#modal-content td[label-name='forbidden_memory_regions']").html(
-                forbidden_memory_regions_content
-            )
+            $("#modal-content td[label-name='supported_feature_map']").html(supported_feature_map_content)
+            $("#modal-content td[label-name='readonly_memory_regions']").html(readonly_memory_regions_content)
+            $("#modal-content td[label-name='forbidden_memory_regions']").html(forbidden_memory_regions_content)
 
             $("#modal-content [show-tooltip]").on("mouseover", function (e) {
                 let tooltip = $($(this).attr("show-tooltip"))
@@ -399,19 +296,12 @@ export class UI {
     register_widget(widget_class, app) {
         widget_class.instance_id = 0
         // Add component to GoldenLayout
-        this.widget_layout.registerComponent(
-            widget_class.name(),
-            function (container, state) {
-                widget_class.instance_id++
-                let widget = new widget_class(
-                    container.getElement(),
-                    app,
-                    widget_class.instance_id
-                )
-                widget.initialize()
-                return widget
-            }
-        )
+        this.widget_layout.registerComponent(widget_class.widget_name(), function (container, state) {
+            widget_class.instance_id++
+            let widget = new widget_class(container.getElement(), app, widget_class.instance_id)
+            widget.initialize()
+            return widget
+        })
 
         // Add menu item for drag and drop
         let div = $("<div></div>")
@@ -435,7 +325,7 @@ export class UI {
         let newItemConfig = {
             title: widget_class.display_name(),
             type: "component",
-            componentName: widget_class.name(),
+            componentName: widget_class.widget_name(),
             componentState: {},
         }
 
@@ -445,28 +335,16 @@ export class UI {
     set_server_status(status) {
         if (status == ServerStatus.Disconnected) {
             $("#server_status_label").text("Disconnected")
-            $("#server_status .indicator").attr(
-                "src",
-                this.indicator_lights["red"]
-            )
+            $("#server_status .indicator").attr("src", this.indicator_lights["red"])
         } else if (status == ServerStatus.Connecting) {
             $("#server_status_label").text("Connecting")
-            $("#server_status .indicator").attr(
-                "src",
-                this.indicator_lights["yellow"]
-            )
+            $("#server_status .indicator").attr("src", this.indicator_lights["yellow"])
         } else if (status == ServerStatus.Connected) {
             $("#server_status_label").text("Connected")
-            $("#server_status .indicator").attr(
-                "src",
-                this.indicator_lights["green"]
-            )
+            $("#server_status .indicator").attr("src", this.indicator_lights["green"])
         } else {
             $("#server_status_label").text("Unknown")
-            $("#server_status .indicator").attr(
-                "src",
-                this.indicator_lights["grey"]
-            )
+            $("#server_status .indicator").attr("src", this.indicator_lights["grey"])
         }
     }
 

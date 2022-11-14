@@ -1,5 +1,7 @@
+import $ from "jquery"
+import { BaseWidget } from "../../base_widget.ts"
 
-export class WatchWidget {
+export class WatchWidget extends BaseWidget {
     
     /* TODO :
         - Stop watching when tab is not visible to free bandwidth on device link which may be slow and increase refresh rate of other vars    
@@ -13,6 +15,7 @@ export class WatchWidget {
      */
 
     constructor(container, app, instance_id) {
+        super()
         this.container = container
         this.app = app
         this.instance_id = instance_id
@@ -76,12 +79,12 @@ export class WatchWidget {
         })
     }
 
-    get_widget_name(){
+    get_instance_name(){
         return "WatchWidget" + this.instance_id
     }
 
     get_line_id(instance){
-        return this.get_widget_name()+'_line_' + instance
+        return this.get_instance_name()+'_line_' + instance
     }
 
     add_var(entry_type, display_path){
@@ -130,7 +133,7 @@ export class WatchWidget {
         line.remove()
     }
 
-    static name() {
+    static widget_name() {
         return 'watch';
     }
     static display_name() {

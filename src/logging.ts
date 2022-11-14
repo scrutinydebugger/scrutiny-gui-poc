@@ -13,7 +13,7 @@ var default_formatter: Formatter = function (level, logger_name, message) {
 /**
  * A Python-like logger class that can allow to cherry pick what is displayed on the console.
  */
-class Logger {
+export class Logger {
     name: string
     enabled: boolean
     formatter: Formatter
@@ -66,29 +66,27 @@ class Logger {
     }
 }
 
-export default class LoggingModule {
-    /**
-     * Returns the Logger object identified by the given name. Creates one if it does not already exists
-     * @param name logger name
-     * @returns the Logger with the given name
-     */
-    static getLogger(name) {
-        if (!loggers.hasOwnProperty(name)) {
-            loggers[name] = new Logger(name)
-        }
-
-        return loggers[name]
+/**
+ * Returns the Logger object identified by the given name. Creates one if it does not already exists
+ * @param name logger name
+ * @returns the Logger with the given name
+ */
+export function getLogger(name) {
+    if (!loggers.hasOwnProperty(name)) {
+        loggers[name] = new Logger(name)
     }
 
-    /**
-     * Sets the formatter to all existing loggers and subsequently created logger objects
-     * @param formatter Formatter to use
-     */
-    set_formatter(formatter: Formatter): void {
-        default_formatter = formatter
-        let logger_names = Object.keys(loggers)
-        for (let i = 0; i < logger_names.length; i++) {
-            loggers[logger_names[i]].set_formatter(formatter)
-        }
+    return loggers[name]
+}
+
+/**
+ * Sets the formatter to all existing loggers and subsequently created logger objects
+ * @param formatter Formatter to use
+ */
+export function set_formatter(formatter: Formatter): void {
+    default_formatter = formatter
+    let logger_names = Object.keys(loggers)
+    for (let i = 0; i < logger_names.length; i++) {
+        loggers[logger_names[i]].set_formatter(formatter)
     }
 }

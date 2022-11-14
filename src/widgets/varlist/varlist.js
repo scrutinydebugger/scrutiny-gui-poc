@@ -1,11 +1,15 @@
 import {
     DatastoreEntryType,
     AllDatastoreEntryTypes,
-} from "../../global_definitions.ts"
+} from "../../datastore.ts"
+
+import { BaseWidget } from "../../base_widget.ts"
+
 import $ from "jquery"
 
-export class VarListWidget {
+export class VarListWidget extends BaseWidget {
     constructor(container, app, instance_id) {
+        super()
         this.container = container
         this.app = app
         this.instance_id = instance_id
@@ -166,7 +170,7 @@ export class VarListWidget {
         this.get_tree_container().html("")
     }
 
-    static name() {
+    static widget_name() {
         return "varlist"
     }
     static display_name() {
