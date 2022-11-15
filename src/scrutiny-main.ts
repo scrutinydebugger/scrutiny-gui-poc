@@ -1,5 +1,11 @@
-// @ts-check
-;("use strict")
+//    scrutiny-main.ts
+//        Entry point for the web project. Initialize the Scrutiny app and binds it to the
+//        window.
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { App, AppConfig } from "./app"
 import { get_url_param } from "./tools"

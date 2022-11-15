@@ -1,0 +1,82 @@
+{
+    "folders": [
+        "src",
+        "tests",
+        "webapp_release"
+    ],
+    "include_patterns": [
+        "*.js",
+        "*.ts"
+    ],
+    "exclude_patterns": [
+        "node_modules/*",
+        "libs/*"
+    ],
+    "license": "MIT - See LICENSE file",
+    "project": "Scrutiny Debugger",
+    "repo": "github.com/scrutinydebugger/scrutiny-gui-webapp",
+    "copyright_owner": "Scrutiny Debugger",
+    "copyright_start_date": "2021",
+    "files": {
+        "src/ui.js": {
+            "docstring": "User interface module that can take the application data and assign it to the correct DOM element."
+        },
+        "src/app.ts": {
+            "docstring": "The main Scrutiny application"
+        },
+        "src/base_widget.ts": {
+            "docstring": "An interface for all widget classes"
+        },
+        "src/datastore.ts": {
+            "docstring": "A datastore for all watchable items that the server broadcast. Keeps the value and notify subscribers (widget windows) on value change"
+        },
+        "src/global_definitions.ts": {
+            "docstring": "Some definitions used project wide"
+        },
+        "src/logging.ts": {
+            "docstring": "A python like logging module that allows fine-grain control over logging"
+        },
+        "src/scrutiny-main.ts": {
+            "docstring": "Entry point for the web project. Initialize the Scrutiny app and binds it to the window."
+        },
+        "src/server_api.ts": {
+            "docstring": "Definitions of the server websocket API"
+        },
+        "src/server_connection.ts": {
+            "docstring": "Handles the communication with the server"
+        },
+        "src/tools.ts": {
+            "docstring": "Some tools used project wide"
+        },
+        "src/tree.ts": {
+            "docstring": "A Tree structure that can store object associated with a path in the /aaa/bbb/ccc format.\nAllow log complexity when searching"
+        },
+        "src/components/scrutiny-resizable-table/scrutiny-resizable-table.ts": {
+            "docstring": "A JQuery plugin that can be added on a Table element to make the columns resizables"
+        },
+        "src/components/scrutiny-treetable/scrutiny-treetable.ts": {
+            "docstring": "A JQuery plugin that allows making a table act as a tree.\nCustom made tree-table widget because all the one out there were either behind a paid license or buggy and/or deprecated and/or not tailored to our need."
+        },
+        "src/widgets/varlist/varlist.js": {
+            "docstring": "Variable List widget. Its job is to show all the Watchable items available in the server"
+        },
+        "src/widgets/watch/watch.js": {
+            "docstring": "Watch window widget. Its job is to display the value of watchables items.  Items can be dragged from other watch widget or from VarList widget"
+        },
+        "tests/fake_app.js": {
+            "docstring": "Stubbed Application class for unit testing"
+        },
+        "tests/testing_tools.js": {
+            "docstring": "Some global tools for testing framework"
+        },
+        "tests/test_datastore.js": {
+            "docstring": "Unit tests for the Datastore class"
+        },
+        "tests/test_fake_app.js": {
+            "docstring": "Unit tests for the FakeApp class that stubs the application"
+        },
+        "tests/test_tree.js": {
+            "docstring": "Unit tests for the Tree storage class"
+        }
+    }
+}

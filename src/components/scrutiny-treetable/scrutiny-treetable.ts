@@ -1,11 +1,12 @@
-
-// @ts-check
-"use strict";
-
-
-// Scrutiny Tree Table plugin.
-// Custom made tree-table widget because all the one out there were either behind a paid license
-// or buggy and/or deprecated and/or not tailored to our need.
+//    scrutiny-treetable.ts
+//        A JQuery plugin that allows making a table act as a tree.
+//        Custom made tree-table widget because all the one out there were either behind a
+//        paid license or buggy and/or deprecated and/or not tailored to our need.
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import * as $ from "jquery"
 
@@ -14,27 +15,21 @@ export interface LoadFunctionInterface {
 }
 
 export interface TransferFunctionMetadataInterface {
-    original_id: string,
-    original_parent_id: string | null,
-    user_data: any,
+    original_id: string
+    original_parent_id: string | null
+    user_data: any
 }
 
 export interface TransferFunctionInterface {
-    (source_table: JQueryTable, bare_line: JQueryRow, meta:TransferFunctionMetadataInterface): JQueryRow
+    (source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadataInterface): JQueryRow
 }
 
 export interface TransferAllowedFunctionInterface {
-    (
-        source_table: JQueryTable, 
-        dest_table:JQueryTable, 
-        tr: JQuery,
-        new_parent_id : string|null,
-        after_node_id : string | null
-        ): boolean
+    (source_table: JQueryTable, dest_table: JQueryTable, tr: JQuery, new_parent_id: string | null, after_node_id: string | null): boolean
 }
 
 interface DragData {
-    source_table_id:string,
+    source_table_id: string
     dragged_row_id: string
 }
 
@@ -42,11 +37,11 @@ type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
 
-interface JQueryResizableTable extends JQueryTable{
-    scrutiny_resizable_table?:any
+interface JQueryResizableTable extends JQueryTable {
+    scrutiny_resizable_table?: any
 }
 
-var gbl_drag_data:DragData|null = null;
+var gbl_drag_data: DragData | null = null
 
 const ATTR_ID = "stt-id" // The row ID
 const ATTR_PARENT = "stt-parent-id" // The parent row ID
@@ -102,7 +97,7 @@ const DEFAULT_OPTIONS = {
         throw "No loader defined"
     } as LoadFunctionInterface,
     transfer_fn: null as TransferFunctionInterface, // A function called to convert a row when a row is moved from one table to another table.
-    allow_transfer_fn:null as TransferAllowedFunctionInterface
+    allow_transfer_fn: null as TransferAllowedFunctionInterface,
 }
 
 export type PluginOptions = Partial<typeof DEFAULT_OPTIONS>
@@ -132,7 +127,7 @@ function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): voi
  * @returns The row children
  */
 function get_children($table: JQueryTable, node: string | JQuery): JQueryRow {
-     let tr = _get_row_from_node_or_row($table, node)
+    let tr = _get_row_from_node_or_row($table, node)
     return _get_children($table, tr)
 }
 
@@ -161,9 +156,9 @@ function get_children_count($table: JQueryTable, node: string | JQueryRow): numb
 }
 
 /**
- * 
+ *
  * @param $table The JQuery table
- * @param node 
+ * @param node
  */
 function delete_node($table: JQueryTable, node: string | JQueryRow): void {
     // Delete a row and all its descendants from the table
@@ -196,7 +191,7 @@ function collapse_all($table: JQueryTable, node: string | JQueryRow): void {
     _collapse_all($table, tr)
 }
 
-function is_root($table: JQueryTable, node: string | JQuery) : boolean {
+function is_root($table: JQueryTable, node: string | JQuery): boolean {
     // Returns a boolean indicating if the node is a root node
     let tr = _get_row_from_node_or_row($table, node)
     return _is_root(tr)
@@ -243,7 +238,13 @@ function move_node($table: JQueryTable, row_id: string, new_parent_id?: string |
  * @param after_node_id The row after which the transferred row will be inserted. If not set or null,
  * the transfered row will be set in last position
  */
-function transfer_node($table: JQueryTable, dest_table: JQueryTable | string, row_id: string, new_parent_id: string, after_node_id: string) {
+function transfer_node(
+    $table: JQueryTable,
+    dest_table: JQueryTable | string,
+    row_id: string,
+    new_parent_id: string,
+    after_node_id: string
+) {
     if (typeof dest_table == "string") {
         dest_table = $(`${dest_table}`) as JQueryTable
     }
@@ -349,7 +350,7 @@ function _is_descendant($table: JQueryTable, child_candidate_tr: JQueryRow, pare
     return false
 }
 
-function _find_row($table: JQueryTable, node_id: string) : JQueryRow {
+function _find_row($table: JQueryTable, node_id: string): JQueryRow {
     let node_cache = $table.data(DATAKEY_NODE_CACHE)
     if (node_cache.hasOwnProperty(node_id)) {
         return node_cache[node_id]
@@ -372,12 +373,12 @@ function _get_row_from_node_or_row($table: JQueryTable, arg: JQuery | string) {
     return tr
 }
 
-function _get_children($table: JQueryTable, tr: JQueryRow) : JQueryRow {
+function _get_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
     let parent_id = _get_node_id(tr)
     return $table.find(`tr[${ATTR_PARENT}="${parent_id}"]`) as JQueryRow
 }
 
-function _get_parent($table: JQueryTable, tr: JQueryRow) : JQueryRow | null {
+function _get_parent($table: JQueryTable, tr: JQueryRow): JQueryRow | null {
     const parent_id = _get_parent_id(tr)
     if (parent_id == null) {
         return null
@@ -386,7 +387,7 @@ function _get_parent($table: JQueryTable, tr: JQueryRow) : JQueryRow | null {
     return _find_row($table, parent_id)
 }
 
-function _get_parent_id(tr: JQueryRow) : string | null{
+function _get_parent_id(tr: JQueryRow): string | null {
     if (_is_root(tr)) {
         return null
     }
@@ -398,11 +399,11 @@ function _get_parent_id(tr: JQueryRow) : string | null{
     return parent_id
 }
 
-function _is_root(tr: JQueryRow) : boolean {
+function _is_root(tr: JQueryRow): boolean {
     return _get_nesting_level(tr) == 0
 }
 
-function _is_children_loaded(tr: JQueryRow) : boolean{
+function _is_children_loaded(tr: JQueryRow): boolean {
     let loaded = tr.attr(ATTR_CHILDREN_LOADED)
     if (loaded === "1") {
         return true
@@ -410,7 +411,7 @@ function _is_children_loaded(tr: JQueryRow) : boolean{
     return false
 }
 
-function _is_expanded($table: JQueryTable, tr: JQueryRow) : boolean {
+function _is_expanded($table: JQueryTable, tr: JQueryRow): boolean {
     try {
         return _get_row_header_block($table, tr).find(`.${CLASS_EXPANDER}`).hasClass(`${CLASS_EXPANDER_OPENED}`)
     } catch (err) {
@@ -418,7 +419,7 @@ function _is_expanded($table: JQueryTable, tr: JQueryRow) : boolean {
     }
 }
 
-function _get_children_count(tr: JQueryRow) : number{
+function _get_children_count(tr: JQueryRow): number {
     try {
         let count = parseInt(tr.attr(ATTR_CHILDREN_COUNT))
         if (isNaN(count)) {
@@ -430,7 +431,7 @@ function _get_children_count(tr: JQueryRow) : number{
     }
 }
 
-function _get_tree_cell($table: JQueryTable, tr: JQueryRow) :JQueryCell {
+function _get_tree_cell($table: JQueryTable, tr: JQueryRow): JQueryCell {
     let tree_col_index = _get_options($table).col_index
     let tree_cell = (tr.find(`td:nth-child(${tree_col_index})`) as JQueryCell).first() // First cell, the one with the tree behavior
     if (tree_cell.length == 0) {
@@ -439,7 +440,7 @@ function _get_tree_cell($table: JQueryTable, tr: JQueryRow) :JQueryCell {
     return tree_cell
 }
 
-function _get_row_header_block($table: JQueryTable, tr: JQueryRow) : JQuery{
+function _get_row_header_block($table: JQueryTable, tr: JQueryRow): JQuery {
     let tree_cell = _get_tree_cell($table, tr)
     let header_block = tree_cell.find(`.${CLASS_HEADER}`).first()
     if (header_block.length == 0) {
@@ -448,34 +449,34 @@ function _get_row_header_block($table: JQueryTable, tr: JQueryRow) : JQuery{
     return header_block
 }
 
-function _is_visible(tr: JQueryRow) : boolean {
+function _is_visible(tr: JQueryRow): boolean {
     return tr.is(":visible")
 }
 
-function _get_nesting_level(tr: JQueryRow) : number {
+function _get_nesting_level(tr: JQueryRow): number {
     return parseInt(tr.attr(ATTR_LEVEL))
 }
 
-function _close_expander($table: JQueryTable, tr: JQueryRow) : void {
+function _close_expander($table: JQueryTable, tr: JQueryRow): void {
     _get_row_header_block($table, tr)
         .find(`.${CLASS_EXPANDER}`)
         .removeClass(`${CLASS_EXPANDER_OPENED}`)
         .addClass(`${CLASS_EXPANDER_CLOSED}`)
 }
 
-function _open_expander($table: JQueryTable, tr: JQueryRow) : void {
+function _open_expander($table: JQueryTable, tr: JQueryRow): void {
     _get_row_header_block($table, tr)
         .find(`.${CLASS_EXPANDER}`)
         .removeClass(`${CLASS_EXPANDER_CLOSED}`)
         .addClass(`${CLASS_EXPANDER_OPENED}`)
 }
 
-function _get_options($table: JQuery) : PluginOptions{
+function _get_options($table: JQuery): PluginOptions {
     return $table.data(DATAKEY_OPTIONS) as PluginOptions
 }
 
 // Main modifier functions
-function _load_children($table: JQueryTable, tr: JQueryRow) : JQueryRow {
+function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
     if (_is_children_loaded(tr)) {
         return _get_children($table, tr)
     }
@@ -515,7 +516,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow) : JQueryRow {
     return $(children_output)
 }
 
-function _load_descendant($table: JQueryTable, tr: JQueryRow) : void {
+function _load_descendant($table: JQueryTable, tr: JQueryRow): void {
     _load_children($table, tr)
     _get_children($table, tr).each(function () {
         _load_descendant($table, $(this) as JQueryRow)
@@ -526,25 +527,25 @@ function _get_root_nodes($table: JQueryTable): JQueryRow {
     return $table.find(`tr[${ATTR_LEVEL}="0"]`) as JQueryRow
 }
 
-function _load_all($table: JQueryTable) : void {
+function _load_all($table: JQueryTable): void {
     _get_root_nodes($table).each(function () {
         _load_descendant($table, $(this) as JQueryRow)
     })
 }
 
-function _is_children_allowed(tr: JQueryRow) : boolean{
+function _is_children_allowed(tr: JQueryRow): boolean {
     return !tr.hasClass(CLASS_NO_CHILDREN)
 }
 
-function _disallow_children(tr: JQueryRow) : void{
+function _disallow_children(tr: JQueryRow): void {
     tr.addClass(CLASS_NO_CHILDREN)
 }
 
-function _allow_children(tr: JQueryRow) : void {
+function _allow_children(tr: JQueryRow): void {
     tr.removeClass(CLASS_NO_CHILDREN)
 }
 
-function _make_expandable($table: JQueryTable, tr: JQueryRow) : void {
+function _make_expandable($table: JQueryTable, tr: JQueryRow): void {
     const header_block = _get_row_header_block($table, tr)
     if (header_block.find(`.${CLASS_EXPANDER}`).length == 0) {
         const expander = $table.data(DATAKEY_EXPANDER_CLOSED).clone()
@@ -555,7 +556,7 @@ function _make_expandable($table: JQueryTable, tr: JQueryRow) : void {
     }
 }
 
-function _make_non_expandable($table: JQueryTable, tr: JQueryRow) : void {
+function _make_non_expandable($table: JQueryTable, tr: JQueryRow): void {
     const header_block = _get_row_header_block($table, tr)
     const expander = header_block.find(`.${CLASS_EXPANDER}`)
     if (expander.length > 0) {
@@ -563,7 +564,7 @@ function _make_non_expandable($table: JQueryTable, tr: JQueryRow) : void {
     }
 }
 
-function _show_children_of_expanded_recursive($table: JQueryTable, tr: JQueryRow) : void {
+function _show_children_of_expanded_recursive($table: JQueryTable, tr: JQueryRow): void {
     _get_children($table, tr).each(function () {
         const child = $(this) as JQueryRow
         child.show()
@@ -573,7 +574,7 @@ function _show_children_of_expanded_recursive($table: JQueryTable, tr: JQueryRow
     })
 }
 
-function _expand_row($table: JQueryTable, tr: JQueryRow) : void {
+function _expand_row($table: JQueryTable, tr: JQueryRow): void {
     const children = _load_children($table, tr)
     if (children.length > 0) {
         // Iterate all immediate children
@@ -595,7 +596,7 @@ function _expand_row($table: JQueryTable, tr: JQueryRow) : void {
     }
 }
 
-function _toggle_row($table: JQueryTable, tr: JQueryRow) : void {
+function _toggle_row($table: JQueryTable, tr: JQueryRow): void {
     if (_is_expanded($table, tr)) {
         _collapse_row($table, tr)
     } else {
@@ -603,7 +604,7 @@ function _toggle_row($table: JQueryTable, tr: JQueryRow) : void {
     }
 }
 
-function _hide_children($table: JQueryTable, tr: JQueryRow) : void {
+function _hide_children($table: JQueryTable, tr: JQueryRow): void {
     _get_children($table, tr).each(function () {
         const child = $(this) as JQueryRow
         child.hide()
@@ -611,7 +612,7 @@ function _hide_children($table: JQueryTable, tr: JQueryRow) : void {
     })
 }
 
-function _collapse_row($table: JQueryTable, tr: JQueryRow) : void{
+function _collapse_row($table: JQueryTable, tr: JQueryRow): void {
     _hide_children($table, tr) // Just hide, no collapse to keep state of children
     _close_expander($table, tr)
     tr.trigger(EVENT_COLLAPSED, {
@@ -621,20 +622,20 @@ function _collapse_row($table: JQueryTable, tr: JQueryRow) : void{
     $table.trigger(EVENT_SIZE_CHANGED)
 }
 
-function _expand_all($table: JQueryTable) : void{
+function _expand_all($table: JQueryTable): void {
     _get_root_nodes($table).each(function () {
         _expand_descendent($table, $(this) as JQueryRow)
     })
 }
 
-function _expand_descendent($table: JQueryTable, tr: JQueryRow) : void {
+function _expand_descendent($table: JQueryTable, tr: JQueryRow): void {
     _expand_row($table, tr)
     _get_children($table, tr).each(function () {
         _expand_descendent($table, $(this) as JQueryRow)
     })
 }
 
-function _collapse_all($table: JQueryTable, tr: JQueryRow) : void {
+function _collapse_all($table: JQueryTable, tr: JQueryRow): void {
     if (typeof tr == "undefined") {
         _get_root_nodes($table).each(function () {
             const root_node = $(this) as JQueryRow
@@ -654,7 +655,7 @@ function _collapse_all($table: JQueryTable, tr: JQueryRow) : void {
     }
 }
 
-function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: number) : void {
+function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: number): void {
     let actual_count = parseInt(tr.attr(ATTR_CHILDREN_COUNT))
     if (isNaN(actual_count)) {
         actual_count = 0
@@ -672,7 +673,7 @@ function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: num
     }
 }
 
-function _add_node($table: JQueryTable, parent_id: string | null, node_id: string | null, tr: JQueryRow, no_children?: boolean) : void {
+function _add_node($table: JQueryTable, parent_id: string | null, node_id: string | null, tr: JQueryRow, no_children?: boolean): void {
     if (typeof no_children === "undefined") {
         no_children = false
     }
@@ -766,7 +767,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             const dest_table = $table
             const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
             const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
-            if (dnd_result == null){
+            if (dnd_result == null) {
                 return
             }
             const dest_options = _get_options(dest_table)
@@ -832,11 +833,11 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                 const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
                 const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
                 const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
-                if (dnd_result == null){
+                if (dnd_result == null) {
                     return
                 }
                 try {
-                    let moved_rows : JQueryRow|null = null
+                    let moved_rows: JQueryRow | null = null
                     if (dest_table.is(source_table)) {
                         moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
                     } else {
@@ -877,22 +878,22 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     _set_nesting_level($table, tr, actual_level)
 }
 
-function _stop_drop($table: JQuery) : void {
+function _stop_drop($table: JQuery): void {
     $table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
     $table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
     $table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(`${CLASS_HIGHLIGTED}`)
 }
 
 interface DragNDropResult {
-    new_parent_id: string|null,
-    after_tr_id: string|null,
+    new_parent_id: string | null
+    after_tr_id: string | null
     insert_line_display: {
-        row_id: string|null,
-        insert_type: number|null,
+        row_id: string | null
+        insert_type: number | null
     }
 }
 
-function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number) : DragNDropResult | null{
+function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number): DragNDropResult | null {
     /*
         Returns the correct move action according to where we hover the drag n drop.
         Expects hover_tr to have its children loaded.
@@ -908,13 +909,13 @@ function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover
         return null
     }
 
-    let result:DragNDropResult = {
+    let result: DragNDropResult = {
         new_parent_id: null,
         after_tr_id: null,
         insert_line_display: {
             row_id: null,
             insert_type: null,
-        }
+        },
     }
 
     let hover_tr_id = hover_tr == null ? null : _get_node_id(hover_tr)
@@ -960,7 +961,7 @@ function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover
     return result
 }
 
-function _get_next_same_level(tr: JQueryRow) : JQueryRow | null{
+function _get_next_same_level(tr: JQueryRow): JQueryRow | null {
     let target_nesting = _get_nesting_level(tr)
     let actual_tr = tr
     let next_tr = tr.next()
@@ -982,7 +983,7 @@ function _get_next_same_level(tr: JQueryRow) : JQueryRow | null{
     return null
 }
 
-function _get_prev_same_level(tr: JQueryRow) : JQueryRow | null {
+function _get_prev_same_level(tr: JQueryRow): JQueryRow | null {
     let target_nesting = _get_nesting_level(tr)
     let actual_tr = tr
     let prev_tr = tr.prev()
@@ -1014,7 +1015,7 @@ function _set_nesting_level($table: JQueryTable, tr: JQueryRow, level: number) {
     spacer.css("width", spacer_width)
 }
 
-function _get_row_insert_type(tr: JQueryRow, cursorY: number) : number {
+function _get_row_insert_type(tr: JQueryRow, cursorY: number): number {
     const children_allowed = _is_children_allowed(tr)
     const relativeY = cursorY - tr.offset().top
     if (children_allowed) {
@@ -1036,7 +1037,7 @@ function _get_row_insert_type(tr: JQueryRow, cursorY: number) : number {
     }
 }
 
-function _delete_node($table: JQueryTable, tr: JQueryRow) : void {
+function _delete_node($table: JQueryTable, tr: JQueryRow): void {
     const children = _get_children($table, tr)
     children.each(function () {
         _delete_single_row($table, $(this) as JQueryRow)
@@ -1045,7 +1046,7 @@ function _delete_node($table: JQueryTable, tr: JQueryRow) : void {
     _delete_single_row($table, tr)
 }
 
-function _delete_single_row($table: JQueryTable, tr: JQueryRow) : void {
+function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
     const node_cache = $table.data(DATAKEY_NODE_CACHE)
     const node_id = _get_node_id(tr)
     const parent = _get_parent($table, tr)
@@ -1221,7 +1222,7 @@ function _transfer_row(
     return _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
 }
 
-function _make_bare_node_copy(tr: JQueryRow) : JQueryRow{
+function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
     tr = tr.clone()
     tr.find(`.${CLASS_HEADER}`).remove()
     tr.removeClass(CLASS_DISABLED)
@@ -1240,16 +1241,20 @@ function _make_bare_node_copy(tr: JQueryRow) : JQueryRow{
     return $(tr[0])
 }
 
-function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filter?: string) : JQueryRow
-{   
+function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filter?: string): JQueryRow {
     const result = _select_all_loaded_descendant_recursive($table, tr, filter)
-    if (result == null){
-        throw "Did not get descendant results"  // for static analyzer
+    if (result == null) {
+        throw "Did not get descendant results" // for static analyzer
     }
     return result as JQueryRow
 }
 
-function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, filter?: string, arr?: HTMLTableRowElement[]) : JQueryRow | null {
+function _select_all_loaded_descendant_recursive(
+    $table: JQueryTable,
+    tr: JQueryRow,
+    filter?: string,
+    arr?: HTMLTableRowElement[]
+): JQueryRow | null {
     /* Select a node and all its descendant, only the loaded ones */
     let return_val = false
     if (typeof arr === "undefined") {
@@ -1276,8 +1281,7 @@ function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQuery
     }
     if (return_val) {
         return $(arr)
-    }
-    else{
+    } else {
         return null // make static analyzer happy
     }
 }
@@ -1300,7 +1304,7 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
     }
 }
 
-function init($table: JQueryTable, config: PluginOptions) : void{
+function init($table: JQueryTable, config: PluginOptions): void {
     const options = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
@@ -1338,7 +1342,7 @@ function init($table: JQueryTable, config: PluginOptions) : void{
         resizableTable.scrutiny_resizable_table(options.resize_options)
 
         resizableTable.on(EVENT_SIZE_CHANGED, function () {
-            ($(this) as JQueryResizableTable).scrutiny_resizable_table("refresh")
+            ;($(this) as JQueryResizableTable).scrutiny_resizable_table("refresh")
         })
     }
 }

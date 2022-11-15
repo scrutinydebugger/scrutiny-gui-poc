@@ -1,33 +1,36 @@
-// @ts-check
-"use strict"
+//    tree.ts
+//        A Tree structure that can store object associated with a path in the /aaa/bbb/ccc
+//        format.
+//        Allow log complexity when searching
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { trim } from "./tools"
 
-interface TreeNodeList {
-    [index: string]: any
-}
-
-interface ShallowSubtree {
+type ObjDict<ObjType> = Record<string, ObjType>
+interface ShallowSubtreeDict {
     [index: string]: {
-        has_nodes: boolean
+        has_objects: boolean
         has_subtrees: boolean
     }
 }
 
-interface ShallowNodeDescription {
-    nodes: TreeNodeList
-    subtrees: ShallowSubtree
+type SubtreeDict<ObjType> = Record<string, Node<ObjType>>
+interface Node<ObjType> {
+    objects: ObjDict<ObjType>
+    subtrees: SubtreeDict<ObjType>
 }
 
-interface TreeStruct {
-    [index: string]: {
-        nodes: TreeNodeList
-        subtrees: TreeStruct
-    }
+interface ShallowNodeDescription<ObjType> {
+    objects: ObjDict<ObjType>
+    subtrees: ShallowSubtreeDict
 }
 
 interface Segments {
-    name?: string
+    name: string | null
     segments: string[]
 }
 
@@ -35,15 +38,15 @@ interface Segments {
  * Store objects into a tree like structure where each position is identified by a path
  * of the form /aaa/bbb/ccc. Allows log complexity search
  */
-export class Tree {
-    datastruct: TreeStruct
+export class Tree<ObjType> {
+    datastruct: Node<ObjType>
     nb_obj: number
 
     constructor() {
         this.datastruct = {
-            nodes: {},
+            objects: {},
             subtrees: {},
-        } as unknown as TreeStruct
+        } as unknown as Node<ObjType>
         this.nb_obj = 0
     }
     count() {
@@ -59,20 +62,23 @@ export class Tree {
      */
     get_segments(path: string, has_name: boolean = true): Segments {
         let output = {
+            name: null,
             segments: [],
         } as Segments
         let segments = trim(path, "/").split("/")
-        let nodename = ""
+        let nodename: string | undefined = ""
         segments = segments.filter((s) => s !== "")
 
         if (has_name) {
             nodename = segments.pop()
-            if (nodename === "") {
+            if (typeof nodename == "undefined" || nodename === "") {
                 throw "Empty node name"
             }
-            output["name"] = nodename
+            output.name = nodename
+        } else {
+            nodename = ""
         }
-        output["segments"] = segments
+        output.segments = segments
 
         return output
     }
@@ -82,22 +88,23 @@ export class Tree {
      * @param path The tree path to write to in the format /aaa/bbb/ccc
      * @param obj The object to attach to the path
      */
-    add(path: string, obj: any): void {
-        let target = this.get_segments(path)
+    add(path: string, obj: ObjType): void {
+        const target = this.get_segments(path)
         let actual_branch = this.datastruct
-        for (let i = 0; i < target["segments"].length; i++) {
-            let segment = target["segments"][i]
-            if (!actual_branch["subtrees"].hasOwnProperty(segment)) {
-                actual_branch["subtrees"][segment] = {
-                    nodes: {},
+        for (let i = 0; i < target.segments.length; i++) {
+            const segment = target.segments[i]
+            if (!actual_branch.subtrees.hasOwnProperty(segment)) {
+                actual_branch.subtrees[segment] = {
+                    objects: {},
                     subtrees: {},
-                }
+                } as unknown as Node<ObjType>
             }
-            actual_branch = actual_branch["subtrees"][segment]
+            actual_branch = actual_branch.subtrees[segment]
         }
-
-        actual_branch["nodes"][target["name"]] = obj
-        this.nb_obj++
+        if (target.name !== null) {
+            actual_branch.objects[target.name] = obj
+            this.nb_obj++
+        }
     }
 
     /**
@@ -110,18 +117,23 @@ export class Tree {
         let target = this.get_segments(path)
 
         let actual_branch = this.datastruct
-        for (let i = 0; i < target["segments"].length; i++) {
-            let segment = target["segments"][i]
-            if (!actual_branch["subtrees"].hasOwnProperty(segment)) {
+        for (let i = 0; i < target.segments.length; i++) {
+            let segment = target.segments[i]
+            if (!actual_branch.subtrees.hasOwnProperty(segment)) {
                 throw error_str
             }
-            actual_branch = actual_branch["subtrees"][segment]
+            actual_branch = actual_branch.subtrees[segment]
         }
-        if (!actual_branch["nodes"].hasOwnProperty(target["name"])) {
+
+        if (target.name == null) {
             throw error_str
         }
 
-        return actual_branch["nodes"][target["name"]]
+        if (!actual_branch.objects.hasOwnProperty(target.name)) {
+            throw error_str
+        }
+
+        return actual_branch.objects[target.name]
     }
 
     /**
@@ -130,34 +142,34 @@ export class Tree {
      * @returns Returns the tree branch
      *
      */
-    get_children(path: string): ShallowNodeDescription {
+    get_children(path: string): ShallowNodeDescription<ObjType> {
         let children = {
-            nodes: {},
+            objects: {},
             subtrees: {},
-        } as unknown as ShallowNodeDescription
+        } as unknown as ShallowNodeDescription<ObjType>
         const error_str = "" + path + " does not exist in the tree"
         let target = this.get_segments(path, false) // false means no name
 
         let actual_branch = this.datastruct
-        for (let i = 0; i < target["segments"].length; i++) {
-            let segment = target["segments"][i]
-            if (!actual_branch["subtrees"].hasOwnProperty(segment)) {
+        for (let i = 0; i < target.segments.length; i++) {
+            let segment = target.segments[i]
+            if (!actual_branch.subtrees.hasOwnProperty(segment)) {
                 throw error_str
             }
-            actual_branch = actual_branch["subtrees"][segment]
+            actual_branch = actual_branch.subtrees[segment]
         }
 
-        let subtree_names = Object.keys(actual_branch["subtrees"])
-        children["nodes"] = actual_branch["nodes"]
-        let subtrees: ShallowSubtree = {}
+        let subtree_names = Object.keys(actual_branch.subtrees)
+        children.objects = actual_branch.objects
+        let subtrees: ShallowSubtreeDict = {}
         subtree_names.forEach(function (elem, index) {
             subtrees[elem] = {
-                has_nodes: Object.keys(actual_branch["subtrees"][elem]["nodes"]).length > 0,
-                has_subtrees: Object.keys(actual_branch["subtrees"][elem]["subtrees"]).length > 0,
+                has_objects: Object.keys(actual_branch.subtrees[elem].objects).length > 0,
+                has_subtrees: Object.keys(actual_branch.subtrees[elem].subtrees).length > 0,
             }
         })
 
-        children["subtrees"] = subtrees
+        children.subtrees = subtrees
 
         return children
     }
@@ -189,9 +201,9 @@ export class Tree {
 
         let children = this.get_children(path)
 
-        let node_names = Object.keys(children.nodes)
-        for (let i = 0; i < node_names.length; i++) {
-            thelist[array_index++] = path + "/" + node_names[i]
+        let object_names = Object.keys(children.objects)
+        for (let i = 0; i < object_names.length; i++) {
+            thelist[array_index++] = path + "/" + object_names[i]
         }
 
         let subtrees = Object.keys(children.subtrees)
@@ -218,24 +230,23 @@ export class Tree {
         return result
     }
 
-    get_all_obj_recursive(path?: string, thelist?: string[], array_index?: number): string[] | null {
+    get_all_obj_recursive(path?: string, thelist?: ObjType[], array_index?: number): ObjType[] | null {
         if (typeof path === "undefined") {
             path = ""
         }
 
         if (typeof thelist === "undefined") {
-            thelist = new Array(this.count())
+            thelist = new Array<ObjType>(this.count())
         }
 
         if (typeof array_index === "undefined") {
             array_index = 0
         }
 
-        let children = this.get_children(path)
-
-        let node_names = Object.keys(children.nodes)
-        for (let i = 0; i < node_names.length; i++) {
-            thelist[array_index++] = children.nodes[node_names[i]]
+        const children = this.get_children(path)
+        const object_names = Object.keys(children.objects)
+        for (let i = 0; i < object_names.length; i++) {
+            thelist[array_index++] = children.objects[object_names[i]]
         }
 
         let subtrees = Object.keys(children.subtrees)
@@ -245,6 +256,8 @@ export class Tree {
 
         if (path === "") {
             return thelist
+        } else {
+            return null
         }
     }
 }

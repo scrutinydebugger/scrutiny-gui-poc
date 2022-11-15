@@ -1,3 +1,12 @@
+//    watch.js
+//        Watch window widget. Its job is to display the value of watchables items.  Items
+//        can be dragged from other watch widget or from VarList widget
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
 import $ from "jquery"
 import { BaseWidget } from "../../base_widget.ts"
 

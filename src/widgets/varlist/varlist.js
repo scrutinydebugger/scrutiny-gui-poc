@@ -1,7 +1,13 @@
-import {
-    DatastoreEntryType,
-    AllDatastoreEntryTypes,
-} from "../../datastore.ts"
+//    varlist.js
+//        Variable List widget. Its job is to show all the Watchable items available in the
+//        server
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
+import { DatastoreEntryType, AllDatastoreEntryTypes } from "../../datastore.ts"
 
 import { BaseWidget } from "../../base_widget.ts"
 
@@ -82,19 +88,14 @@ export class VarListWidget extends BaseWidget {
 
             for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
                 let entry_type = AllDatastoreEntryTypes[i]
-                let children = this.app.datastore.get_children(
-                    entry_type,
-                    parent.li_attr.display_path
-                )
+                let children = this.app.datastore.get_children(entry_type, parent.li_attr.display_path)
                 // Add folders node
                 children["subfolders"].forEach(function (subfolder, i) {
-                    let separator =
-                        parent.li_attr.display_path === "/" ? "" : "/"
-                    let display_path =
-                        parent.li_attr.display_path + separator + subfolder.name
+                    let separator = parent.li_attr.display_path === "/" ? "" : "/"
+                    let display_path = parent.li_attr.display_path + separator + subfolder.name
                     jstree_childrens.push({
                         text: subfolder.name,
-                        children: subfolder.children, // true if it has children
+                        children: subfolder.has_children, // true if it has children
                         id: that.make_node_id(display_path),
                         li_attr: {
                             display_path: display_path,

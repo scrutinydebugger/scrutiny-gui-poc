@@ -1,3 +1,12 @@
+//    ui.js
+//        User interface module that can take the application data and assign it to the correct
+//        DOM element.
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
 import { ServerStatus, DeviceStatus } from "./global_definitions.ts"
 import GoldenLayout from "golden-layout"
 import $ from "jquery"

@@ -1,5 +1,11 @@
-// @ts-check
-;("use strict")
+//    datastore.ts
+//        A datastore for all watchable items that the server broadcast. Keeps the value and
+//        notify subscribers (widget windows) on value change
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { App } from "./app"
 import { Tree } from "./tree"
@@ -14,12 +20,7 @@ export enum DatastoreEntryType {
     RPV = "rpv",
 }
 
-export var AllDatastoreEntryTypes = [] as DatastoreEntryType[]
-
-let keys = Object.keys(DatastoreEntryType)
-for (let i = 0; i < keys.length; i++) {
-    AllDatastoreEntryTypes.push(DatastoreEntryType[keys[i]])
-}
+export var AllDatastoreEntryTypes: DatastoreEntryType[] = [DatastoreEntryType.Var, DatastoreEntryType.Alias, DatastoreEntryType.RPV] // Shortcut for later.
 
 /**
  * Represent an entry in the datastore. Each entry represent an interface to something that can be read and/or written
@@ -42,7 +43,7 @@ export class DatastoreEntry {
     enumdef: API.EnumDefinition | null
 
     /** The numberical value of the entry */
-    value: number
+    value: number | null
 
     /** A list of callback classified by watchers. These callback are called when the value changes. */
     callbacks: {
@@ -73,7 +74,7 @@ export class DatastoreEntry {
      */
     static from_server_def(entry_type: DatastoreEntryType, data: API.WatchableEntryServerDefinition): DatastoreEntry {
         let enumdef: API.EnumDefinition | null = null
-        if (data.hasOwnProperty("enum")) {
+        if (data.hasOwnProperty("enum") && typeof data["enum"] !== "undefined") {
             enumdef = data["enum"]
         }
 
@@ -99,7 +100,7 @@ export class DatastoreEntry {
      * Reads the value of the entry
      * @returns The numerical value
      */
-    get_value(): number {
+    get_value(): number | null {
         return this.value
     }
 
@@ -141,12 +142,17 @@ type DatastoreEntryCacheType = Record<
     }
 >
 
-type DatastoreTreesType = Record<DatastoreEntryType, Tree>
+export interface SubfolderDescription {
+    name: string
+    has_children: boolean
+}
+
+type DatastoreTreesType = Record<DatastoreEntryType, Tree<DatastoreEntry>>
 type DatastoreReadyType = Record<DatastoreEntryType, boolean>
 
 export interface DatastorePathChildren {
-    entries: Record<string, DatastoreEntry>
-    subfolders: string[]
+    entries: Record<DatastoreEntryType, DatastoreEntry[]>
+    subfolders: SubfolderDescription[]
 }
 
 /**
@@ -167,22 +173,23 @@ export class Datastore {
     ready: DatastoreReadyType
 
     /** A map between server ID string and datastore entries for quicker access */
-    serverid2entry: { [index: string]: DatastoreEntry }
+    serverid2entry: Record<string, DatastoreEntry>
 
     /** A map between a watcher and all the entries it is watching. Mainly used to unwatch all entries when a watchers dies (window closed)*/
-    watcher2entry: { [index: string]: Set<DatastoreEntry> }
+    watcher2entry: Record<string, Set<DatastoreEntry>>
 
     /** A set of all the entries that are watched */
     watched_entries: Set<DatastoreEntry>
 
-    constructor(app) {
+    constructor(app: App) {
         this.app = app
         this.entry_cache = {} as DatastoreEntryCacheType
         this.trees = {} as DatastoreTreesType
         this.ready = {} as DatastoreReadyType
+
         for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
             let entry_type = AllDatastoreEntryTypes[i]
-            this.trees[entry_type] = new Tree()
+            this.trees[entry_type] = new Tree<DatastoreEntry>()
             this.entry_cache[entry_type] = {}
         }
 
@@ -372,10 +379,10 @@ export class Datastore {
     /**
      * Write the value of the given entry in the datastore identified by its tree path
      * @param entry_type  The type of the entries
-     * @param entry_path The display path used for tree storage.
+     * @param entry_path The display path used for tree storage. An entry can be used as well
      * @param val Value to set
      */
-    set_value(entry_type: DatastoreEntryType, entry_path: string, val: number): void {
+    set_value(entry_type: DatastoreEntryType, entry_path: string | DatastoreEntry, val: number): void {
         this.get_entry(entry_type, entry_path).set_value(val)
     }
 
@@ -392,10 +399,10 @@ export class Datastore {
     /**
      * REads the value of the given entry in the datastore
      * @param entry_type  The type of the entries
-     * @param entry_path The display path used for tree storage.
+     * @param entry_path The display path used for tree storage. An entry can be used as well
      * @returns  The actual value of the entrye
      */
-    get_value(entry_type: DatastoreEntryType, entry_path: string): number {
+    get_value(entry_type: DatastoreEntryType, entry_path: string | DatastoreEntry): number | null {
         return this.get_entry(entry_type, entry_path).get_value()
     }
 
@@ -444,13 +451,13 @@ export class Datastore {
      * @returns The information about what is stored at the given level
      */
     get_children(entry_type: DatastoreEntryType, path: string): DatastorePathChildren {
-        let children = {
-            entries: {},
+        let children: DatastorePathChildren = {
+            entries: {} as Record<DatastoreEntryType, DatastoreEntry[]>,
             subfolders: [],
         }
 
-        Object.keys(DatastoreEntryType).forEach(function (typeval, i) {
-            children["entries"][DatastoreEntryType[typeval]] = []
+        AllDatastoreEntryTypes.forEach(function (entry_type, i) {
+            children["entries"][entry_type] = [] as DatastoreEntry[]
         })
 
         let tree_children = null
@@ -461,12 +468,12 @@ export class Datastore {
             return children
         }
 
-        let folders = tree_children["subtrees"]
-        let nodes = tree_children["nodes"]
-        let node_names = Object.keys(nodes).sort()
-        let folder_names = Object.keys(folders).sort()
+        const folders = tree_children["subtrees"]
+        const objects = tree_children["objects"]
+        const node_names = Object.keys(objects).sort()
+        const folder_names = Object.keys(folders).sort()
         for (let i = 0; i < node_names.length; i++) {
-            let node = nodes[node_names[i]]
+            let node = objects[node_names[i]]
             node["name"] = trim(node.display_path, "/").split("/").pop()
             if (entry_type == null || entry_type == node.entry_type) {
                 children["entries"][node.entry_type].push(node)
@@ -476,7 +483,7 @@ export class Datastore {
         folder_names.forEach(function (folder_name, i) {
             children["subfolders"].push({
                 name: folder_name,
-                children: folders[folder_name]["has_nodes"] || folders[folder_name]["has_subtrees"],
+                has_children: folders[folder_name]["has_objects"] || folders[folder_name]["has_subtrees"],
             })
         })
 

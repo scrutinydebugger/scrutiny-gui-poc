@@ -5,8 +5,9 @@
         "lib": ["es5", "es6", "dom"],
         "allowJs": true,
         "sourceMap": true,
-        "rootDir": "./src",
+        "rootDir": "./",
         "downlevelIteration": true,
+        "strict":true
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "**/*.spec.ts", "webapp_release/**/*"]

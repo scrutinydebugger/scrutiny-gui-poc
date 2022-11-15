@@ -1,11 +1,16 @@
-// @ts-check
-"use strict"
+//    logging.ts
+//        A python like logging module that allows fine-grain control over logging
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 interface Formatter {
     (level: string, logger_name: string, message: string): string
 }
 
-var loggers = {}
+var loggers: Record<string, Logger> = {}
 var default_formatter: Formatter = function (level, logger_name, message) {
     return `[${level}] <${logger_name}> ${message}`
 }
@@ -47,9 +52,9 @@ export class Logger {
         }
     }
 
-    error(msg: string): void {
+    error(msg: string, param?: any): void {
         if (this.enabled) {
-            console.error(this.formatter("error", this.name, msg))
+            console.error(this.formatter("error", this.name, msg), param)
         }
     }
 
@@ -71,7 +76,7 @@ export class Logger {
  * @param name logger name
  * @returns the Logger with the given name
  */
-export function getLogger(name) {
+export function getLogger(name: string) {
     if (!loggers.hasOwnProperty(name)) {
         loggers[name] = new Logger(name)
     }

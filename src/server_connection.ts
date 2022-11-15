@@ -1,5 +1,10 @@
-// @ts-check
-;("use strict")
+//    server_connection.ts
+//        Handles the communication with the server
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { DeviceStatus, ServerStatus } from "./global_definitions"
 import { App } from "./app"
@@ -54,7 +59,7 @@ class LoadWatchableSession {
         }
     }
 
-    get_required_datastore_size(entry_type: DatastoreEntryType): number {
+    get_required_datastore_size(entry_type: DatastoreEntryType): number | null {
         if (entry_type == DatastoreEntryType.RPV && !(this.download_type == WatchableDownloadType.RPV)) {
             throw 'Entry type "RPV" not expected for this download'
         }
@@ -108,7 +113,7 @@ export class ServerConnection {
 
     active_download_session: Record<WatchableDownloadType, LoadWatchableSession | null>
 
-    constructor(app, ui, datastore) {
+    constructor(app: App, ui: UI, datastore: Datastore) {
         const that = this
         this.update_ui_interval = 500
         this.reconnect_interval = 500
@@ -120,7 +125,8 @@ export class ServerConnection {
         this.logger = app.getLogger("server-manager")
         this.comm_logger = app.getLogger("server-comm")
         this.datastore = datastore
-        this.set_endpoint("127.0.0.1", 8765) // default
+        this.hostname = "127.0.0.1"
+        this.port = 8765
         this.socket = null
         this.server_status = ServerStatus.Disconnected
         this.device_status = DeviceStatus.NA
@@ -137,15 +143,15 @@ export class ServerConnection {
         this.active_download_session[WatchableDownloadType.RPV] = null
         this.active_download_session[WatchableDownloadType.Var_Alias] = null
 
-        this.register_api_callback("inform_server_status", function (data) {
+        this.register_api_callback("inform_server_status", function (data: API.Message.S2C.InformServerStatus) {
             that.inform_server_status_callback(data)
         })
 
-        this.register_api_callback("response_get_watchable_list", function (data) {
+        this.register_api_callback("response_get_watchable_list", function (data: API.Message.S2C.GetWatchableList) {
             that.receive_watchable_list(data)
         })
 
-        this.register_api_callback("watchable_update", function (data) {
+        this.register_api_callback("watchable_update", function (data: API.Message.S2C.WatchableUpdate) {
             that.receive_watchable_update(data)
         })
 
@@ -196,9 +202,12 @@ export class ServerConnection {
     }
 
     cancel_watchable_download_if_any(download_type: WatchableDownloadType): void {
-        if (this.active_download_session.hasOwnProperty(download_type)) {
-            if (this.active_download_session[download_type] !== null) {
-                this.active_download_session[download_type].cancel()
+        if (download_type !== null) {
+            if (this.active_download_session.hasOwnProperty(download_type)) {
+                const session = this.active_download_session[download_type] // Typescript is picky here
+                if (session !== null) {
+                    session.cancel()
+                }
                 this.active_download_session[download_type] = null
             }
         }
@@ -220,12 +229,13 @@ export class ServerConnection {
     }
 
     reload_datastore_from_server(download_type: WatchableDownloadType): void {
+        if (download_type == null) {
+            throw "Missing download_type"
+        }
         let download_params: Partial<API.Message.C2S.GetWatchableList> = {
             max_per_response: 1000,
-            filter: {
-                type: [],
-            },
         }
+        download_params.filter = {}
 
         try {
             if (download_type == WatchableDownloadType.Var_Alias) {
@@ -234,15 +244,15 @@ export class ServerConnection {
                 }
 
                 this.datastore.clear([DatastoreEntryType.Alias, DatastoreEntryType.Var])
-                download_params["filter"]["type"] = ["alias", "var"]
+                download_params.filter.type = ["alias", "var"]
             } else if (download_type == WatchableDownloadType.RPV) {
                 this.datastore.clear([DatastoreEntryType.RPV])
-                download_params["filter"]["type"] = ["rpv"]
+                download_params.filter.type = ["rpv"]
             } else {
                 throw "Unsupported download type " + download_type
             }
-        } catch (e) {
-            this.logger.error(e)
+        } catch (e: any) {
+            this.logger.error(e, e)
             this.cancel_watchable_download_if_any(download_type) // This accepts garbage an won't throw
             return
         }
@@ -251,14 +261,18 @@ export class ServerConnection {
 
         that.chain_request("get_watchable_count").then(
             function (data) {
-                let reqid = that.send_request("get_watchable_list", download_params)
-                that.active_download_session[download_type] = new LoadWatchableSession(reqid, download_type)
+                const reqid = that.send_request("get_watchable_list", download_params)
+                if (reqid == null) {
+                    return
+                }
+                const new_session = new LoadWatchableSession(reqid, download_type)
 
                 let expected_size = {} as Record<DatastoreEntryType, number>
                 expected_size[DatastoreEntryType.Var] = data["qty"]["var"]
                 expected_size[DatastoreEntryType.Alias] = data["qty"]["alias"]
                 expected_size[DatastoreEntryType.RPV] = data["qty"]["rpv"]
-                that.active_download_session[download_type].set_expected_datastore_size(expected_size)
+                new_session.set_expected_datastore_size(expected_size)
+                that.active_download_session[download_type] = new_session
             },
             function (data) {
                 that.cancel_watchable_download_if_any(download_type)
@@ -290,7 +304,7 @@ export class ServerConnection {
         }
     }
 
-    send_request(cmd: string, params: any = {}): number {
+    send_request(cmd: string, params: any = {}): number | null {
         let reqid = null
         if (this.socket !== null) {
             if (this.socket.readyState == this.socket.OPEN) {
@@ -312,26 +326,26 @@ export class ServerConnection {
     }
 
     chain_request(cmd: string, params: any = {}): Promise<any> {
-        let reqid = this.send_request(cmd, params)
-
         const that = this
+        const reqid = this.send_request(cmd, params)
+
         return new Promise(function (resolve, reject) {
             if (reqid != null) {
                 that.pending_request_queue[reqid] = {
                     resolve: resolve,
                     reject: reject,
                 }
+
+                setTimeout(function () {
+                    // Reject the Promise and delete it
+                    reject()
+                    if (that.pending_request_queue.hasOwnProperty(reqid)) {
+                        delete that.pending_request_queue[reqid]
+                    }
+                }, 2000)
             } else {
                 reject() // Could not send the request
             }
-
-            setTimeout(function () {
-                // Reject the Promise and delete it
-                reject()
-                if (that.pending_request_queue.hasOwnProperty(reqid)) {
-                    delete that.pending_request_queue[reqid]
-                }
-            }, 2000)
         })
     }
 
@@ -353,8 +367,10 @@ export class ServerConnection {
 
         this.connect_timeout_handle = setTimeout(
             function () {
-                if (that.socket.readyState != that.socket.OPEN) {
-                    that.socket.close()
+                if (that.socket !== null) {
+                    if (that.socket.readyState != that.socket.OPEN) {
+                        that.socket.close()
+                    }
                 }
             } as Function,
             this.connect_timeout
@@ -491,7 +507,7 @@ export class ServerConnection {
 
     // =====
     receive_watchable_list(data: API.Message.S2C.GetWatchableList): void {
-        const reqid: number = data["reqid"]
+        const reqid = data["reqid"]
         let download_type: WatchableDownloadType | null = null
 
         if (
@@ -508,8 +524,8 @@ export class ServerConnection {
             return
         }
 
-        let download_session = this.active_download_session[download_type]
-        if (download_session.is_canceled()) {
+        const download_session = this.active_download_session[download_type]
+        if (download_session == null || download_session.is_canceled()) {
             return
         }
 
@@ -520,49 +536,51 @@ export class ServerConnection {
                 download_session.cancel()
             } else {
                 if (download_type == WatchableDownloadType.Var_Alias) {
-                    for (let i = 0; i < data["content"]["var"].length; i++) {
-                        this.datastore.add_from_server_def(DatastoreEntryType.Var, data["content"]["var"][i])
-                    }
+                    const required_size_var = download_session.get_required_datastore_size(DatastoreEntryType.Var)
+                    const required_size_alias = download_session.get_required_datastore_size(DatastoreEntryType.Alias)
 
-                    for (let i = 0; i < data["content"]["alias"].length; i++) {
-                        this.datastore.add_from_server_def(DatastoreEntryType.Alias, data["content"]["alias"][i])
-                    }
-
-                    if (
-                        this.datastore.get_count(DatastoreEntryType.Alias) ==
-                            download_session.get_required_datastore_size(DatastoreEntryType.Alias) &&
-                        this.datastore.get_count(DatastoreEntryType.Var) ==
-                            download_session.get_required_datastore_size(DatastoreEntryType.Var)
-                    ) {
-                        this.datastore.set_ready(DatastoreEntryType.Var)
-                        this.datastore.set_ready(DatastoreEntryType.Alias)
-                    } else if (
-                        this.datastore.get_count(DatastoreEntryType.Alias) >
-                            download_session.get_required_datastore_size(DatastoreEntryType.Alias) ||
-                        this.datastore.get_count(DatastoreEntryType.Alias) >
-                            download_session.get_required_datastore_size(DatastoreEntryType.Alias)
-                    ) {
+                    if (required_size_var == null || required_size_alias == null) {
                         download_session.cancel()
-                        this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                    } else {
+                        for (let i = 0; i < data["content"]["var"].length; i++) {
+                            this.datastore.add_from_server_def(DatastoreEntryType.Var, data["content"]["var"][i])
+                        }
+
+                        for (let i = 0; i < data["content"]["alias"].length; i++) {
+                            this.datastore.add_from_server_def(DatastoreEntryType.Alias, data["content"]["alias"][i])
+                        }
+
+                        if (
+                            this.datastore.get_count(DatastoreEntryType.Alias) == required_size_alias &&
+                            this.datastore.get_count(DatastoreEntryType.Var) == required_size_var
+                        ) {
+                            this.datastore.set_ready(DatastoreEntryType.Var)
+                            this.datastore.set_ready(DatastoreEntryType.Alias)
+                        } else if (
+                            this.datastore.get_count(DatastoreEntryType.Var) > required_size_var ||
+                            this.datastore.get_count(DatastoreEntryType.Alias) > required_size_alias
+                        ) {
+                            download_session.cancel()
+                            this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                        }
                     }
                 }
 
                 if (download_type == WatchableDownloadType.RPV) {
-                    for (let i = 0; i < data["content"]["rpv"].length; i++) {
-                        this.datastore.add_from_server_def(DatastoreEntryType.RPV, data["content"]["rpv"][i])
-                    }
-
-                    if (
-                        this.datastore.get_count(DatastoreEntryType.RPV) ==
-                        download_session.get_required_datastore_size(DatastoreEntryType.RPV)
-                    ) {
-                        this.datastore.set_ready(DatastoreEntryType.RPV)
-                    } else if (
-                        this.datastore.get_count(DatastoreEntryType.Alias) >
-                        download_session.get_required_datastore_size(DatastoreEntryType.Alias)
-                    ) {
+                    const required_size_rpv = download_session.get_required_datastore_size(DatastoreEntryType.RPV)
+                    if (required_size_rpv == null) {
                         download_session.cancel()
-                        this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                    } else {
+                        for (let i = 0; i < data["content"]["rpv"].length; i++) {
+                            this.datastore.add_from_server_def(DatastoreEntryType.RPV, data["content"]["rpv"][i])
+                        }
+
+                        if (this.datastore.get_count(DatastoreEntryType.RPV) == required_size_rpv) {
+                            this.datastore.set_ready(DatastoreEntryType.RPV)
+                        } else if (this.datastore.get_count(DatastoreEntryType.RPV) > required_size_rpv) {
+                            download_session.cancel()
+                            this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                        }
                     }
                 }
             }
@@ -570,8 +588,8 @@ export class ServerConnection {
             if (download_session.is_canceled()) {
                 this.active_download_session[download_type] = null
             }
-        } catch (e) {
-            this.logger.error(e)
+        } catch (e: any) {
+            this.logger.error(e, e)
             download_session.cancel()
         }
     }
@@ -597,7 +615,7 @@ export class ServerConnection {
                 }
 
                 this.device_status = new_device_status
-            } catch (e) {
+            } catch (e: any) {
                 this.device_status = DeviceStatus.NA
                 this.logger.error("[inform_server_status] Received a bad device status")
                 this.logger.debug(e)

@@ -1,10 +1,11 @@
 import { resolve } from "path"
-import CopyPlugin from "copy-webpack-plugin"
+import { default as glob } from "glob"
+
+console.log(glob.sync("tests/test_*.ts"))
 
 export default {
-    context: resolve("src"),
-    devtool: "source-map",
-    entry: "./scrutiny-main.ts",
+    context: resolve("."),
+    entry: glob.sync("./tests/test_*.ts"),
     mode: "development",
     module: {
         rules: [
@@ -20,26 +21,13 @@ export default {
             }
         ],
     },
-    plugins: [
-        new CopyPlugin({
-            patterns: [
-                {
-                    from: "**/*.(css|png|html)",
-                    to: resolve("webapp_release"),
-                    context: resolve("src"),
-                },
-            ],
-        }),
-    ],
     output: {
-        filename: "scrutiny.js",
+        filename: "scrutiny-test.js",
         path: resolve("webapp_release/js"),
     },
     resolve: {
         extensions: [".ts", ".js"],
     },
     externals: {
-        "golden-layout": "GoldenLayout",
-        jquery: "jQuery",
     },
 }

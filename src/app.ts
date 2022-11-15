@@ -1,5 +1,10 @@
-// @ts-check
-;("use strict")
+//    app.ts
+//        The main Scrutiny application
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { Datastore } from "./datastore"
 import { ServerConnection } from "./server_connection"
@@ -33,19 +38,23 @@ export class App {
     event_logger: logging.Logger
 
     /** The User interface object */
-    ui: UI
+    ui: UI | null
 
     /** The main datastore that contains all watchable objects and their value */
-    datastore: Datastore
+    datastore: Datastore | null
 
     /** The link to the server. Talks with it through a websocket and implements its API*/
-    server_conn: ServerConnection
+    server_conn: ServerConnection | null
 
     constructor(config: AppConfig) {
         this.config = config
         this.init_promises = [] // During init stage, multiple promises will be generated. App will be ready when they all complete
         this.logger = logging.getLogger("App")
         this.event_logger = logging.getLogger("events")
+
+        this.ui = null
+        this.datastore = null
+        this.server_conn = null
     }
 
     /**
@@ -75,8 +84,8 @@ export class App {
      * @param name Name of the event
      * @param callback The callback to call when this event is received
      */
-    on_event(name: string, callback?: (data: any) => void) {
-        let that = this
+    on_event(name: string, callback: (data: any) => void) {
+        const that = this
         $(document).on(name, function (data) {
             that.event_logger.debug("Running event callback: " + name)
             callback(data)
@@ -87,7 +96,7 @@ export class App {
      * Launch the application. Must be called after init_all()
      */
     launch(): void {
-        let that = this
+        const that = this
         this.on_event("scrutiny.ready", function (data) {
             $("#loading_mask").hide()
             that.logger.log("App ready.")
@@ -147,7 +156,7 @@ export class App {
     load_template(template_id: string, template_file: string): void {
         // Append the tempalte node to the DOM and register a promise for the init stage when
         // the tmeplate is done loading through Ajax.
-        let that = this
+        const that = this
         let promise = new Promise(function (resolve: (value?: unknown) => void, reject: (reason?: any) => void) {
             let template = $("<template id='" + template_id + "'></template>")
             $("#template_section").append(template)
@@ -183,7 +192,7 @@ export class App {
 
         // Load all templates required by the widget.
         let templates = widget_class.templates() // This is a static method
-        let keys = Object.keys(templates)
+        const keys = Object.keys(templates)
         for (let i = 0; i < keys.length; i++) {
             let template_name = keys[i]
             let template_file = templates[keys[i]]
@@ -204,9 +213,11 @@ export class App {
         this.server_conn = new ServerConnection(this, this.ui, this.datastore)
         this.server_conn.set_endpoint(this.config.server.host, this.config.server.port)
 
-        let that = this
+        const that = this
         this.on_event("scrutiny.ready", function () {
-            that.server_conn.start()
+            if (that.server_conn != null) {
+                that.server_conn.start()
+            }
         })
     }
 
@@ -215,6 +226,9 @@ export class App {
      * @param widget_class The widget to add
      */
     add_widget(widget_class: typeof BaseWidget): void {
+        if (this.ui == null) {
+            throw "App not initialized"
+        }
         this.init_widget(widget_class)
         this.ui.register_widget(widget_class, this)
     }

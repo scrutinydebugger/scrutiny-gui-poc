@@ -1,5 +1,10 @@
-// @ts-check
-;("use strict")
+//    base_widget.ts
+//        An interface for all widget classes
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 /**
  * Represent the interface for any Widget that can be added to the UI
@@ -57,7 +62,7 @@ export class BaseWidget {
     /**
      * The list of template files required for this widget
      */
-    static templates(): string[] {
+    static templates(): Record<string, string> {
         throw "Not implemented"
     }
 }

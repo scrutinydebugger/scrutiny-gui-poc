@@ -1,5 +1,10 @@
-// @ts-check
-;("use strict")
+//    server_api.ts
+//        Definitions of the server websocket API
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 type sintType = "sint8" | "sint16" | "sint32" | "sint64" | "sint128" | "sint256"
 type uintType = "uint8" | "uint16" | "uint32" | "uint64" | "uint128" | "uint256"
@@ -40,6 +45,7 @@ export namespace Message {
             device_status: ServerDeviceStatus
             loaded_sfd: ScrutinyFirmwareDescription | null
             device_comm_link: DeviceCommLink | null
+            device_info: DeviceInformation
         }
 
         export interface WatchableUpdate {

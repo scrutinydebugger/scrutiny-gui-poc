@@ -1,5 +1,10 @@
-// @ts-check
-"use strict"
+//    tools.ts
+//        Some tools used project wide
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
 
 export function trimAny(str: string, chars: string): string {
     var start = 0,
