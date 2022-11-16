@@ -1,7 +1,9 @@
 import { resolve } from "path"
 import { default as glob } from "glob"
+import GitRevisionPlugin from "git-revision-webpack-plugin"
+import webpack from "webpack"
 
-console.log(glob.sync("tests/test_*.ts"))
+const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
 export default {
     context: resolve("."),
