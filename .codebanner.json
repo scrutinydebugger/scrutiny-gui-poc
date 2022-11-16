@@ -18,7 +18,7 @@
     "copyright_owner": "Scrutiny Debugger",
     "copyright_start_date": "2021",
     "files": {
-        "src/ui.js": {
+        "src/ui.ts": {
             "docstring": "User interface module that can take the application data and assign it to the correct DOM element."
         },
         "src/app.ts": {
@@ -60,22 +60,22 @@
         "src/widgets/varlist/varlist.js": {
             "docstring": "Variable List widget. Its job is to show all the Watchable items available in the server"
         },
-        "src/widgets/watch/watch.js": {
+        "src/widgets/watch/watch.ts": {
             "docstring": "Watch window widget. Its job is to display the value of watchables items.  Items can be dragged from other watch widget or from VarList widget"
         },
-        "tests/fake_app.js": {
+        "tests/fake_app.ts": {
             "docstring": "Stubbed Application class for unit testing"
         },
-        "tests/testing_tools.js": {
+        "tests/testing_tools.ts": {
             "docstring": "Some global tools for testing framework"
         },
-        "tests/test_datastore.js": {
+        "tests/test_datastore.ts": {
             "docstring": "Unit tests for the Datastore class"
         },
-        "tests/test_fake_app.js": {
+        "tests/test_fake_app.ts": {
             "docstring": "Unit tests for the FakeApp class that stubs the application"
         },
-        "tests/test_tree.js": {
+        "tests/test_tree.ts": {
             "docstring": "Unit tests for the Tree storage class"
         }
     }

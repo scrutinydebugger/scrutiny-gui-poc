@@ -8,7 +8,7 @@
 
 import { Datastore } from "./datastore"
 import { ServerConnection } from "./server_connection"
-import { UI } from "./ui.js"
+import { UI } from "./ui"
 import * as logging from "./logging"
 import { BaseWidget } from "./base_widget"
 
@@ -41,10 +41,10 @@ export class App {
     ui: UI | null
 
     /** The main datastore that contains all watchable objects and their value */
-    datastore: Datastore | null
+    datastore: Datastore
 
     /** The link to the server. Talks with it through a websocket and implements its API*/
-    server_conn: ServerConnection | null
+    server_conn: ServerConnection
 
     constructor(config: AppConfig) {
         this.config = config
@@ -53,7 +53,9 @@ export class App {
         this.event_logger = logging.getLogger("events")
 
         this.ui = null
+        // @ts-ignore init_all must be called
         this.datastore = null
+        // @ts-ignore init_all must be called
         this.server_conn = null
     }
 

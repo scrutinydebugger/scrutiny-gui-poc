@@ -12,7 +12,7 @@ import { get_url_param } from "./tools"
 
 import { BaseWidget } from "./base_widget"
 import { VarListWidget } from "./widgets/varlist/varlist"
-import { WatchWidget } from "./widgets/watch/watch.js"
+import { WatchWidget } from "./widgets/watch/watch"
 
 import * as $ from "jquery"
 import { scrutiny_treetable } from "./components/scrutiny-treetable/scrutiny-treetable"

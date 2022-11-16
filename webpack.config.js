@@ -39,7 +39,7 @@ export default {
         extensions: [".ts", ".js"],
     },
     externals: {
-        "golden-layout": "GoldenLayout",
+        "goldenlayout": "GoldenLayout",
         jquery: "jQuery",
     },
 }

@@ -32,9 +32,9 @@ export class VarListWidget extends BaseWidget {
      * @param app The Scrutiny App instance
      * @param instance_id A unique instance number for this widget
      */
-    constructor(container: JQuery, app: App, instance_id: number) {
-        super()
-        this.container = container
+    constructor(container: HTMLElement, app: App, instance_id: number) {
+        super(container, app, instance_id)
+        this.container = $(container)
         this.app = app
         this.instance_id = instance_id
 
