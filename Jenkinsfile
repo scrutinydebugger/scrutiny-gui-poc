@@ -11,10 +11,20 @@ pipeline {
                 }
             }
             stages {
+                stage ('Setup') {
+                    steps {
+                        sh 'npm install'
+                    }
+                }
+                stage ('Build') {
+                    steps {
+                        sh 'npm run build'
+                    }
+                }
                 stage ('Unit tests') {
-                    steps {'npm install'}
-                    steps {'npm run build'}
-                    steps {'npm test'}
+                    steps { 
+                        sh 'npm test'
+                    }
                 }
             }
         }
