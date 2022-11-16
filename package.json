@@ -14,6 +14,7 @@
     "assert": "^2.0.0",
     "chai": "^4.3.7",
     "copy-webpack-plugin": "^11.0.0",
+    "git-revision-webpack-plugin": "^5.0.0",
     "eslint": "^8.25.0",
     "mocha": "^10.1.0",
     "prettier": "2.7.1",

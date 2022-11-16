@@ -21,6 +21,13 @@ export default {
             }
         ],
     },
+    plugins: [
+        new webpack.DefinePlugin({
+            'SCRUTINY_VERSION': JSON.stringify(gitRevisionPlugin.version()),
+            'SCRUTINY_COMMITHASH': JSON.stringify(gitRevisionPlugin.commithash()),
+            'SCRUTINY_BRANCH': JSON.stringify(gitRevisionPlugin.branch()),
+        })
+    ],
     output: {
         filename: "scrutiny-test.js",
         path: resolve("webapp_release/js"),

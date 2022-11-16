@@ -1,4 +1,4 @@
-//    testing_tools.js
+//    testing_tools.ts
 //        Some global tools for testing framework
 //
 //   - License : MIT - See LICENSE file.

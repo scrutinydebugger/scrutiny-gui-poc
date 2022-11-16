@@ -23,7 +23,7 @@ $.extend($.fn, { scrutiny_resizable_table })
 
 var default_config: AppConfig = {
     server: {
-        host: "127.0.0.1",
+        host: "localhost",
         port: 8765,
     },
 }

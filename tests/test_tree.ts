@@ -1,4 +1,4 @@
-//    test_tree.js
+//    test_tree.ts
 //        Unit tests for the Tree storage class
 //
 //   - License : MIT - See LICENSE file.

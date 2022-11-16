@@ -10,7 +10,9 @@
     ],
     "exclude_patterns": [
         "node_modules/*",
-        "libs/*"
+        "webapp_release/libs/*",
+        "webapp_release/js/*",
+        "webapp_release/components"
     ],
     "license": "MIT - See LICENSE file",
     "project": "Scrutiny Debugger",
@@ -57,9 +59,6 @@
         "src/components/scrutiny-treetable/scrutiny-treetable.ts": {
             "docstring": "A JQuery plugin that allows making a table act as a tree.\nCustom made tree-table widget because all the one out there were either behind a paid license or buggy and/or deprecated and/or not tailored to our need."
         },
-        "src/widgets/varlist/varlist.js": {
-            "docstring": "Variable List widget. Its job is to show all the Watchable items available in the server"
-        },
         "src/widgets/watch/watch.ts": {
             "docstring": "Watch window widget. Its job is to display the value of watchables items.  Items can be dragged from other watch widget or from VarList widget"
         },
@@ -77,6 +76,9 @@
         },
         "tests/test_tree.ts": {
             "docstring": "Unit tests for the Tree storage class"
+        },
+        "src/widgets/varlist/varlist.ts": {
+            "docstring": "A widget that shows the list of availables watchbles in the server in a tree-like structure"
         }
     }
 }

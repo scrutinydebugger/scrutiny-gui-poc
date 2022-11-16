@@ -1,4 +1,4 @@
-//    fake_app.js
+//    fake_app.ts
 //        Stubbed Application class for unit testing
 //
 //   - License : MIT - See LICENSE file.

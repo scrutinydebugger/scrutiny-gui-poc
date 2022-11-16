@@ -187,7 +187,7 @@ export class ServerConnection {
         this.logger = app.getLogger("server-manager")
         this.comm_logger = app.getLogger("server-comm")
         this.datastore = datastore
-        this.hostname = "127.0.0.1"
+        this.hostname = "localhost"
         this.port = 8765
         this.socket = null
         this.server_status = ServerStatus.Disconnected

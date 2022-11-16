@@ -12,12 +12,9 @@ pipeline {
             }
             stages {
                 stage ('Unit tests') {
-                    steps {
-                        sh '''
-                        npm install
-                        npm test
-                        '''
-                    }
+                    steps {'npm install'}
+                    steps {'npm run build'}
+                    steps {'npm test'}
                 }
             }
         }

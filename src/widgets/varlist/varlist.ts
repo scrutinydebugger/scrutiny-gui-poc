@@ -1,6 +1,6 @@
-//    varlist.js
-//        Variable List widget. Its job is to show all the Watchable items available in the
-//        server
+//    varlist.ts
+//        A widget that shows the list of availables watchbles in the server in a tree-like
+//        structure
 //
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)

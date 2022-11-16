@@ -1,5 +1,9 @@
 import { resolve } from "path"
 import CopyPlugin from "copy-webpack-plugin"
+import GitRevisionPlugin from "git-revision-webpack-plugin"
+import webpack from "webpack"
+
+const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
 export default {
     context: resolve("src"),
@@ -30,6 +34,11 @@ export default {
                 },
             ],
         }),
+        new webpack.DefinePlugin({
+            'SCRUTINY_VERSION': JSON.stringify(gitRevisionPlugin.version()),
+            'SCRUTINY_COMMITHASH': JSON.stringify(gitRevisionPlugin.commithash()),
+            'SCRUTINY_BRANCH': JSON.stringify(gitRevisionPlugin.branch()),
+        })
     ],
     output: {
         filename: "scrutiny.js",

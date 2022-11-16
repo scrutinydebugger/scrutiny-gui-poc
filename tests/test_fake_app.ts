@@ -1,4 +1,4 @@
-//    test_fake_app.js
+//    test_fake_app.ts
 //        Unit tests for the FakeApp class that stubs the application
 //
 //   - License : MIT - See LICENSE file.

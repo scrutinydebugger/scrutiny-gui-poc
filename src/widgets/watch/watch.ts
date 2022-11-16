@@ -1,4 +1,4 @@
-//    watch.js
+//    watch.ts
 //        Watch window widget. Its job is to display the value of watchables items.  Items
 //        can be dragged from other watch widget or from VarList widget
 //
