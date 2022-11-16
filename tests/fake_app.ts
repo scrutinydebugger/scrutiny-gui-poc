@@ -26,7 +26,7 @@ export class FakeApp {
     }
 
     // Would normally raise an envent on the DOM
-    trigger_event(name: string, data?: any) {
+    trigger_event(name: string, data?: any): void {
         if (typeof data === "undefined") {
             data = null
         }
@@ -44,7 +44,7 @@ export class FakeApp {
     }
 
     // Return the number of event of a given type that has been raised
-    count_event(name: string) {
+    count_event(name: string): number {
         let n = 0
         for (let i = 0; i < this.event_logs.length; i++) {
             if (this.event_logs[i].name == name) {
@@ -56,7 +56,7 @@ export class FakeApp {
     }
 
     // Executes the events like the browser would do
-    process_events() {
+    process_events(): void {
         for (let i = 0; i < this.event_logs_to_process.length; i++) {
             const name = this.event_logs_to_process[i].name
             const data = this.event_logs_to_process[i].data
@@ -72,7 +72,7 @@ export class FakeApp {
         this.event_logs_to_process = []
     }
 
-    on_event(name, callback) {
+    on_event(name: string, callback: Function): void {
         if (!this.event_listeners.hasOwnProperty(name)) {
             this.event_listeners[name] = []
         }

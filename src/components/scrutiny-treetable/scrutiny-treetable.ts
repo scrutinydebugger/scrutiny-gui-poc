@@ -11,17 +11,22 @@
 import * as $ from "jquery"
 
 export interface LoadFunctionInterface {
-    (node_id: string, tr: JQueryRow): Array<{ id: string; tr: JQueryRow }>
+    (node_id: string, tr: JQueryRow): Array<{ id: string; tr: JQueryRow; nochildren?: boolean; user_data?: any }>
 }
 
-export interface TransferFunctionMetadataInterface {
+export interface TransferFunctionMetadata {
     original_id: string
     original_parent_id: string | null
     user_data: any
 }
 
+export interface TransferFunctionOutput {
+    tr: JQueryRow
+    id?: string | null
+}
+
 export interface TransferFunctionInterface {
-    (source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadataInterface): JQueryRow
+    (source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput
 }
 
 export interface TransferAllowedFunctionInterface {
@@ -96,11 +101,12 @@ const DEFAULT_OPTIONS = {
         // Loading function to dynamically load the table
         throw "No loader defined"
     } as LoadFunctionInterface,
-    transfer_fn: null as TransferFunctionInterface, // A function called to convert a row when a row is moved from one table to another table.
-    allow_transfer_fn: null as TransferAllowedFunctionInterface,
+    transfer_fn: null as TransferFunctionInterface | null, // A function called to convert a row when a row is moved from one table to another table.
+    allow_transfer_fn: null as TransferAllowedFunctionInterface | null,
 }
 
-export type PluginOptions = Partial<typeof DEFAULT_OPTIONS>
+type PluginOptionsFull = typeof DEFAULT_OPTIONS
+export type PluginOptions = Partial<PluginOptionsFull> // The user doesn't have to specify them all
 
 const SPACER_TEMPLATE = $(`<span class='${CLASS_SPACER}'></span>`)
 const EXPANDER_OPENED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPANDER_OPENED}' />`)
@@ -126,8 +132,8 @@ function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): voi
  * @param node The row from which to fetch the children
  * @returns The row children
  */
-function get_children($table: JQueryTable, node: string | JQuery): JQueryRow {
-    let tr = _get_row_from_node_or_row($table, node)
+function get_children($table: JQueryTable, node: string | JQueryRow): JQueryRow {
+    const tr = _get_row_from_node_or_row($table, node)
     return _get_children($table, tr)
 }
 
@@ -137,7 +143,7 @@ function get_children($table: JQueryTable, node: string | JQuery): JQueryRow {
  * @param node The child node
  * @returns The parent if node
  */
-function get_parent($table: JQueryTable, node: string | JQuery): JQueryRow {
+function get_parent($table: JQueryTable, node: string | JQueryRow): JQueryRow | null {
     // Returns the parent row of the given row
     let tr = _get_row_from_node_or_row($table, node)
     return _get_parent($table, tr)
@@ -191,7 +197,7 @@ function collapse_all($table: JQueryTable, node: string | JQueryRow): void {
     _collapse_all($table, tr)
 }
 
-function is_root($table: JQueryTable, node: string | JQuery): boolean {
+function is_root($table: JQueryTable, node: string | JQueryRow): boolean {
     // Returns a boolean indicating if the node is a root node
     let tr = _get_row_from_node_or_row($table, node)
     return _is_root(tr)
@@ -242,9 +248,9 @@ function transfer_node(
     $table: JQueryTable,
     dest_table: JQueryTable | string,
     row_id: string,
-    new_parent_id: string,
-    after_node_id: string
-) {
+    new_parent_id: string | null,
+    after_node_id: string | null
+): void {
     if (typeof dest_table == "string") {
         dest_table = $(`${dest_table}`) as JQueryTable
     }
@@ -280,7 +286,7 @@ function transfer_node(
  * Load the whole table by querying the user load_fn
  * @param $table The Jquery table
  */
-function load_all($table: JQueryTable) {
+function load_all($table: JQueryTable): void {
     _load_all($table)
 }
 
@@ -308,8 +314,12 @@ const _make_unique_id = (function () {
  * @param tr Node row object
  * @returns Node ID
  */
-function _get_node_id(tr: JQueryRow) {
-    return tr.attr(ATTR_ID)
+function _get_node_id(tr: JQueryRow): string {
+    const id = tr.attr(ATTR_ID)
+    if (typeof id == "undefined") {
+        throw "No ID on row"
+    }
+    return id
 }
 
 /**
@@ -318,7 +328,7 @@ function _get_node_id(tr: JQueryRow) {
  * @param node_id The ID to set on the node
  * @returns The same row object received as input
  */
-function _set_node_id(tr: JQueryRow, node_id: string) {
+function _set_node_id(tr: JQueryRow, node_id: string): JQueryRow {
     return tr.attr(ATTR_ID, node_id)
 }
 
@@ -339,7 +349,7 @@ function _is_child_of(tr: JQueryRow, parent_id: string) {
  * @param parent_tr The parent row used for the test
  * @returns True if the row is a descendant of the parent
  */
-function _is_descendant($table: JQueryTable, child_candidate_tr: JQueryRow, parent_tr: JQueryRow) {
+function _is_descendant($table: JQueryTable, child_candidate_tr: JQueryRow, parent_tr: JQueryRow): boolean {
     let child_parent_tr = _get_parent($table, child_candidate_tr)
     while (child_parent_tr !== null) {
         if (child_parent_tr.is(parent_tr)) {
@@ -363,7 +373,7 @@ function _find_row($table: JQueryTable, node_id: string): JQueryRow {
     return row
 }
 
-function _get_row_from_node_or_row($table: JQueryTable, arg: JQuery | string) {
+function _get_row_from_node_or_row($table: JQueryTable, arg: JQueryRow | string): JQueryRow {
     let tr = null
     if (typeof arg === "string") {
         tr = _find_row($table, arg)
@@ -421,7 +431,7 @@ function _is_expanded($table: JQueryTable, tr: JQueryRow): boolean {
 
 function _get_children_count(tr: JQueryRow): number {
     try {
-        let count = parseInt(tr.attr(ATTR_CHILDREN_COUNT))
+        let count = parseInt(tr.attr(ATTR_CHILDREN_COUNT) as string)
         if (isNaN(count)) {
             count = 0
         }
@@ -454,7 +464,11 @@ function _is_visible(tr: JQueryRow): boolean {
 }
 
 function _get_nesting_level(tr: JQueryRow): number {
-    return parseInt(tr.attr(ATTR_LEVEL))
+    const level = tr.attr(ATTR_LEVEL)
+    if (typeof level == "undefined") {
+        throw "No nesting level on node"
+    }
+    return parseInt(level)
 }
 
 function _close_expander($table: JQueryTable, tr: JQueryRow): void {
@@ -471,8 +485,8 @@ function _open_expander($table: JQueryTable, tr: JQueryRow): void {
         .addClass(`${CLASS_EXPANDER_OPENED}`)
 }
 
-function _get_options($table: JQuery): PluginOptions {
-    return $table.data(DATAKEY_OPTIONS) as PluginOptions
+function _get_options($table: JQuery): PluginOptionsFull {
+    return $table.data(DATAKEY_OPTIONS) as PluginOptionsFull
 }
 
 // Main modifier functions
@@ -491,7 +505,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
 
     for (let i = 0; i < loaded_children.length; i++) {
         const child_node_id = loaded_children[i]["id"]
-        const child_node_tr = loaded_children[i]["tr"]
+        const child_node_tr = $(loaded_children[i]["tr"]) as JQueryRow
         const no_children = loaded_children[i]["nochildren"]
         const user_data = loaded_children[i]["user_data"]
 
@@ -513,7 +527,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
 
     tr.attr(ATTR_CHILDREN_LOADED, "1")
 
-    return $(children_output)
+    return $(children_output) as unknown as JQueryRow
 }
 
 function _load_descendant($table: JQueryTable, tr: JQueryRow): void {
@@ -656,7 +670,7 @@ function _collapse_all($table: JQueryTable, tr: JQueryRow): void {
 }
 
 function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: number): void {
-    let actual_count = parseInt(tr.attr(ATTR_CHILDREN_COUNT))
+    let actual_count = parseInt(tr.attr(ATTR_CHILDREN_COUNT) as string)
     if (isNaN(actual_count)) {
         actual_count = 0
     }
@@ -708,7 +722,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             throw `Cannot add node ${node_id}. Node id ${parent_id} cannot have children`
         }
 
-        actual_level = parseInt(parent.attr(ATTR_LEVEL)) + 1 // Level below the parent.
+        actual_level = _get_nesting_level(parent) + 1 // Level below the parent.
         // Since the table is flat, the insertion point is after the last element that share the same parent
 
         let previous_row = parent
@@ -738,8 +752,16 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             // Most reliable way to pass data is to store in global.
             // Attaching to the even is not reliable because chrome has some strict security policy
             // that makes the data unavailable in the dragmove event.
+            if (typeof e.originalEvent == "undefined") {
+                return
+            }
+
+            if (typeof e.originalEvent.dataTransfer == "undefined" || e.originalEvent.dataTransfer == null) {
+                return
+            }
+
             gbl_drag_data = {
-                source_table_id: $table.attr("id"),
+                source_table_id: $table.attr("id") as string, // having an ID is mandatory for this plugin
                 dragged_row_id: _get_node_id(tr),
             }
             e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0)
@@ -763,6 +785,11 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             if (gbl_drag_data == null) {
                 return
             }
+
+            if (typeof e.pageY == "undefined") {
+                return
+            }
+
             const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
             const dest_table = $table
             const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
@@ -829,6 +856,11 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                 if (gbl_drag_data == null) {
                     return
                 }
+
+                if (typeof e.pageY == "undefined") {
+                    return
+                }
+
                 const dest_table = $table
                 const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
                 const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
@@ -843,23 +875,26 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                     } else {
                         moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
                     }
-                    moved_rows.addClass(CLASS_JUST_DROPPED)
 
-                    dest_table.trigger(EVENT_DROPPED, {
-                        source_table: source_table,
-                        dest_table: dest_table,
-                        rows: moved_rows,
-                    })
+                    if (moved_rows != null) {
+                        moved_rows.addClass(CLASS_JUST_DROPPED)
 
-                    setTimeout(function () {
-                        moved_rows.css("transition", `background-color ${options.just_dropped_transition_length}s`)
+                        dest_table.trigger(EVENT_DROPPED, {
+                            source_table: source_table,
+                            dest_table: dest_table,
+                            rows: moved_rows,
+                        })
+
                         setTimeout(function () {
-                            moved_rows.removeClass(CLASS_JUST_DROPPED)
+                            ;(moved_rows as JQueryRow).css("transition", `background-color ${options.just_dropped_transition_length}s`)
                             setTimeout(function () {
-                                moved_rows.css("transition", "")
-                            }, options.just_dropped_transition_length * 1000)
+                                ;(moved_rows as JQueryRow).removeClass(CLASS_JUST_DROPPED)
+                                setTimeout(function () {
+                                    ;(moved_rows as JQueryRow).css("transition", "")
+                                }, options.just_dropped_transition_length * 1000)
+                            }, 0)
                         }, 0)
-                    }, 0)
+                    }
                 } catch (e) {
                     _stop_drop(dest_table)
                     throw e
@@ -1016,10 +1051,15 @@ function _set_nesting_level($table: JQueryTable, tr: JQueryRow, level: number) {
 }
 
 function _get_row_insert_type(tr: JQueryRow, cursorY: number): number {
+    const tr_height = tr.outerHeight() as number
+    const tr_offset = tr.offset()
+    if (typeof tr_height === "undefined" || typeof tr_offset === "undefined") {
+        throw "Cannot read dragged row position"
+    }
     const children_allowed = _is_children_allowed(tr)
-    const relativeY = cursorY - tr.offset().top
+    const relativeY = cursorY - tr_offset.top
     if (children_allowed) {
-        const fraction_height = tr.outerHeight() / 4
+        const fraction_height = tr_height / 4
         if (relativeY < 1 * fraction_height) {
             return INSERT_TYPE_ABOVE
         } else if (relativeY > 3 * fraction_height) {
@@ -1028,7 +1068,7 @@ function _get_row_insert_type(tr: JQueryRow, cursorY: number): number {
             return INSERT_TYPE_INTO
         }
     } else {
-        const fraction_height = tr.outerHeight() / 2
+        const fraction_height = tr_height / 2
         if (relativeY < fraction_height) {
             return INSERT_TYPE_ABOVE
         } else {
@@ -1061,7 +1101,7 @@ function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
     }
 }
 
-function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string, after_node_id: string): JQueryRow {
+function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | null, after_node_id: string | null): JQueryRow {
     let tr_id = _get_node_id(tr)
     //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
     const tree_to_move = _select_all_loaded_descendant($table, tr)
@@ -1072,7 +1112,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string, af
         if (after_node_id == null) {
             $table.find("tbody").prepend(tree_to_move)
         } else {
-            let after_tr = _find_row($table, after_node_id)
+            const after_tr = _find_row($table, after_node_id)
             if (!_is_root(after_tr)) {
                 throw `Cannot insert a root node after node ${after_node_id} because it is not a root node itself`
             }
@@ -1090,7 +1130,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string, af
 
         tr.attr(ATTR_PARENT, null)
     } else {
-        let new_parent_row = _find_row($table, new_parent_id)
+        const new_parent_row = _find_row($table, new_parent_id)
 
         if (!_is_children_allowed(new_parent_row)) {
             throw `Cannot move node ${tr_id}. Node ${new_parent_id} does not allow children`
@@ -1108,8 +1148,8 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string, af
         if (after_node_id == null) {
             new_parent_row.after(tree_to_move)
         } else {
-            let after_tr = _find_row($table, after_node_id)
-            let after_parent_row = _get_parent($table, after_tr)
+            const after_tr = _find_row($table, after_node_id)
+            const after_parent_row = _get_parent($table, after_tr)
 
             if (after_parent_row == null || !after_parent_row.is(new_parent_row)) {
                 throw 'Given "after_row" is not a child of given "parent_row"'
@@ -1117,7 +1157,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string, af
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                let after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr, `tr[${ATTR_MOVING}!="1"]`).last()
+                const after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr, `tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -1150,16 +1190,24 @@ function _transfer_row(
     tr: JQueryRow,
     new_parent_id?: string | null,
     after_node_id?: string | null
-): JQueryRow {
+): JQueryRow | null {
     /*Transfer a node from a table to another one */
     const dest_options = _get_options(dest_table)
 
     if (dest_options.allow_transfer_fn == null) {
         throw "Node transfer from another table is not supported"
     }
+
+    if (typeof new_parent_id === "undefined") {
+        new_parent_id = null
+    }
+    if (typeof after_node_id === "undefined") {
+        after_node_id = null
+    }
+
     const transfer_allowed = dest_options.allow_transfer_fn(source_table, dest_table, tr, new_parent_id, after_node_id)
     if (transfer_allowed == false) {
-        return
+        return null
     }
 
     if (dest_options.transfer_fn == null) {
@@ -1167,11 +1215,11 @@ function _transfer_row(
     }
 
     const lines_to_moves = _load_and_select_all_descendant(source_table, tr) as JQueryRow
-    let old_id_to_new_id_map = {}
-    let new_tr_by_new_id = {}
+    let old_id_to_new_id_map: Record<string, string> = {}
+    let new_tr_by_new_id: Record<string, JQueryRow> = {}
 
-    lines_to_moves.each(function () {
-        const original_line = $(this) as JQueryRow
+    for (let i = 0; lines_to_moves.length; i++) {
+        const original_line = $(lines_to_moves[i])
         const original_id = _get_node_id(original_line)
         const original_parent_id = _get_parent_id(original_line)
         const original_user_data = $(original_line).data(DATAKEY_USER_DATA)
@@ -1181,14 +1229,16 @@ function _transfer_row(
             original_parent_id: original_parent_id,
             user_data: original_user_data,
         }
-        const transferred_row_data = dest_options.transfer_fn(source_table, bare_line, meta)
+        const transferred_row_data: TransferFunctionOutput = dest_options.transfer_fn(source_table, bare_line, meta)
 
         let new_id = transferred_row_data["id"]
-        const new_tr = transferred_row_data["tr"]
+        let new_tr = transferred_row_data["tr"]
 
         if (typeof new_tr == "undefined") {
             throw "Missing key 'tr' in transfer_fn under " + new_id
         }
+
+        new_tr = $(new_tr) as JQueryRow
 
         if (typeof new_id == "undefined" || new_id == null) {
             new_id = _make_unique_id(dest_table)
@@ -1197,7 +1247,7 @@ function _transfer_row(
         old_id_to_new_id_map[original_id] = new_id
         new_tr.data(DATAKEY_USER_DATA, $(original_line).data(DATAKEY_USER_DATA))
         new_tr_by_new_id[new_id] = new_tr
-    })
+    }
 
     lines_to_moves.each(function () {
         const original_line = $(this) as JQueryRow
@@ -1212,7 +1262,7 @@ function _transfer_row(
             converted_parent_id = old_id_to_new_id_map[original_parent_id]
         }
 
-        new_tr.attr(ATTR_CHILDREN_LOADED, original_line.attr(ATTR_CHILDREN_LOADED)) // Transfer loads all
+        new_tr.attr(ATTR_CHILDREN_LOADED, "1") // Transfer loads all
         _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children)
     })
 
@@ -1252,7 +1302,7 @@ function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filte
 function _select_all_loaded_descendant_recursive(
     $table: JQueryTable,
     tr: JQueryRow,
-    filter?: string,
+    filter?: string | null,
     arr?: HTMLTableRowElement[]
 ): JQueryRow | null {
     /* Select a node and all its descendant, only the loaded ones */
@@ -1305,7 +1355,7 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
 }
 
 function init($table: JQueryTable, config: PluginOptions): void {
-    const options = $.extend({}, DEFAULT_OPTIONS, config)
+    const options: PluginOptionsFull = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
         throw "TreeTable requires a id attribute work properly"
@@ -1348,7 +1398,7 @@ function init($table: JQueryTable, config: PluginOptions): void {
 }
 
 // public functions
-const public_funcs = {
+const public_funcs: Record<string, Function> = {
     add_root_node: add_root_node,
     is_root: is_root,
     get_children: get_children,
@@ -1364,8 +1414,9 @@ const public_funcs = {
     transfer_node: transfer_node,
 }
 
-export function scrutiny_treetable(...args) {
+export function scrutiny_treetable(...args: any[]) {
     let hasResults = false
+    // @ts-ignore
     const results = $(this).map(function () {
         const $table = $(this)
 
@@ -1389,6 +1440,7 @@ export function scrutiny_treetable(...args) {
 
     // When no result were provided, return the same `this` that we received
     if (!hasResults) {
+        // @ts-ignore
         return this
     }
     // optionnaly, when there was only one item targeted, return the result

@@ -11,7 +11,7 @@ import { App, AppConfig } from "./app"
 import { get_url_param } from "./tools"
 
 import { BaseWidget } from "./base_widget"
-import { VarListWidget } from "./widgets/varlist/varlist.js"
+import { VarListWidget } from "./widgets/varlist/varlist"
 import { WatchWidget } from "./widgets/watch/watch.js"
 
 import * as $ from "jquery"

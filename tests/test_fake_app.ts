@@ -19,7 +19,7 @@ describe("FakeApp", function () {
         assert.equal(app.count_event("event1"), 3)
 
         let v = 0
-        app.on_event("event2", function (data) {
+        app.on_event("event2", function (data: any) {
             v++
             assert.equal(data.x, 1234)
         })

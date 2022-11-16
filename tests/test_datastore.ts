@@ -78,15 +78,17 @@ describe("DataStore", function () {
         })
 
         assert.throws(function () {
-            ds.set_value(DatastoreEntryType.Var, "/x/y/z", 123) // @ts-ignore
+            ds.set_value(DatastoreEntryType.Var, "/x/y/z", 123)
         })
 
         assert.throws(function () {
-            ds.set_value(DatastoreEntryType.Var, null, 123) // @ts-ignore
+            // @ts-ignore
+            ds.set_value(DatastoreEntryType.Var, null, 123)
         })
 
         assert.throws(function () {
-            ds.set_value(DatastoreEntryType.Var, undefined, 123) // @ts-ignore
+            // @ts-ignore
+            ds.set_value(DatastoreEntryType.Var, undefined, 123)
         })
 
         assert.throws(function () {
@@ -94,11 +96,13 @@ describe("DataStore", function () {
         })
 
         assert.throws(function () {
-            ds.get_value(DatastoreEntryType.Var, null) // @ts-ignore
+            // @ts-ignore
+            ds.get_value(DatastoreEntryType.Var, null)
         })
 
         assert.throws(function () {
-            ds.get_value(DatastoreEntryType.Var, undefined) // @ts-ignore
+            // @ts-ignore
+            ds.get_value(DatastoreEntryType.Var, undefined)
         })
     })
 

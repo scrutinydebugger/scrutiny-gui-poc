@@ -28,7 +28,8 @@ const DEFAULT_OPTIONS = {
     nowrap: true,
 }
 
-export type PluginOptions = Partial<typeof DEFAULT_OPTIONS>
+type PluginOptionsFull = typeof DEFAULT_OPTIONS
+export type PluginOptions = Partial<PluginOptionsFull>
 
 const RESIZE_HANDLE_TEMPLATE = $(`<div class='${CLASS_RESIZE_HANDLE}' />`)
 
@@ -40,8 +41,8 @@ function refresh($table: JQueryTable) {
 
 /***  Private functions *** */
 
-function _get_options($table: JQueryTable): PluginOptions {
-    return $table.data(DATAKEY_OPTIONS) as PluginOptions
+function _get_options($table: JQueryTable): PluginOptionsFull {
+    return $table.data(DATAKEY_OPTIONS) as PluginOptionsFull
 }
 
 function _install_resize_handles($table: JQueryTable): void {
@@ -55,14 +56,14 @@ function _install_resize_handles($table: JQueryTable): void {
     ths.attr(`${ATTR_HAS_WIDTH}`, "1")
 
     ths.each(function () {
-        let th = $(this)
-        let existing_handle = th.find(`.${CLASS_RESIZE_HANDLE}`) as JQueryCell
+        const th = $(this)
+        const existing_handle = th.find(`.${CLASS_RESIZE_HANDLE}`) as JQueryCell
         if (existing_handle.length == 0) {
             let handle = RESIZE_HANDLE_TEMPLATE.clone()
             th.append(handle)
 
             let pressed = false
-            let last_cursor_x = null
+            let last_cursor_x: number | null = null
             handle.on("mousedown", function (e) {
                 _make_text_unselectable($table)
                 pressed = true
@@ -82,7 +83,7 @@ function _install_resize_handles($table: JQueryTable): void {
             })
 
             $(window).on("mousemove", function (e) {
-                if (pressed) {
+                if (pressed && last_cursor_x != null) {
                     let new_cursor_x = e.pageX
                     let delta_w = new_cursor_x - last_cursor_x
                     last_cursor_x = new_cursor_x
@@ -104,6 +105,9 @@ function _install_resize_handles($table: JQueryTable): void {
 }
 
 function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): void {
+    if (th.length != 1) {
+        throw "Expect a single cell"
+    }
     delta_w = Math.abs(delta_w)
     let options = _get_options($table)
     let is_last_col = false
@@ -120,13 +124,13 @@ function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
         let width_to_remove = delta_w
         let width_removed = 0
         let next_th = th.next(`th[${ATTR_HAS_WIDTH}]`)
-        while (next_th.length > 0) {
-            let w = next_th.outerWidth()
-            let w2 = Math.max(0, w - width_to_remove)
+        while (next_th.length == 1) {
+            const w = next_th.outerWidth() as number
+            const w2 = Math.max(0, w - width_to_remove)
             next_th.outerWidth(w2)
             _recompute_col_width($table)
-            let applied_w = next_th.outerWidth()
-            let applied_delta = w - applied_w
+            const applied_w = next_th.outerWidth() as number
+            const applied_delta = w - applied_w
             width_removed += applied_delta
             width_to_remove -= applied_delta
             next_th = next_th.next(`th[${ATTR_HAS_WIDTH}]`)
@@ -145,59 +149,64 @@ function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
     let cannot_resize = !_table_can_grow($table) && is_last_col
 
     if (!cannot_resize) {
-        let new_width = th.outerWidth() + delta_w
+        let new_width = (th.outerWidth() as number) + delta_w
         th.outerWidth(new_width)
 
         if (extra_w_for_last_col > 0.1) {
             let last_col = $table.find("thead th:last-child()")
-            let last_col_initial_width = last_col.outerWidth()
+            let last_col_initial_width = last_col.outerWidth() as number
             if (last_col.length == 0) {
                 throw "Can't find last column"
             }
-            th.outerWidth(th.outerWidth() + extra_w_for_last_col)
-            let unapplied_width_on_last_col = extra_w_for_last_col - (last_col_initial_width - last_col.outerWidth())
-            th.outerWidth(th.outerWidth() - unapplied_width_on_last_col) // Fixme. Last column can jiggle here.
+            th.outerWidth((th.outerWidth() as number) + extra_w_for_last_col)
+            let unapplied_width_on_last_col = extra_w_for_last_col - (last_col_initial_width - (last_col.outerWidth() as number))
+            th.outerWidth((th.outerWidth() as number) - unapplied_width_on_last_col) // Fixme. Last column can jiggle here.
         }
     }
 }
 
 function _decrease_size($table: JQueryTable, th: JQueryCell, delta_w: number): void {
+    if (th.length != 1) {
+        throw "Expect a single cell"
+    }
+
     delta_w = -Math.abs(delta_w)
     let options = _get_options($table)
 
-    let new_width = th.outerWidth() + delta_w
+    let new_width = (th.outerWidth() as number) + delta_w
     th.outerWidth(new_width)
-    let remaing_delta_w = new_width - th.outerWidth()
+    let remaing_delta_w = new_width - (th.outerWidth() as number)
     let previous_col = th.prev()
 
     while (previous_col.length > 0 && remaing_delta_w < 0) {
-        let initial_width = previous_col.outerWidth()
-        new_width = previous_col.outerWidth() + remaing_delta_w
+        let initial_width = previous_col.outerWidth() as number
+        new_width = (previous_col.outerWidth() as number) + remaing_delta_w
         previous_col.outerWidth(new_width)
-        remaing_delta_w += initial_width - previous_col.outerWidth()
+        remaing_delta_w += initial_width - (previous_col.outerWidth() as number)
         previous_col = previous_col.prev()
     }
 
     if (options.table_width_constrained) {
         let next_th = th.next(`th[${ATTR_HAS_WIDTH}]`)
         if (next_th.length > 0) {
-            next_th.outerWidth(next_th.outerWidth() - (delta_w - remaing_delta_w))
+            next_th.outerWidth((next_th.outerWidth() as number) - (delta_w - remaing_delta_w))
         }
     }
 }
 
 function _recompute_col_width($table: JQueryTable): void {
     $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function () {
-        $(this).width($(this).width())
+        $(this).width($(this).width() as number)
     })
 }
 
 function _allowed_table_expansion($table: JQueryTable): number {
-    let options = _get_options($table)
+    const options = _get_options($table)
     if (options.table_width_constrained) {
         return 0
     }
-    return Math.max(0, $table.parent().innerWidth() - $table.outerWidth())
+    const table_parent = $table.parent()
+    return Math.max(0, (table_parent.innerWidth() as number) - ($table.outerWidth() as number))
 }
 
 function _table_can_grow($table: JQueryTable): boolean {
@@ -213,22 +222,25 @@ function _make_text_selectable($table: JQueryTable): void {
 }
 
 function _update_sizes($table: JQueryTable): void {
-    let first_row = $table.find("tr:visible:first") as JQueryRow
-    let last_row = $table.find("tr:visible:last") as JQueryRow
-    let table_height = last_row.offset().top + last_row.outerHeight() - first_row.offset().top
+    const first_row = $table.find("tr:visible:first") as JQueryRow
+    const last_row = $table.find("tr:visible:last") as JQueryRow
+    let table_height = 0
+    if (last_row.length > 0 && first_row.length > 0) {
+        //@ts-ignore
+        table_height = last_row.offset().top + last_row.outerHeight() - first_row.offset().top
+    }
 
-    let thead = $table.find("thead") as JQuery<HTMLTableSectionElement>
+    const thead = $table.find("thead") as JQuery<HTMLTableSectionElement>
     let column_handles = thead.find(`.${CLASS_RESIZE_HANDLE}`)
-    let th = thead.find("th").first() as JQueryCell
-    let top = -(th.outerHeight() - th.innerHeight()) / 2
+    const first_th = thead.find("th").first() as JQueryCell
+    const top = -((first_th.outerHeight() as number) - (first_th.innerHeight() as number)) / 2
     column_handles.outerHeight(table_height)
     column_handles.css("top", `${top}px`)
 
     column_handles.each(function () {
-        let handle = $(this)
-        let right_offset = 0
-        let border_avg_width = (th.outerWidth() - th.innerWidth()) / 2
-        right_offset = handle.width() / 2 + border_avg_width / 2 // half handle size + half cell border size
+        const handle = $(this) as JQuery<HTMLDivElement>
+        const border_avg_width = ((first_th.outerWidth() as number) - (first_th.innerWidth() as number)) / 2
+        const right_offset = (handle.width() as number) / 2 + border_avg_width / 2 // half handle size + half cell border size
         handle.css("right", `-${right_offset}px`)
     })
 }
@@ -269,8 +281,9 @@ const public_funcs = {
     refresh: refresh,
 }
 
-export function scrutiny_resizable_table(...args) {
+export function scrutiny_resizable_table(...args: any[]) {
     let hasResults = false
+    //@ts-ignore
     const results = $(this).map(function () {
         const $table = $(this)
 
@@ -282,6 +295,7 @@ export function scrutiny_resizable_table(...args) {
             if (!public_funcs.hasOwnProperty(funcname)) {
                 throw "Unknown function " + funcname
             }
+            //@ts-ignore
             const result = public_funcs[funcname]($table, ...args.slice(1))
             if (typeof result !== "undefined") {
                 hasResults = true
@@ -294,6 +308,7 @@ export function scrutiny_resizable_table(...args) {
 
     // When no result were provided, return the same `this` that we received
     if (!hasResults) {
+        //@ts-ignore
         return this
     }
     // optionnaly, when there was only one item targeted, return the result

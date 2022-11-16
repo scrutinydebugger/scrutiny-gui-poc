@@ -7,38 +7,74 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, AllDatastoreEntryTypes } from "../../datastore.ts"
-
-import { BaseWidget } from "../../base_widget.ts"
-
-import $ from "jquery"
+import { DatastoreEntryType, AllDatastoreEntryTypes } from "../../datastore"
+import { BaseWidget } from "../../base_widget"
+import { App } from "../../app"
+import * as $ from "jquery"
 
 export class VarListWidget extends BaseWidget {
-    constructor(container, app, instance_id) {
+    /** The container in which to put data. That's our widget Canvas in the UI */
+    container: JQuery
+    /** The Scrutiny App instance */
+    app: App
+    /** The instance ID of this widget. */
+    instance_id: number
+    /** The name attributed the to the tree used to compute a unique HTML ID */
+    treename: string
+    /** A map mapping element display path with a unique numeric ID within this tree*/
+    id_map: Record<string, number>
+    /** Counter to generate the next tree ID */
+    next_tree_id: number
+
+    /**
+     *
+     * @param container HTML container object in which to append the widget content
+     * @param app The Scrutiny App instance
+     * @param instance_id A unique instance number for this widget
+     */
+    constructor(container: JQuery, app: App, instance_id: number) {
         super()
         this.container = container
         this.app = app
         this.instance_id = instance_id
+
+        this.treename = ""
+        this.id_map = {}
+        this.next_tree_id = 0
     }
 
-    initialize() {
-        let that = this
+    /**
+     * Initialize the widget
+     */
+    initialize(): void {
+        const that = this
         this.treename = "varlist_tree_" + this.instance_id
         this.id_map = {}
         this.next_tree_id = 0
 
-        this.container.html(this.app.get_template(this, "varlist-content"))
+        const template_content = this.app.get_template(this, "varlist-content")
+        if (template_content.length !== 1) {
+            throw "Empty template content"
+        }
+        this.container.html(template_content[0])
 
         // Event handlers
         $(document).on("scrutiny.datastore.ready", function (data) {
-            that.rebuild_tree(data["entry_type"])
+            that.rebuild_tree() // Todo use data to rebuild only missing nodes
         })
 
         $(document).on("scrutiny.datastore.clear", function (data) {
-            that.rebuild_tree(data["entry_type"])
+            that.rebuild_tree() // Todo : USe data to clear only cleared data
         })
 
+        if (this.app.datastore === null) {
+            throw "App not initialized properly"
+        }
+
         // Setup
+        this.rebuild_tree()
+        // Todo rebuild by type
+        /*
         for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
             if (this.app.datastore.is_ready(AllDatastoreEntryTypes[i])) {
                 this.rebuild_tree(AllDatastoreEntryTypes[i])
@@ -46,15 +82,24 @@ export class VarListWidget extends BaseWidget {
                 // TODO complete this?
             }
         }
+        */
 
         setTimeout(function () {
             that.rebuild_tree()
         })
     }
 
+    /**
+     * Destroy the widget
+     */
     destroy() {}
 
-    make_node_id(display_path) {
+    /**
+     * Generate a unique ID assignable to a watchable node
+     * @param display_path The path to the node
+     * @returns A unique name used to identify node globally in the web document
+     */
+    make_node_id(display_path: string): string {
         if (!this.id_map.hasOwnProperty(display_path)) {
             this.id_map[display_path] = this.next_tree_id
             this.next_tree_id++
@@ -62,15 +107,22 @@ export class VarListWidget extends BaseWidget {
         return this.treename + "_" + this.id_map[display_path]
     }
 
-    fetch_jstree_subnodes(parent, callback) {
+    /**
+     *
+     * @param parent Parent to read children from
+     * @param callback JsTree callback to inform of the result
+     */
+    fetch_jstree_subnodes(parent: any, callback: Function) {
         // jstree root has id="#"
-
-        let node_type_map = {}
+        if (this.app.datastore === null) {
+            throw "Application not initialized properly"
+        }
+        let node_type_map: Record<DatastoreEntryType, string> = {} as Record<DatastoreEntryType, string>
         node_type_map[DatastoreEntryType.Var] = "var"
         node_type_map[DatastoreEntryType.Alias] = "alias"
         node_type_map[DatastoreEntryType.RPV] = "rpv"
 
-        let that = this
+        const that = this
         if (parent.id == "#") {
             let display_path = "/"
             callback([
@@ -84,7 +136,7 @@ export class VarListWidget extends BaseWidget {
                 },
             ])
         } else {
-            let jstree_childrens = []
+            let jstree_childrens: any[] = []
 
             for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
                 let entry_type = AllDatastoreEntryTypes[i]
@@ -106,7 +158,7 @@ export class VarListWidget extends BaseWidget {
                 // Entries are organized by entry type
                 children["entries"][entry_type].forEach(function (entry, i) {
                     jstree_childrens.push({
-                        text: entry.name,
+                        text: entry.default_name,
                         id: that.make_node_id(entry.display_path),
                         li_attr: {
                             display_path: entry.display_path,
@@ -123,18 +175,26 @@ export class VarListWidget extends BaseWidget {
         }
     }
 
+    /**
+     * Returns the HTML div that contains the object tree
+     * @returns The container for the tree to display
+     */
     get_tree_container() {
         return this.container.find(".varlist-tree-container")
     }
 
-    // called on datastore ready event
-    rebuild_tree(entry_type) {
-        this.clear_tree(entry_type)
+    /**
+     * Rebuild the tree. Called on datastore ready event
+     */
+    rebuild_tree() {
+        this.clear_tree()
 
-        let that = this
+        const that = this
+        //@ts-ignore
         let thetree = $("<div class='varlist-tree'></div>").jstree({
             plugins: ["dnd", "types"], // Drag and drop
             core: {
+                //@ts-ignore
                 data: function (obj, cb) {
                     that.fetch_jstree_subnodes(obj, cb)
                 },
@@ -165,9 +225,8 @@ export class VarListWidget extends BaseWidget {
         this.get_tree_container().append(thetree)
     }
 
-    // called on datastore clear event
-    clear_tree(entry_type) {
-        // nothing to do with type as we have a single tree for them all.
+    // Erase the tree. Called on datastore.clear event
+    clear_tree() {
         this.get_tree_container().html("")
     }
 

@@ -147,11 +147,14 @@ export interface SubfolderDescription {
     has_children: boolean
 }
 
-type DatastoreTreesType = Record<DatastoreEntryType, Tree<DatastoreEntry>>
+type DatastoreTreesType = Record<DatastoreEntryType, Tree<DatastoreEntryWithName>>
 type DatastoreReadyType = Record<DatastoreEntryType, boolean>
+interface DatastoreEntryWithName extends DatastoreEntry {
+    default_name?: string
+}
 
 export interface DatastorePathChildren {
-    entries: Record<DatastoreEntryType, DatastoreEntry[]>
+    entries: Record<DatastoreEntryType, DatastoreEntryWithName[]>
     subfolders: SubfolderDescription[]
 }
 
@@ -189,11 +192,16 @@ export class Datastore {
 
         for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
             let entry_type = AllDatastoreEntryTypes[i]
-            this.trees[entry_type] = new Tree<DatastoreEntry>()
+            this.trees[entry_type] = new Tree<DatastoreEntryWithName>()
             this.entry_cache[entry_type] = {}
         }
 
         this.clear_silent()
+
+        // Fixme: 2022-11-12 - PYL - should b by type! To be fixed after TypeScript conversion
+        this.serverid2entry = {}
+        this.watcher2entry = {}
+        this.watched_entries = new Set()
     }
 
     /**
@@ -452,12 +460,12 @@ export class Datastore {
      */
     get_children(entry_type: DatastoreEntryType, path: string): DatastorePathChildren {
         let children: DatastorePathChildren = {
-            entries: {} as Record<DatastoreEntryType, DatastoreEntry[]>,
+            entries: {} as Record<DatastoreEntryType, DatastoreEntryWithName[]>,
             subfolders: [],
         }
 
         AllDatastoreEntryTypes.forEach(function (entry_type, i) {
-            children["entries"][entry_type] = [] as DatastoreEntry[]
+            children["entries"][entry_type] = [] as DatastoreEntryWithName[]
         })
 
         let tree_children = null
@@ -473,10 +481,10 @@ export class Datastore {
         const node_names = Object.keys(objects).sort()
         const folder_names = Object.keys(folders).sort()
         for (let i = 0; i < node_names.length; i++) {
-            let node = objects[node_names[i]]
-            node["name"] = trim(node.display_path, "/").split("/").pop()
-            if (entry_type == null || entry_type == node.entry_type) {
-                children["entries"][node.entry_type].push(node)
+            let named_entry = objects[node_names[i]]
+            named_entry["default_name"] = trim(named_entry.display_path, "/").split("/").pop()
+            if (entry_type == null || entry_type == named_entry.entry_type) {
+                children["entries"][named_entry.entry_type].push(named_entry)
             }
         }
 
