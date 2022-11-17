@@ -7,7 +7,7 @@ const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
 export default {
     context: resolve("."),
-    entry: glob.sync("./tests/test_*.ts"),
+    entry: glob.sync("./tests/*.test.ts"),
     mode: "development",
     module: {
         rules: [
