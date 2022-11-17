@@ -452,6 +452,12 @@ export class ServerConnection {
      */
     create_socket(): void {
         const that = this // Javascript is such a beautiful language
+
+        if (this.socket !== null){
+            this.socket.close()
+            this.socket = null
+        }
+
         this.socket = new WebSocket("ws://" + this.hostname + ":" + this.port)
         this.socket.onmessage = function (e) {
             that.on_socket_message_callback(e.data)
@@ -535,6 +541,10 @@ export class ServerConnection {
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
 
+        if (this.socket !== null){
+            this.socket = null
+        }
+
         if (this.enable_reconnect) {
             this.try_reconnect(this.reconnect_interval)
         }
@@ -568,6 +578,12 @@ export class ServerConnection {
         this.set_disconnected()
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
+
+        if (this.socket !== null){
+            this.socket.close()
+            this.socket = null
+        }
+
         if (this.enable_reconnect) {
             this.try_reconnect(this.reconnect_interval)
         }
