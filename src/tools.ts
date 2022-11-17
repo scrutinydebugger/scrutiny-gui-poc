@@ -6,6 +6,12 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
+/**
+ * Trims a string by removing the given characters (multiple) from both beginning and end.
+ * @param str The string to trim
+ * @param chars A string containing a list of chars to be trimmed
+ * @returns The trimmed string  
+ */
 export function trimAny(str: string, chars: string): string {
     var start = 0,
         end = str.length
@@ -17,7 +23,12 @@ export function trimAny(str: string, chars: string): string {
     return start > 0 || end < str.length ? str.substring(start, end) : str
 }
 
-// Fastest Trim algo according to stack overflow
+/**
+ * Trims a string by removing the given character from both beginning and end.
+ * @param str The string to trim
+ * @param ch The character to remove
+ * @returns The trimmed string  
+ */
 export function trim(str: string, ch: string): string {
     var start = 0,
         end = str.length
@@ -29,6 +40,11 @@ export function trim(str: string, ch: string): string {
     return start > 0 || end < str.length ? str.substring(start, end) : str
 }
 
+/**
+ * Reads a GET parameter from the URL
+ * @param name The name of the parameter
+ * @returns The value of the parameter
+ */
 export function get_url_param(name: string): string {
     name = name.replace(/[[]/, "\\[").replace(/[\]]/, "\\]")
     var regex = new RegExp("[\\?&]" + name + "=([^&#]*)")

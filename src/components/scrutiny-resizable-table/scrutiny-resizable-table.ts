@@ -12,14 +12,21 @@ type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
 
+/** Tells if a cell has an explicit width value */
 const ATTR_HAS_WIDTH = "srt-has-width"
 
+/** Class put on every tables that is enabled by this plugin */
 const CLASS_TABLE = "srt-table"
+/** Class put on every column handle */
 const CLASS_RESIZE_HANDLE = "srt-resize-handle"
+/** Indicates that the text in the table should not wrap */
 const CLASS_NOWRAP = "srt-nowrap"
+/** Class put on a handle when its being dragged */
 const CLASS_HANDLE_ACTIVE = "srt-handle-active"
+/** Class put on the table when a resize is in progress (column handle being dragged) */
 const CLASS_RESIZING = "srt-resizing"
 
+/** Data key to store the plugin options */
 const DATAKEY_OPTIONS = "srt-options"
 
 const DEFAULT_OPTIONS = {
@@ -35,6 +42,11 @@ const RESIZE_HANDLE_TEMPLATE = $(`<div class='${CLASS_RESIZE_HANDLE}' />`)
 
 /***  Public functions *** */
 
+/**
+ * Refresh the plugin so that its visual behavior is adjusted. Since it uses absolutes positioning, 
+ * we can't rely on the browser to auto-update its position
+ * @param $table The table
+ */
 function refresh($table: JQueryTable) {
     _update_sizes($table)
 }
@@ -45,8 +57,15 @@ function _get_options($table: JQueryTable): PluginOptionsFull {
     return $table.data(DATAKEY_OPTIONS) as PluginOptionsFull
 }
 
+/**
+ * Adds some floating divs over the table columns separators using absolute positioning.
+ * These handles are used to grab the table and highlight the separator. 
+ * Their height needs to be adjusted when the table grows or shrink vertically as the browser won't do it
+ * because of absolute positions. Calling refresh() does this update
+ * @param $table The table
+ */
 function _install_resize_handles($table: JQueryTable): void {
-    let options = _get_options($table)
+    const options = _get_options($table)
 
     let ths = $table.find("thead th") as JQueryCell
     if (options.table_width_constrained == true) {
@@ -65,6 +84,7 @@ function _install_resize_handles($table: JQueryTable): void {
             let pressed = false
             let last_cursor_x: number | null = null
             handle.on("mousedown", function (e) {
+                //  Click on a column separator
                 _make_text_unselectable($table)
                 pressed = true
                 $table.addClass(CLASS_RESIZING)
@@ -73,6 +93,7 @@ function _install_resize_handles($table: JQueryTable): void {
             })
 
             $(window).on("mouseup", function (e) {
+                //  Release of a column separator
                 if (pressed) {
                     $table.removeClass(CLASS_RESIZING)
                     $table.find("thead").find(`.${CLASS_RESIZE_HANDLE}`).removeClass(CLASS_HANDLE_ACTIVE)
@@ -84,8 +105,9 @@ function _install_resize_handles($table: JQueryTable): void {
 
             $(window).on("mousemove", function (e) {
                 if (pressed && last_cursor_x != null) {
-                    let new_cursor_x = e.pageX
-                    let delta_w = new_cursor_x - last_cursor_x
+                    // Moving a column separator
+                    const new_cursor_x = e.pageX
+                    const delta_w = new_cursor_x - last_cursor_x
                     last_cursor_x = new_cursor_x
 
                     if (delta_w > 0) {
@@ -104,12 +126,18 @@ function _install_resize_handles($table: JQueryTable): void {
     _update_sizes($table)
 }
 
+/**
+ * Increase the size of a cell by the given number of pixel.
+ * @param $table The table
+ * @param th The cell to increase the size
+ * @param delta_w The width to increase (pixel). This value is a delta
+ */
 function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): void {
     if (th.length != 1) {
         throw "Expect a single cell"
     }
     delta_w = Math.abs(delta_w)
-    let options = _get_options($table)
+    const options = _get_options($table)
     let is_last_col = false
     let extra_w_for_last_col = 0
     if (!options.table_width_constrained) {
@@ -149,29 +177,35 @@ function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
     let cannot_resize = !_table_can_grow($table) && is_last_col
 
     if (!cannot_resize) {
-        let new_width = (th.outerWidth() as number) + delta_w
+        const new_width = (th.outerWidth() as number) + delta_w
         th.outerWidth(new_width)
 
         if (extra_w_for_last_col > 0.1) {
-            let last_col = $table.find("thead th:last-child()")
-            let last_col_initial_width = last_col.outerWidth() as number
+            const last_col = $table.find("thead th:last-child()")
+            const last_col_initial_width = last_col.outerWidth() as number
             if (last_col.length == 0) {
                 throw "Can't find last column"
             }
             th.outerWidth((th.outerWidth() as number) + extra_w_for_last_col)
-            let unapplied_width_on_last_col = extra_w_for_last_col - (last_col_initial_width - (last_col.outerWidth() as number))
+            const unapplied_width_on_last_col = extra_w_for_last_col - (last_col_initial_width - (last_col.outerWidth() as number))
             th.outerWidth((th.outerWidth() as number) - unapplied_width_on_last_col) // Fixme. Last column can jiggle here.
         }
     }
 }
 
+/**
+ * Decrease the size of a cell by the given number of pixel.
+ * @param $table The table
+ * @param th The cell to decrease the size
+ * @param delta_w The width to decrease (pixel). This value is a delta
+ */
 function _decrease_size($table: JQueryTable, th: JQueryCell, delta_w: number): void {
     if (th.length != 1) {
         throw "Expect a single cell"
     }
 
     delta_w = -Math.abs(delta_w)
-    let options = _get_options($table)
+    const options = _get_options($table)
 
     let new_width = (th.outerWidth() as number) + delta_w
     th.outerWidth(new_width)
@@ -194,12 +228,22 @@ function _decrease_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
     }
 }
 
+/**
+ * Update the width of the columns embedded as a header cell property so that they represent their real size.
+ * Browsers allows their sum to be bigger than the total table width, causing a mismatch between the encoded value and the display
+ * @param $table The table
+ */
 function _recompute_col_width($table: JQueryTable): void {
     $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function () {
         $(this).width($(this).width() as number)
     })
 }
 
+/**
+ * Returns by how many pixels the table can still grows
+ * @param $table The table
+ * @returns Expansion margin in pixels
+ */
 function _allowed_table_expansion($table: JQueryTable): number {
     const options = _get_options($table)
     if (options.table_width_constrained) {
@@ -209,18 +253,36 @@ function _allowed_table_expansion($table: JQueryTable): number {
     return Math.max(0, (table_parent.innerWidth() as number) - ($table.outerWidth() as number))
 }
 
+/**
+ * Tells if a table is at maximum size or not.
+ * @param $table The table
+ * @returns True if the table can grow
+ */
 function _table_can_grow($table: JQueryTable): boolean {
     return _allowed_table_expansion($table) > 0
 }
 
+/**
+ * Make the text in the table unselectable. Useful to avoid glitches while resizing the columns
+ * @param $table The table
+ */
 function _make_text_unselectable($table: JQueryTable): void {
     $table.attr("unselectable", "on").css("user-select", "none")
 }
 
+/**
+ * Make the text in the table selectable
+ * @param $table The table
+ */
 function _make_text_selectable($table: JQueryTable): void {
     $table.attr("unselectable", "").css("user-select", "")
 }
 
+/**
+ * Recompute all required size parameter in the table. 
+ * Necessary since we use absolute positioning
+ * @param $table The table
+ */
 function _update_sizes($table: JQueryTable): void {
     const first_row = $table.find("tr:visible:first") as JQueryRow
     const last_row = $table.find("tr:visible:last") as JQueryRow
@@ -245,6 +307,11 @@ function _update_sizes($table: JQueryTable): void {
     })
 }
 
+/**
+ * Initialize the plugin on a DOM table
+ * @param $table The table
+ * @param config The plugin configuration
+ */
 function init($table: JQueryTable, config: PluginOptions): void {
     let options = $.extend({}, DEFAULT_OPTIONS, config)
     $table.addClass(CLASS_TABLE)
@@ -281,6 +348,11 @@ const public_funcs = {
     refresh: refresh,
 }
 
+/**
+ * Call the plugin on the given table.
+ * @param args Plugin parameters. Either a configuration for initialization or a function name + function params on a already initialized plugin
+ * @returns The JQuery table unless a function with a return value is requested
+ */
 export function scrutiny_resizable_table(...args: any[]) {
     let hasResults = false
     //@ts-ignore
