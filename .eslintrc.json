@@ -1,0 +1,23 @@
+{
+    
+    "env": {
+        "browser": true,
+        "es6": true
+    },
+    "extends": ["eslint:recommended"],
+    "globals": {
+    },
+    "ignorePatterns": [
+        "webapp_release/**/*.js",
+        "tests/**/*.js"
+    ],
+    "parserOptions": {
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-prototype-builtins": 0,
+        "no-unused-vars": ["error", { "vars": "all", "args": "none", "ignoreRestSiblings": false }],
+        "no-empty": ["error", { "allowEmptyCatch": true }],
+        "no-extra-semi": 0
+    }
+}

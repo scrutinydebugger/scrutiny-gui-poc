@@ -8,8 +8,37 @@
       "default": "./webapp_release/tests/*"
     }
   },
+  "devDependencies": {
+    "@types/jquery": "^3.5.14",
+    "@types/mocha": "^10.0.0",
+    "assert": "^2.0.0",
+    "chai": "^4.3.7",
+    "copy-webpack-plugin": "^11.0.0",
+    "git-revision-webpack-plugin": "^5.0.0",
+    "eslint": "^8.25.0",
+    "mocha": "^10.1.0",
+    "prettier": "2.7.1",
+    "source-map-loader": "^4.0.1",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.8.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier .",
+    "build": "webpack",
+    "dev": "webpack --watch",
+    "test": "webpack --config webpack-test.config.js && mocha webapp_release/js/scrutiny-test.js"
+  },
   "dependencies": {
-    "esm": "^3.2.25",
-    "mocha": "^10.0.0"
+    "assert": "^2.0.0",
+    "glob": "^8.0.3",
+    "mocha-loader": "^5.1.5"
+  },
+  "overrides": {
+    "mocha-loader": {
+      "mocha": "^10.1.0"
+    }
   }
 }
