@@ -1,4 +1,4 @@
-//    test_datastore.ts
+//    test_datastore.test.ts
 //        Unit tests for the Datastore class
 //
 //   - License : MIT - See LICENSE file.
@@ -6,11 +6,11 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { Datastore, DatastoreEntry, DatastoreEntryType } from "../src/datastore"
+import { Datastore, DatastoreEntry, DatastoreEntryType } from "../webapp/datastore"
 import { assert_list_equal_unordered } from "./testing_tools"
 import * as assert from "assert"
 import { FakeApp } from "./fake_app"
-import { App } from "../src/app"
+import { App } from "../webapp/app"
 
 describe("DataStore", function () {
     it("Basic access", function () {

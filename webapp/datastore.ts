@@ -395,7 +395,7 @@ export class Datastore {
     }
 
     /**
-     * Write the value of the given entry in the datastore identified by its server od
+     * Write the value of the given entry in the datastore identified by its server id
      * @param server_id The server ID of the entry
      * @param val Value to set
      */
@@ -468,7 +468,7 @@ export class Datastore {
             children["entries"][entry_type] = [] as DatastoreEntryWithName[]
         })
 
-        let tree_children:ShallowNodeDescription<DatastoreEntryWithName>|null = null
+        let tree_children: ShallowNodeDescription<DatastoreEntryWithName> | null = null
         try {
             tree_children = this.trees[entry_type].get_children(path)
         } catch (e) {

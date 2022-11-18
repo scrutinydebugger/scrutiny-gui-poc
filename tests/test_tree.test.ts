@@ -1,4 +1,4 @@
-//    test_tree.ts
+//    test_tree.test.ts
 //        Unit tests for the Tree storage class
 //
 //   - License : MIT - See LICENSE file.
@@ -6,7 +6,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { Tree } from "../src/tree"
+import { Tree } from "../webapp/tree"
 import * as assert from "assert"
 import { assert_list_equal_unordered } from "./testing_tools"
 
