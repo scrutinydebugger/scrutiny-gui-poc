@@ -1,18 +1,17 @@
 {
     "folders": [
-        "src",
-        "tests",
-        "webapp_release"
+        "webapp",
+        "tests"
     ],
     "include_patterns": [
+        "public/*",
         "*.js",
         "*.ts"
     ],
     "exclude_patterns": [
         "node_modules/*",
-        "webapp_release/libs/*",
-        "webapp_release/js/*",
-        "webapp_release/components"
+        "dist/libs/*",
+        "webapp/public/libs/*"
     ],
     "license": "MIT - See LICENSE file",
     "project": "Scrutiny Debugger",
@@ -20,46 +19,46 @@
     "copyright_owner": "Scrutiny Debugger",
     "copyright_start_date": "2021",
     "files": {
-        "src/ui.ts": {
+        "webapp/ui.ts": {
             "docstring": "User interface module that can take the application data and assign it to the correct DOM element."
         },
-        "src/app.ts": {
+        "webapp/app.ts": {
             "docstring": "The main Scrutiny application"
         },
-        "src/base_widget.ts": {
+        "webapp/base_widget.ts": {
             "docstring": "An interface for all widget classes"
         },
-        "src/datastore.ts": {
+        "webapp/datastore.ts": {
             "docstring": "A datastore for all watchable items that the server broadcast. Keeps the value and notify subscribers (widget windows) on value change"
         },
-        "src/global_definitions.ts": {
+        "webapp/global_definitions.ts": {
             "docstring": "Some definitions used project wide"
         },
-        "src/logging.ts": {
+        "webapp/logging.ts": {
             "docstring": "A python like logging module that allows fine-grain control over logging"
         },
-        "src/scrutiny-main.ts": {
+        "webapp/scrutiny-main.ts": {
             "docstring": "Entry point for the web project. Initialize the Scrutiny app and binds it to the window."
         },
-        "src/server_api.ts": {
+        "webapp/server_api.ts": {
             "docstring": "Definitions of the server websocket API"
         },
-        "src/server_connection.ts": {
+        "webapp/server_connection.ts": {
             "docstring": "Handles the communication with the server"
         },
-        "src/tools.ts": {
+        "webapp/tools.ts": {
             "docstring": "Some tools used project wide"
         },
-        "src/tree.ts": {
+        "webapp/tree.ts": {
             "docstring": "A Tree structure that can store object associated with a path in the /aaa/bbb/ccc format.\nAllow log complexity when searching"
         },
-        "src/components/scrutiny-resizable-table/scrutiny-resizable-table.ts": {
+        "webapp/components/scrutiny-resizable-table/scrutiny-resizable-table.ts": {
             "docstring": "A JQuery plugin that can be added on a Table element to make the columns resizable"
         },
-        "src/components/scrutiny-treetable/scrutiny-treetable.ts": {
+        "webapp/components/scrutiny-treetable/scrutiny-treetable.ts": {
             "docstring": "A JQuery plugin that allows making a table act as a tree.\nCustom made tree-table widget because all the one out there were either behind a paid license or buggy and/or deprecated and/or not tailored to our need."
         },
-        "src/widgets/watch/watch.ts": {
+        "webapp/widgets/watch/watch.ts": {
             "docstring": "Watch window widget. Its job is to display the value of watchables items.  Items can be dragged from other watch widget or from VarList widget"
         },
         "tests/fake_app.ts": {
@@ -68,17 +67,17 @@
         "tests/testing_tools.ts": {
             "docstring": "Some global tools for testing framework"
         },
-        "tests/test_datastore.ts": {
+        "webapp/widgets/varlist/varlist.ts": {
+            "docstring": "A widget that shows the list of available watchables in the server in a tree-like structure"
+        },
+        "tests/test_datastore.test.ts": {
             "docstring": "Unit tests for the Datastore class"
         },
-        "tests/test_fake_app.ts": {
+        "tests/test_fake_app.test.ts": {
             "docstring": "Unit tests for the FakeApp class that stubs the application"
         },
-        "tests/test_tree.ts": {
+        "tests/test_tree.test.ts": {
             "docstring": "Unit tests for the Tree storage class"
-        },
-        "src/widgets/varlist/varlist.ts": {
-            "docstring": "A widget that shows the list of available watchables in the server in a tree-like structure"
         }
     }
 }

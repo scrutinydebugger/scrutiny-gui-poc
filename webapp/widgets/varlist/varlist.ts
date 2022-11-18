@@ -1,5 +1,5 @@
 //    varlist.ts
-//        A widget that shows the list of availables watchbles in the server in a tree-like
+//        A widget that shows the list of available watchables in the server in a tree-like
 //        structure
 //
 //   - License : MIT - See LICENSE file.

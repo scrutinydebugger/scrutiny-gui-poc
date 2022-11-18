@@ -1,4 +1,4 @@
-//    test_datastore.ts
+//    test_datastore.test.ts
 //        Unit tests for the Datastore class
 //
 //   - License : MIT - See LICENSE file.
