@@ -91,7 +91,7 @@ export class App {
     /**
      * Triggers an event in the application. Abstracted for easy unit testing. Uses JQuery in deployment
      * @param name Name of the event
-     * @param data_dict Data associated iwth the event
+     * @param data_dict Data associated with the event
      */
     trigger_event(name: string, data_dict?: any): void {
         this.event_logger.debug("Triggering event : " + name)
@@ -146,7 +146,7 @@ export class App {
      */
     get_template_id(widget: BaseWidget | string, name: string): string {
         // Return the DOM id a of a template from it's name an creator (the widget that registered it)
-        let widget_name = null
+        let widget_name:string
 
         if (typeof widget === "string") {
             widget_name = widget
@@ -163,7 +163,7 @@ export class App {
      * Get the DOM element that contains a template identifier by a name and its widget owner
      * @param widget The widget that owns the template
      * @param name The name of the template
-     * @returns The DOM tempalte element
+     * @returns The DOM template element
      */
     get_template(widget: BaseWidget, name: string): JQuery {
         // Return a copy of the template from it's name and author (author=widget)
@@ -172,12 +172,12 @@ export class App {
 
     /**
      * Load a given template file using an ajax call and add it to the DOM
-     * @param template_id The DOM ID attributed to the tempalte element
+     * @param template_id The DOM ID attributed to the template element
      * @param template_file Filename containing the template content
      */
     load_template(template_id: string, template_file: string): void {
-        // Append the tempalte node to the DOM and register a promise for the init stage when
-        // the tmeplate is done loading through Ajax.
+        // Append the template node to the DOM and register a promise for the init stage when
+        // the template is done loading through Ajax.
         const that = this
         let promise = new Promise(function (resolve: (value?: unknown) => void, reject: (reason?: any) => void) {
             let template = $("<template id='" + template_id + "'></template>")
@@ -228,7 +228,7 @@ export class App {
      * Init the application
      */
     init_all(): void {
-        this.ui = new UI($("#layout-container")) // Container for Golden Layour
+        this.ui = new UI($("#layout-container")) // Container for Golden Layout
         this.ui.init()
         this.datastore = new Datastore(this)
 

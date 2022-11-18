@@ -33,7 +33,7 @@ var app: App | null = null
 function load_config(): AppConfig {
     let config = default_config
 
-    // If launched through webbrowser, this config will exist. Let'S give priority to it.
+    // If launched through web browser, this config will exist. Let'S give priority to it.
     let url_config = get_url_param("config") // From tools.js
     if (url_config != "") {
         try {

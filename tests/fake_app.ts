@@ -25,7 +25,7 @@ export class FakeApp {
         this.event_listeners = {}
     }
 
-    // Would normally raise an envent on the DOM
+    // Would normally raise an event on the DOM
     trigger_event(name: string, data?: any): void {
         if (typeof data === "undefined") {
             data = null

@@ -52,57 +52,57 @@ const ATTR_ID = "stt-id" // The row ID
 const ATTR_PARENT = "stt-parent-id" // The parent row ID
 const ATTR_LEVEL = "stt-level" // Nesting level. Integer (0,1,2,3). Bigger is deeper
 const ATTR_CHILDREN_COUNT = "stt-children-count" // Number of children for a row
-const ATTR_CHILDREN_LOADED = "stt-children-loaded" // Boolean indicating if the children of this node has been laoded
+const ATTR_CHILDREN_LOADED = "stt-children-loaded" // Boolean indicating if the children of this node has been loaded
 const ATTR_MOVING = "stt-moving" // Temporary boolean to handle edge case when moving rows
 
 /**  Applied on the table */
-const CLASS_TABLE = "stt-table" 
+const CLASS_TABLE = "stt-table"
 /**  Applied on each row */
-const CLASS_ROW = "stt-row" 
+const CLASS_ROW = "stt-row"
 /**  Applied on the spaced that create the nesting effect */
-const CLASS_SPACER = "stt-spacer" 
+const CLASS_SPACER = "stt-spacer"
 /**  Applied on the div element that serves as an expand button */
-const CLASS_EXPANDER = "stt-expander" 
+const CLASS_EXPANDER = "stt-expander"
 /**  Applied on the expander when it must how an expanded state */
-const CLASS_EXPANDER_OPENED = "stt-expander-opened" 
+const CLASS_EXPANDER_OPENED = "stt-expander-opened"
 /**  Applied on the expander when it must how an collapsed state */
-const CLASS_EXPANDER_CLOSED = "stt-expander-closed" 
+const CLASS_EXPANDER_CLOSED = "stt-expander-closed"
 /**  Applied on the dra-n-drop handle */
-const CLASS_DRAGGER = "stt-dragger" 
+const CLASS_DRAGGER = "stt-dragger"
 /**  Applied on a row when we want to drag-n-dop just below it */
-const CLASS_INSERT_BELOW = "stt-insert-below" 
+const CLASS_INSERT_BELOW = "stt-insert-below"
 /**  Applied on a row when we want to drag-n-dop just above it */
-const CLASS_INSERT_ABOVE = "stt-insert-above" 
-/**  Applied on a row that must be highligted */
-const CLASS_HIGHLIGTED = "stt-highligted" 
+const CLASS_INSERT_ABOVE = "stt-insert-above"
+/**  Applied on a row that must be highlighted */
+const CLASS_HIGHLIGHTED = "stt-highlighted"
 /**  Applied for a short amount of time on a row that just has been dropped after a drag-n-dop */
-const CLASS_JUST_DROPPED = "stt-just-dropped" 
+const CLASS_JUST_DROPPED = "stt-just-dropped"
 /**  Applied on the div that contains all plugin elements in the row (expander, spacer) */
-const CLASS_HEADER = "stt-cell-header" 
+const CLASS_HEADER = "stt-cell-header"
 /**  Applied on a row that must appear as disabled. Used when dragging an element. */
-const CLASS_DISABLED = "stt-disabled" 
+const CLASS_DISABLED = "stt-disabled"
 /**  Applied on a row that does not accept children */
-const CLASS_NO_CHILDREN = "stt-no-children" 
+const CLASS_NO_CHILDREN = "stt-no-children"
 /**  Applied on the cell that contains the tree element */
-const CLASS_TREE_CELL = "stt-tree-cell" 
+const CLASS_TREE_CELL = "stt-tree-cell"
 
 /**  To store the plugin options */
-const DATAKEY_OPTIONS = "stt-dk-options" 
+const DATAKEY_OPTIONS = "stt-dk-options"
 /**  To store a dict of already loaded nodes */
-const DATAKEY_NODE_CACHE = "stt-dk-node-cache" 
+const DATAKEY_NODE_CACHE = "stt-dk-node-cache"
 /**  Stores the expander template (can be configured through options) */
-const DATAKEY_EXPANDER_CLOSED = "stt-dk-expander_closed" 
+const DATAKEY_EXPANDER_CLOSED = "stt-dk-expander_closed"
 /**  Stores the expander template (can be configured through options) */
-const DATAKEY_EXPANDER_OPENED = "stt-dk-expander_opened" 
+const DATAKEY_EXPANDER_OPENED = "stt-dk-expander_opened"
 /**  User data associated with a row */
-const DATAKEY_USER_DATA = "stt-dk-userdata" 
+const DATAKEY_USER_DATA = "stt-dk-userdata"
 
 /**  Triggered when a row is collapsed */
-const EVENT_COLLAPSED = "stt.collapsed" 
+const EVENT_COLLAPSED = "stt.collapsed"
 /**  Triggered when a row is expanded */
-const EVENT_EXPANDED = "stt.expanded" 
+const EVENT_EXPANDED = "stt.expanded"
 /**  Triggered when a row is dropped after a drag-n-drop */
-const EVENT_DROPPED = "stt.dropped" 
+const EVENT_DROPPED = "stt.dropped"
 const EVENT_SIZE_CHANGED = "stt.size-changed"
 
 // Enum-ish for drag-n-drop
@@ -112,23 +112,23 @@ const INSERT_TYPE_ABOVE = 2
 
 const DEFAULT_OPTIONS = {
     /**  Indentation caused by each nesting */
-    indent: 10, 
+    indent: 10,
     /**  Indicate that we can drop rows on this table */
-    droppable: false, 
+    droppable: false,
     /**  Indicate that we can drag rows from this table */
-    draggable: false, 
+    draggable: false,
     /**  Allow rows to be moved within a table */
-    move_allowed: true, 
+    move_allowed: true,
     /**  The size in pixel of the expander. */
-    expander_size: 12, 
+    expander_size: 12,
     /**  When a row is dropped, length of the temporary highlight */
-    just_dropped_transition_length: 0.6, 
+    just_dropped_transition_length: 0.6,
     /**  The index (left to right) of the cell that will contain the tree header */
-    col_index: 1, 
-    /**  Makes the table resizable using the scrutiny_resiable_table plugin */
-    resizable: false, 
-    /**  Options passed to the scrutiny_resiable_table plugin */
-    resize_options: {}, 
+    col_index: 1,
+    /**  Makes the table resizable using the scrutiny_resizable_table plugin */
+    resizable: false,
+    /**  Options passed to the scrutiny_resizable_table plugin */
+    resize_options: {},
     /** Loading function to dynamically load the table */
     load_fn: function () {
         throw "No loader defined"
@@ -204,7 +204,7 @@ function delete_node($table: JQueryTable, node: string | JQueryRow): void {
 }
 
 /**
- * Expand a row so that the immediate children are displayed
+ * Expands a row so that the immediate children are displayed
  * @param $table The JQuery table
  * @param node The row to expand
  */
@@ -216,7 +216,7 @@ function expand_node($table: JQueryTable, node: string | JQueryRow): void {
 }
 
 /**
- * Expand every row in the table
+ * Expands every row in the table
  * @param $table The JQuery table
  */
 function expand_all($table: JQueryTable): void {
@@ -224,24 +224,23 @@ function expand_all($table: JQueryTable): void {
 }
 
 /**
- * Collapse a row so that all the descendants are hidden. Does not collapse children that have children themselves
+ * Collapses a row so that all the descendants are hidden. Does not collapse children that have children themselves
  * @param $table The JQuery table
  * @param node The row to expand
  */
 function collapse_node($table: JQueryTable, node: string | JQueryRow): void {
-    //  Collapase a row so that all the descendant are hidden
     let tr = _get_row_from_node_or_row($table, node)
     _collapse_row($table, tr)
 }
 
 /**
- * Collapse every row under the given row or in the whole table if no row is given. 
- * Children of children will be collapsed as well. 
+ * Collapses every row under the given row or in the whole table if no row is given.
+ * Children of children will be collapsed as well.
  * @param $table The JQuery table
  * @param node The row collapsing cascade start point. All rows collapsed if not provided
  */
 function collapse_all($table: JQueryTable, node?: string | JQueryRow): void {
-    if (typeof node !== 'undefined'){
+    if (typeof node !== "undefined") {
         node = _get_row_from_node_or_row($table, node)
     }
     _collapse_all($table, node) // node can be undefined here. Will collapse all rows.
@@ -250,7 +249,7 @@ function collapse_all($table: JQueryTable, node?: string | JQueryRow): void {
 /**
  * Returns a boolean indicating if the node is a root node
  * @param $table The JQuery table
- * @param node The node to get the status 
+ * @param node The node to get the status
  * @returns true if the node is a root node
  */
 function is_root($table: JQueryTable, node: string | JQueryRow): boolean {
@@ -297,7 +296,7 @@ function move_node($table: JQueryTable, row_id: string, new_parent_id?: string |
  * @param new_parent_id The ID of the new parent row in the destination table. If not set or null, the row
  * will become a root node in the destination table
  * @param after_node_id The row after which the transferred row will be inserted. If not set or null,
- * the transfered row will be set in last position
+ * the transferred row will be set in last position
  */
 function transfer_node(
     $table: JQueryTable,
@@ -435,14 +434,14 @@ function _find_row($table: JQueryTable, node_id: string): JQueryRow {
 }
 
 /**
- * Returs the JQuery object of a wanted row from either the JQuery object or its name.
+ * Returns the JQuery object of a wanted row from either the JQuery object or its name.
  * USed for public functions where we don't know if the user will provide an ID or a JQuery object
  * @param $table The JQuery table
  * @param arg The JQuery object or the textual ID of the wanted row
  * @returns The JQuery object referencing the desired row
  */
 function _get_row_from_node_or_row($table: JQueryTable, arg: JQueryRow | string): JQueryRow {
-    let tr = null
+    let tr: JQueryRow
     if (typeof arg === "string") {
         tr = _find_row($table, arg)
     } else {
@@ -480,7 +479,7 @@ function _get_parent($table: JQueryTable, tr: JQueryRow): JQueryRow | null {
 /**
  * Returns the parent ID (not HTML ID) of a given row
  * @param tr The JQuery row
- * @returns The aprent ID of the queried row
+ * @returns The parent ID of the queried row
  */
 function _get_parent_id(tr: JQueryRow): string | null {
     if (_is_root(tr)) {
@@ -506,7 +505,7 @@ function _is_root(tr: JQueryRow): boolean {
 /**
  * Tells if the children of a given row has been loaded
  * @param tr The JQuery row
- * @returns True if they are laoded
+ * @returns True if they are loaded
  */
 function _is_children_loaded(tr: JQueryRow): boolean {
     let loaded = tr.attr(ATTR_CHILDREN_LOADED)
@@ -601,7 +600,7 @@ function _get_nesting_level(tr: JQueryRow): number {
 }
 
 /**
- * Change the expan/collapse icon to a collapsed state
+ * Change the expand/collapse icon to a collapsed state
  * @param $table The JQuery table
  * @param tr The JQuery row
  */
@@ -613,7 +612,7 @@ function _close_expander($table: JQueryTable, tr: JQueryRow): void {
 }
 
 /**
- * Change the expan/collapse icon to a expanded state
+ * Change the expand/collapse icon to a expanded state
  * @param $table The JQuery table
  * @param tr The JQuery row
  */
@@ -626,7 +625,7 @@ function _open_expander($table: JQueryTable, tr: JQueryRow): void {
 
 /**
  * Get the plugin options stored in the JQuery element
- * @param $table The JQuery table 
+ * @param $table The JQuery table
  * @returns the plugin options
  */
 function _get_options($table: JQuery): PluginOptionsFull {
@@ -644,7 +643,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
     if (_is_children_loaded(tr)) {
         return _get_children($table, tr)
     }
-    const children_output = []
+    const children_output: JQueryRow[] = []
 
     // Not loaded yet. Must load
     const node_id = _get_node_id(tr)
@@ -681,7 +680,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
 }
 
 /**
- * Loads all the descendeant under a given row using the user `load_fn` option. Avoid loading twice the same children
+ * Loads all the descendant under a given row using the user `load_fn` option. Avoid loading twice the same children
  * @param $table The JQuery table
  * @param tr the JQuery row
  */
@@ -722,16 +721,15 @@ function _is_children_allowed(tr: JQueryRow): boolean {
 }
 
 /**
- * Prevent a row from having children. Move, tranfer, drag-n-drop will be denied if disallowed
+ * Prevent a row from having children. Move, transfer, drag-n-drop will be denied if disallowed
  * @param tr The JQuery row
  */
 function _disallow_children(tr: JQueryRow): void {
     tr.addClass(CLASS_NO_CHILDREN)
 }
 
-
 /**
- * Allow a row from having children. Move, tranfer, drag-n-drop will be able to add a another row under this one
+ * Allow a row from having children. Move, transfer, drag-n-drop will be able to add a another row under this one
  * @param tr The JQuery row
  */
 function _allow_children(tr: JQueryRow): void {
@@ -797,7 +795,7 @@ function _expand_row($table: JQueryTable, tr: JQueryRow): void {
             _load_children($table, child)
             // Show children of children if they are already expanded. Consider the case where we have 10 levels of expanded rows
             // and level 1 is collapsed, then re-expanded. We want to re-expand all 10 levels, avoiding the user to do 10 clicks again.
-            _show_children_of_expanded_recursive($table, tr) 
+            _show_children_of_expanded_recursive($table, tr)
         })
 
         _open_expander($table, tr)
@@ -870,8 +868,8 @@ function _expand_descendent($table: JQueryTable, tr: JQueryRow): void {
 }
 
 /**
- * Collapse every row under the given row or in the whole table if no row is given. 
- * Children of children will be collapsed as well. 
+ * Collapse every row under the given row or in the whole table if no row is given.
+ * Children of children will be collapsed as well.
  * @param $table The JQuery table
  * @param tr The row collapsing cascade start point. All rows collapsed if not provided
  */
@@ -1016,7 +1014,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             if (options.droppable) {
                 $table.find(`tr.${CLASS_DISABLED}`).removeClass(CLASS_DISABLED)
             }
-            $table.find(`.${CLASS_HIGHLIGTED}`).removeClass(CLASS_HIGHLIGTED)
+            $table.find(`.${CLASS_HIGHLIGHTED}`).removeClass(CLASS_HIGHLIGHTED)
         })
     }
 
@@ -1058,17 +1056,17 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             dest_table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
 
             if (dnd_result == null) {
-                dest_table.find("tr").removeClass(CLASS_HIGHLIGTED)
+                dest_table.find("tr").removeClass(CLASS_HIGHLIGHTED)
                 return
             }
 
             if (dnd_result.new_parent_id != null) {
-                dest_table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(CLASS_HIGHLIGTED)
+                dest_table.find(`tr.${CLASS_HIGHLIGHTED}`).removeClass(CLASS_HIGHLIGHTED)
                 const new_parent_tr = _find_row(dest_table, dnd_result.new_parent_id)
                 const descendant = _select_all_loaded_descendant(dest_table, new_parent_tr)
-                descendant.addClass(CLASS_HIGHLIGTED)
+                descendant.addClass(CLASS_HIGHLIGHTED)
             } else {
-                dest_table.find("tr").removeClass(CLASS_HIGHLIGTED)
+                dest_table.find("tr").removeClass(CLASS_HIGHLIGHTED)
             }
 
             if (dnd_result.insert_line_display.row_id != null) {
@@ -1160,7 +1158,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 function _stop_drop($table: JQuery): void {
     $table.find(`tr.${CLASS_INSERT_BELOW}`).removeClass(CLASS_INSERT_BELOW)
     $table.find(`tr.${CLASS_INSERT_ABOVE}`).removeClass(CLASS_INSERT_ABOVE)
-    $table.find(`tr.${CLASS_HIGHLIGTED}`).removeClass(`${CLASS_HIGHLIGTED}`)
+    $table.find(`tr.${CLASS_HIGHLIGHTED}`).removeClass(`${CLASS_HIGHLIGHTED}`)
 }
 
 interface DragNDropResult {
@@ -1176,9 +1174,9 @@ interface DragNDropResult {
  * Computes the action that a drag-n-drop should generate (moving a row, where and under which row)
  * @param $table The JQuery table on which the element is or will be dropped
  * @param dragged_tr The row being dragged
- * @param hover_tr The row under the cursor. Children of this row are expected to be laoded
+ * @param hover_tr The row under the cursor. Children of this row are expected to be loaded
  * @param cursorY The absolute Y position of the cursor
- * @returns A structure telling where to insert the row and under which parent  
+ * @returns A structure telling where to insert the row and under which parent
  */
 function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number): DragNDropResult | null {
     if (hover_tr.is(dragged_tr) || _is_descendant($table, hover_tr, dragged_tr)) {
@@ -1221,7 +1219,7 @@ function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover
             // Last line of table
             const last_root_node = _get_root_nodes($table).last()
             result.new_parent_id = null // Make a root node
-            result.after_tr_id = last_root_node.length == 0 ? null : _get_node_id(last_root_node) // Right after the hoverring row
+            result.after_tr_id = last_root_node.length == 0 ? null : _get_node_id(last_root_node) // Right after the hovering row
         } else {
             const next_tr_parent = _get_parent($table, hover_next_tr)
             const next_tr_prev_same_level = _get_prev_same_level(hover_next_tr)
@@ -1398,7 +1396,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
     //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
     const tree_to_move = _select_all_loaded_descendant($table, tr)
     const tr_original_parent = _get_parent($table, tr)
-    let new_nesting_level = null
+    let new_nesting_level: number | null = null
     if (new_parent_id == null) {
         new_nesting_level = 0
         if (after_node_id == null) {
@@ -1476,7 +1474,6 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
     return tree_to_move
 }
 
-
 /**
  * Moves a row from the table to the given destination table under an optional parent row
  * and after an optional reference row.
@@ -1487,7 +1484,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
  * @param new_parent_id The ID of the new parent row in the destination table. If not set or null, the row
  * will become a root node in the destination table
  * @param after_node_id The row after which the transferred row will be inserted. If not set or null,
- * the transfered row will be set in last position
+ * the transferred row will be set in last position
  * @returns The list of rows transferred
  */
 function _transfer_row(
@@ -1563,7 +1560,7 @@ function _transfer_row(
         const new_id = old_id_to_new_id_map[original_id]
         const new_tr = new_tr_by_new_id[new_id]
 
-        let converted_parent_id = null
+        let converted_parent_id: string | null = null
         if (original_parent_id != null && old_id_to_new_id_map.hasOwnProperty(original_parent_id)) {
             converted_parent_id = old_id_to_new_id_map[original_parent_id]
         }
@@ -1587,7 +1584,7 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
     tr = tr.clone()
     tr.find(`.${CLASS_HEADER}`).remove()
     tr.removeClass(CLASS_DISABLED)
-        .removeClass(CLASS_HIGHLIGTED)
+        .removeClass(CLASS_HIGHLIGHTED)
         .removeClass(CLASS_INSERT_ABOVE)
         .removeClass(CLASS_INSERT_BELOW)
         .removeClass(CLASS_ROW)
@@ -1603,7 +1600,7 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
 }
 
 /**
- * Returns all the descendants under a given row. The given row will be aprt of the output list
+ * Returns all the descendants under a given row. The given row will be part of the output list
  * @param $table The JQuery table
  * @param tr The JQuery row parent of the wanted descendants
  * @param filter A JQuery filter to apply on the descendants
@@ -1618,12 +1615,12 @@ function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filte
 }
 
 /**
- * 
+ *
  * @param $table The JQuery table
  * @param tr The JQuery row parent of the wanted descendants
  * @param filter A JQuery filter to apply on the descendants
  * @param arr An optional array for recursive patten. Internally set, should be unset by the user
- * @returns 
+ * @returns
  */
 function _select_all_loaded_descendant_recursive(
     $table: JQueryTable,
@@ -1663,11 +1660,11 @@ function _select_all_loaded_descendant_recursive(
 }
 
 /**
- * Loads everything under a given row and returns the list of rows under the given row. The aprent row will be aprt of the output list
+ * Loads everything under a given row and returns the list of rows under the given row. The parent row will be part of the output list
  * @param $table The JQuery table
- * @param tr The JQuery row acting as the aprent
+ * @param tr The JQuery row acting as the parent
  * @param arr An optional array for recursive patten. Internally set, should be unset by the user
- * @returns List of descendants under the given aprent, including the parent itself
+ * @returns List of descendants under the given parent, including the parent itself
  */
 function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | void {
     let return_val = false
@@ -1781,7 +1778,7 @@ export function scrutiny_treetable(...args: any[]) {
         // @ts-ignore
         return this
     }
-    // optionnaly, when there was only one item targeted, return the result
+    // optionally, when there was only one item targeted, return the result
     // directly
     else if (results.length === 1) {
         return results[0]

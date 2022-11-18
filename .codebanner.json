@@ -54,7 +54,7 @@
             "docstring": "A Tree structure that can store object associated with a path in the /aaa/bbb/ccc format.\nAllow log complexity when searching"
         },
         "src/components/scrutiny-resizable-table/scrutiny-resizable-table.ts": {
-            "docstring": "A JQuery plugin that can be added on a Table element to make the columns resizables"
+            "docstring": "A JQuery plugin that can be added on a Table element to make the columns resizable"
         },
         "src/components/scrutiny-treetable/scrutiny-treetable.ts": {
             "docstring": "A JQuery plugin that allows making a table act as a tree.\nCustom made tree-table widget because all the one out there were either behind a paid license or buggy and/or deprecated and/or not tailored to our need."
@@ -78,7 +78,7 @@
             "docstring": "Unit tests for the Tree storage class"
         },
         "src/widgets/varlist/varlist.ts": {
-            "docstring": "A widget that shows the list of availables watchbles in the server in a tree-like structure"
+            "docstring": "A widget that shows the list of available watchables in the server in a tree-like structure"
         }
     }
 }

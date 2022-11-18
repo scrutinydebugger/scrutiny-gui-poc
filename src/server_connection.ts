@@ -29,7 +29,7 @@ class LoadWatchableSession {
     /** The type of download. We can either download RuntimePublishedValues on device connect or Var and Alias on Firmware loading */
     download_type: WatchableDownloadType
 
-    /** Indicates if that session is cancled */
+    /** Indicates if that session is canceled */
     canceled: boolean
 
     /** A map of expected watchable count per type */
@@ -104,7 +104,7 @@ class LoadWatchableSession {
     }
 
     /**
-     * Mark the session as canceled, meaning we will have to start a new one to redownload data
+     * Mark the session as canceled, meaning we will have to start a new one to re-download data
      */
     cancel(): void {
         this.canceled = true
@@ -124,7 +124,7 @@ export class ServerConnection {
     update_ui_interval: number
     /** Interval at which the app should try to reconnect to the server (milliseconds) */
     reconnect_interval: number
-    /** The amount of time to wait for an answer from the server to a get_satus request  before marking the server has disconnencted */
+    /** The amount of time to wait for an answer from the server to a get_status request  before marking the server has disconnected */
     connect_timeout: number
     /** Interval at which we should request the server for its status (milliseconds) */
     get_status_interval: number
@@ -137,7 +137,7 @@ export class ServerConnection {
     logger: Logger
     /** A dedicated logger object for communication debug */
     comm_logger: Logger
-    /** The Applicaiton datastore used to store watchables and their values*/
+    /** The Application datastore used to store watchables and their values*/
     datastore: Datastore
     /** The websocket used to communicate with the server */
     socket: WebSocket | null
@@ -163,7 +163,7 @@ export class ServerConnection {
     >
     /** Handle for the socket connection timeout timer  */
     connect_timeout_handle: number | null
-    /** Incrmeenting counter that gives a unique ID to each request */
+    /** Incrementing counter that gives a unique ID to each request */
     actual_request_id: number
 
     /** The watchable download session presently being active. Null if none is active*/
@@ -264,7 +264,7 @@ export class ServerConnection {
     }
 
     /**
-     * Cancel a watcahable download session
+     * Cancel a watchable download session
      * @param download_type The type of watchable download to cancel
      */
     cancel_watchable_download_if_any(download_type: WatchableDownloadType): void {
@@ -305,7 +305,7 @@ export class ServerConnection {
     /**
      * Reload the list of watchable from the server and populates the datastore. Will
      * send a get_watchable_list request to the server and start a download session where multiple response will
-     * be received and aggregted together. The session will terminate when the last message is received.
+     * be received and aggregated together. The session will terminate when the last message is received.
      * @param download_type Type of data to download.
      */
     reload_datastore_from_server(download_type: WatchableDownloadType): void {
@@ -393,11 +393,11 @@ export class ServerConnection {
     /**
      * Sends a request to the server through a websocket
      * @param cmd API request name
-     * @param params Object to serialize in JSON to aattach to the request
+     * @param params Object to serialize in JSON to attach to the request
      * @returns A unique request ID. null if the request can't be sent
      */
     send_request(cmd: string, params: any = {}): number | null {
-        let reqid = null
+        let reqid:number|null = null
         if (this.socket !== null) {
             if (this.socket.readyState == this.socket.OPEN) {
                 try {
@@ -719,7 +719,7 @@ export class ServerConnection {
                             this.datastore.get_count(DatastoreEntryType.Alias) > required_size_alias
                         ) {
                             download_session.cancel()
-                            this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                            this.logger.error("Server gave more data than expected. Download type = " + download_type)
                         }
                     }
                 }
@@ -737,7 +737,7 @@ export class ServerConnection {
                             this.datastore.set_ready(DatastoreEntryType.RPV)
                         } else if (this.datastore.get_count(DatastoreEntryType.RPV) > required_size_rpv) {
                             download_session.cancel()
-                            this.logger.error("Server gave more data than expected. Downlaod type = " + download_type)
+                            this.logger.error("Server gave more data than expected. Download type = " + download_type)
                         }
                     }
                 }
