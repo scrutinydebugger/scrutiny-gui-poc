@@ -395,7 +395,7 @@ export class Datastore {
     }
 
     /**
-     * Write the value of the given entry in the datastore identified by its server od
+     * Write the value of the given entry in the datastore identified by its server id
      * @param server_id The server ID of the entry
      * @param val Value to set
      */

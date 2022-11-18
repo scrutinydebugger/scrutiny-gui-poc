@@ -6,7 +6,7 @@ import webpack from "webpack"
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
 const OUTPUT_FOLDER = "dist"
-const DEBUG = false
+const DEBUG = true
 
 export default {
     context: resolve("webapp"),
