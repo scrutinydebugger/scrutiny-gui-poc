@@ -9,7 +9,7 @@
         "downlevelIteration": true,
         "strict":true
     },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "**/*.spec.ts", "webapp_release/**/*"]
+    "include": ["webapp/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"]
   
 }

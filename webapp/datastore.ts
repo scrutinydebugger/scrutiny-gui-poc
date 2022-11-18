@@ -468,7 +468,7 @@ export class Datastore {
             children["entries"][entry_type] = [] as DatastoreEntryWithName[]
         })
 
-        let tree_children:ShallowNodeDescription<DatastoreEntryWithName>|null = null
+        let tree_children: ShallowNodeDescription<DatastoreEntryWithName> | null = null
         try {
             tree_children = this.trees[entry_type].get_children(path)
         } catch (e) {

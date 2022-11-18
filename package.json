@@ -2,10 +2,10 @@
   "type": "module",
   "imports": {
     "#appjs/*": {
-      "default": "./webapp_release/js/*"
+      "default": "./dist/js/*"
     },
     "#tests/*": {
-      "default": "./webapp_release/tests/*"
+      "default": "./dist/tests/*"
     }
   },
   "devDependencies": {
@@ -29,7 +29,7 @@
     "format": "prettier .",
     "build": "webpack",
     "dev": "webpack --watch",
-    "test": "webpack --config webpack-test.config.js && mocha webapp_release/js/scrutiny-test.js"
+    "test": "webpack --config webpack-test.config.js && mocha dist/js/scrutiny-test.js"
   },
   "dependencies": {
     "assert": "^2.0.0",

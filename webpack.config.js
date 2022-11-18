@@ -5,8 +5,10 @@ import webpack from "webpack"
 
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
+const OUTPUT_FOLDER = "dist"
+
 export default {
-    context: resolve("src"),
+    context: resolve("webapp"),
     devtool: "source-map",
     entry: "./scrutiny-main.ts",
     mode: "development",
@@ -28,10 +30,15 @@ export default {
         new CopyPlugin({
             patterns: [
                 {
-                    from: "**/*.(css|png|html)",
-                    to: resolve("webapp_release"),
-                    context: resolve("src"),
+                    from: "**",
+                    to: resolve(OUTPUT_FOLDER),
+                    context: resolve("webapp/public"),
                 },
+                {
+                    from: "**/*.(css|png|html)",
+                    to: resolve(OUTPUT_FOLDER),
+                    context: resolve("webapp")
+                }
             ],
         }),
         new webpack.DefinePlugin({
@@ -42,7 +49,8 @@ export default {
     ],
     output: {
         filename: "scrutiny.js",
-        path: resolve("webapp_release/js"),
+        path: resolve(`${OUTPUT_FOLDER}/js`),
+        clean:true
     },
     resolve: {
         extensions: [".ts", ".js"],
