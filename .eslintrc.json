@@ -8,7 +8,7 @@
     "globals": {
     },
     "ignorePatterns": [
-        "webapp_release/**/*.js",
+        "webapp/**/*.js",
         "tests/**/*.js"
     ],
     "parserOptions": {
