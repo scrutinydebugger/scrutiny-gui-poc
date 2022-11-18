@@ -82,7 +82,7 @@ export interface ScrutinyFirmwareDescription {
 }
 
 export interface DeviceCommLink {
-    type: "udp" | "serial" // | "canbus" | "spi" | "dummy" | "tcp"
+    type: "udp" | "serial" // | "canBus" | "spi" | "dummy" | "tcp"
     config: DeviceCommUdpConfig | DeviceCommSerialConfig
 }
 

@@ -156,7 +156,7 @@ export class UI {
 
             try {
                 let timestamp = this.loaded_sfd["metadata"]["generation_info"]["time"]
-                let date = new Date(timestamp * 1000) // timestamp in millisec
+                let date = new Date(timestamp * 1000) // timestamp in milliseconds
 
                 let year = String(date.getFullYear())
                 let month = padLeft(String(date.getMonth() + 1), "0", 2)
@@ -345,7 +345,7 @@ export class UI {
     }
 
     /**
-     * Regsiter a widget to the UI. Its icon will be show in the widget menu
+     * Register a widget to the UI. Its icon will be show in the widget menu
      * @param widget_class Widget class to add
      * @param app The Scrutiny application instance
      */

@@ -13,7 +13,7 @@ export enum ServerStatus {
 }
 
 export enum DeviceStatus {
-    NA = "unkown",
+    NA = "unknown",
     Disconnected = "disconnected",
     Connecting = "connecting",
     Connected = "connected",

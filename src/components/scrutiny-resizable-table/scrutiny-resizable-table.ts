@@ -1,5 +1,5 @@
 //    scrutiny-resizable-table.ts
-//        A JQuery plugin that can be added on a Table element to make the columns resizables
+//        A JQuery plugin that can be added on a Table element to make the columns resizable
 //
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
@@ -209,21 +209,21 @@ function _decrease_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
 
     let new_width = (th.outerWidth() as number) + delta_w
     th.outerWidth(new_width)
-    let remaing_delta_w = new_width - (th.outerWidth() as number)
+    let remaining_delta_w = new_width - (th.outerWidth() as number)
     let previous_col = th.prev()
 
-    while (previous_col.length > 0 && remaing_delta_w < 0) {
+    while (previous_col.length > 0 && remaining_delta_w < 0) {
         let initial_width = previous_col.outerWidth() as number
-        new_width = (previous_col.outerWidth() as number) + remaing_delta_w
+        new_width = (previous_col.outerWidth() as number) + remaining_delta_w
         previous_col.outerWidth(new_width)
-        remaing_delta_w += initial_width - (previous_col.outerWidth() as number)
+        remaining_delta_w += initial_width - (previous_col.outerWidth() as number)
         previous_col = previous_col.prev()
     }
 
     if (options.table_width_constrained) {
         let next_th = th.next(`th[${ATTR_HAS_WIDTH}]`)
         if (next_th.length > 0) {
-            next_th.outerWidth((next_th.outerWidth() as number) - (delta_w - remaing_delta_w))
+            next_th.outerWidth((next_th.outerWidth() as number) - (delta_w - remaining_delta_w))
         }
     }
 }
@@ -383,7 +383,7 @@ export function scrutiny_resizable_table(...args: any[]) {
         //@ts-ignore
         return this
     }
-    // optionnaly, when there was only one item targeted, return the result
+    // optionally, when there was only one item targeted, return the result
     // directly
     else if (results.length === 1) {
         return results[0]

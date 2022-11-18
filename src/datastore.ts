@@ -8,7 +8,7 @@
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { App } from "./app"
-import { Tree } from "./tree"
+import { Tree, ShallowNodeDescription } from "./tree"
 import { trim } from "./tools"
 import * as API from "./server_api"
 
@@ -42,7 +42,7 @@ export class DatastoreEntry {
     /** The definition of the enum if it exists. null if no enum is associated with this entry */
     enumdef: API.EnumDefinition | null
 
-    /** The numberical value of the entry */
+    /** The numerical value of the entry */
     value: number | null
 
     /** A list of callback classified by watchers. These callback are called when the value changes. */
@@ -306,7 +306,7 @@ export class Datastore {
     /**
      * Fetch an entry from the datastore identified by its display path (tree-like structure)
      * @param entry_type The type of the entry to fetch
-     * @param path The display path used for tree sotrage
+     * @param path The display path used for tree storage
      * @returns The datastore entry stored
      */
     get_entry(entry_type: DatastoreEntryType, path: string | DatastoreEntry): DatastoreEntry {
@@ -322,7 +322,7 @@ export class Datastore {
 
     /**
      * Tells if a node identified by its display path exists in the datastore
-     * @param entry_type The tupe of the entry
+     * @param entry_type The type of the entry
      * @param path The display path used for tree storage
      * @returns true if the entry exists
      */
@@ -408,7 +408,7 @@ export class Datastore {
      * REads the value of the given entry in the datastore
      * @param entry_type  The type of the entries
      * @param entry_path The display path used for tree storage. An entry can be used as well
-     * @returns  The actual value of the entrye
+     * @returns  The actual value of the entry
      */
     get_value(entry_type: DatastoreEntryType, entry_path: string | DatastoreEntry): number | null {
         return this.get_entry(entry_type, entry_path).get_value()
@@ -468,7 +468,7 @@ export class Datastore {
             children["entries"][entry_type] = [] as DatastoreEntryWithName[]
         })
 
-        let tree_children = null
+        let tree_children:ShallowNodeDescription<DatastoreEntryWithName>|null = null
         try {
             tree_children = this.trees[entry_type].get_children(path)
         } catch (e) {

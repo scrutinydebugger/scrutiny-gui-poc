@@ -29,7 +29,7 @@ export class BaseWidget {
     }
 
     /**
-     * Returns a unique name for the instanc eof this widget
+     * Returns a unique name for the instance of this widget
      */
     get_instance_name() {
         throw "Not implemented"

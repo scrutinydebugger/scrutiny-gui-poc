@@ -24,7 +24,7 @@ interface Node<ObjType> {
     subtrees: SubtreeDict<ObjType>
 }
 
-interface ShallowNodeDescription<ObjType> {
+export interface ShallowNodeDescription<ObjType> {
     objects: ObjDict<ObjType>
     subtrees: ShallowSubtreeDict
 }
@@ -66,17 +66,17 @@ export class Tree<ObjType> {
             segments: [],
         } as Segments
         let segments = trim(path, "/").split("/")
-        let nodename: string | undefined = ""
+        let node_name: string | undefined = ""
         segments = segments.filter((s) => s !== "")
 
         if (has_name) {
-            nodename = segments.pop()
-            if (typeof nodename == "undefined" || nodename === "") {
+            node_name = segments.pop()
+            if (typeof node_name == "undefined" || node_name === "") {
                 throw "Empty node name"
             }
-            output.name = nodename
+            output.name = node_name
         } else {
-            nodename = ""
+            node_name = ""
         }
         output.segments = segments
 
@@ -186,13 +186,13 @@ export class Tree<ObjType> {
         return result
     }
 
-    get_all_paths_recursive(path?: string, thelist?: string[], array_index?: number): string[] | null {
+    get_all_paths_recursive(path?: string, recursive_list?: string[], array_index?: number): string[] | null {
         if (typeof path === "undefined") {
             path = ""
         }
 
-        if (typeof thelist === "undefined") {
-            thelist = new Array(this.count())
+        if (typeof recursive_list === "undefined") {
+            recursive_list = new Array(this.count())
         }
 
         if (typeof array_index === "undefined") {
@@ -203,16 +203,16 @@ export class Tree<ObjType> {
 
         let object_names = Object.keys(children.objects)
         for (let i = 0; i < object_names.length; i++) {
-            thelist[array_index++] = path + "/" + object_names[i]
+            recursive_list[array_index++] = path + "/" + object_names[i]
         }
 
         let subtrees = Object.keys(children.subtrees)
         for (let i = 0; i < subtrees.length; i++) {
-            this.get_all_paths_recursive(path + "/" + subtrees[i], thelist, array_index)
+            this.get_all_paths_recursive(path + "/" + subtrees[i], recursive_list, array_index)
         }
 
         if (path === "") {
-            return thelist
+            return recursive_list
         } else {
             return null
         }
@@ -230,13 +230,13 @@ export class Tree<ObjType> {
         return result
     }
 
-    get_all_obj_recursive(path?: string, thelist?: ObjType[], array_index?: number): ObjType[] | null {
+    get_all_obj_recursive(path?: string, recursive_list?: ObjType[], array_index?: number): ObjType[] | null {
         if (typeof path === "undefined") {
             path = ""
         }
 
-        if (typeof thelist === "undefined") {
-            thelist = new Array<ObjType>(this.count())
+        if (typeof recursive_list === "undefined") {
+            recursive_list = new Array<ObjType>(this.count())
         }
 
         if (typeof array_index === "undefined") {
@@ -246,16 +246,16 @@ export class Tree<ObjType> {
         const children = this.get_children(path)
         const object_names = Object.keys(children.objects)
         for (let i = 0; i < object_names.length; i++) {
-            thelist[array_index++] = children.objects[object_names[i]]
+            recursive_list[array_index++] = children.objects[object_names[i]]
         }
 
         let subtrees = Object.keys(children.subtrees)
         for (let i = 0; i < subtrees.length; i++) {
-            this.get_all_obj_recursive(path + "/" + subtrees[i], thelist, array_index)
+            this.get_all_obj_recursive(path + "/" + subtrees[i], recursive_list, array_index)
         }
 
         if (path === "") {
-            return thelist
+            return recursive_list
         } else {
             return null
         }
