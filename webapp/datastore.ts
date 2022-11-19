@@ -150,7 +150,7 @@ export interface SubfolderDescription {
 
 type DatastoreTreesType = Record<DatastoreEntryType, Tree<DatastoreEntryWithName>>
 type DatastoreReadyType = Record<DatastoreEntryType, boolean>
-interface DatastoreEntryWithName extends DatastoreEntry {
+export interface DatastoreEntryWithName extends DatastoreEntry {
     default_name?: string
 }
 

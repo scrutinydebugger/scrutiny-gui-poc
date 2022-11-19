@@ -7,7 +7,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, AllDatastoreEntryTypes, DatastoreEntry } from "../../datastore"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName } from "../../datastore"
 import { BaseWidget } from "../../base_widget"
 import { App } from "../../app"
 import * as logging from "../../logging"
@@ -30,7 +30,6 @@ interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_resizable_table: Function
 }
 
-type RowType = DatastoreEntryType | "folder"
 type JQueryRow = JQuery<HTMLTableRowElement>
 
 const ATTR_DISPLAY_PATH = "display_path"
@@ -110,12 +109,9 @@ export class VarListWidget extends BaseWidget {
 
         this.tree_table.scrutiny_treetable(tree_table_options)
 
-        this.types_root_nodes[DatastoreEntryType.Var] = this.make_row("Var", "/", "folder").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.Var)
-        this.types_root_nodes[DatastoreEntryType.Alias] = this.make_row("Alias", "/", "folder").attr(
-            ATTR_ENTRY_TYPE,
-            DatastoreEntryType.Alias
-        )
-        this.types_root_nodes[DatastoreEntryType.RPV] = this.make_row("RPV", "/", "folder").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.RPV)
+        this.types_root_nodes[DatastoreEntryType.Var] = this.make_root_row("Var").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.Var)
+        this.types_root_nodes[DatastoreEntryType.Alias] = this.make_root_row("Alias").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.Alias)
+        this.types_root_nodes[DatastoreEntryType.RPV] = this.make_root_row("RPV").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.RPV)
 
         this.tree_table.scrutiny_treetable("add_root_node", "root_var", this.types_root_nodes[DatastoreEntryType.Var])
         this.tree_table.scrutiny_treetable("add_root_node", "root_alias", this.types_root_nodes[DatastoreEntryType.Alias])
@@ -166,19 +162,36 @@ export class VarListWidget extends BaseWidget {
         return this.tree_name + "_" + this.id_map[display_path]
     }
 
-    make_row(default_text: string, display_path: string, row_type: RowType): JQueryRow {
+    make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
         const tr = $("<tr></tr>") as JQueryRow
-        const td1 = $(`<td>${default_text}</td>`)
+        const td1 = $(`<td>${entry.default_name}</td>`)
         const td2 = $("<td></td>")
         tr.append(td1).append(td2)
-        if (row_type === "folder") {
-            td1.prepend($("<span>[Folder] </span>"))
-        } else {
-            td1.prepend($(`<span>[${row_type}] </span>`))
-            td2.text("asdadasd")
-        }
+        td1.prepend($(`<span>[${entry.entry_type}] </span>`))
+        td2.text(entry.datatype)
+        tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
 
-        tr.attr(ATTR_DISPLAY_PATH, display_path)
+        return tr
+    }
+
+    make_folder_row(subfolder: SubfolderDescription): JQueryRow {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td1 = $(`<td>${subfolder.name}</td>`)
+        const td2 = $("<td></td>")
+        tr.append(td1).append(td2)
+        td1.prepend($("<span>[Folder] </span>"))
+        tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
+
+        return tr
+    }
+
+    make_root_row(text: string) {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td1 = $(`<td>${text}</td>`)
+        const td2 = $("<td></td>")
+        tr.append(td1).append(td2)
+        td1.prepend($("<span>[Root] </span>"))
+        tr.attr(ATTR_DISPLAY_PATH, "/")
 
         return tr
     }
@@ -205,13 +218,13 @@ export class VarListWidget extends BaseWidget {
 
         children["subfolders"].forEach(function (subfolder, i) {
             output.push({
-                tr: that.make_row(subfolder.name, subfolder.display_path, "folder"),
+                tr: that.make_folder_row(subfolder),
             })
         })
 
         children["entries"][entry_type].forEach(function (entry, i) {
             output.push({
-                tr: that.make_row(entry.default_name as string, entry.display_path, entry.entry_type),
+                tr: that.make_entry_row(entry),
             })
         })
 
