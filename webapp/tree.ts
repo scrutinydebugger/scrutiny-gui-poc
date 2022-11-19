@@ -8,11 +8,12 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { trim } from "./tools"
+import { trim, trim_end } from "./tools"
 
 type ObjDict<ObjType> = Record<string, ObjType>
 interface ShallowSubtreeDict {
     [index: string]: {
+        display_path: string
         has_objects: boolean
         has_subtrees: boolean
     }
@@ -84,6 +85,27 @@ export class Tree<ObjType> {
     }
 
     /**
+     * Join the paths segments with the path separator
+     * @param args Paths to join
+     * @returns New display path that joined all of them
+     */
+    join_path(...args: string[]): string {
+        let out: string = ""
+        for (let i = 0; i < args.length; i++) {
+            if (i == 0) {
+                out += trim_end(args[i], "/")
+            } else {
+                out += trim(args[i], "/")
+            }
+            if (i < args.length - 1) {
+                out += "/"
+            }
+        }
+
+        return out
+    }
+
+    /**
      * Attach an arbitrary object to a tree path
      * @param path The tree path to write to in the format /aaa/bbb/ccc
      * @param obj The object to attach to the path
@@ -143,6 +165,7 @@ export class Tree<ObjType> {
      *
      */
     get_children(path: string): ShallowNodeDescription<ObjType> {
+        const that = this
         let children = {
             objects: {},
             subtrees: {},
@@ -164,6 +187,7 @@ export class Tree<ObjType> {
         let subtrees: ShallowSubtreeDict = {}
         subtree_names.forEach(function (elem, index) {
             subtrees[elem] = {
+                display_path: that.join_path(path, elem),
                 has_objects: Object.keys(actual_branch.subtrees[elem].objects).length > 0,
                 has_subtrees: Object.keys(actual_branch.subtrees[elem].subtrees).length > 0,
             }

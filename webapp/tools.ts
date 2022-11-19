@@ -10,7 +10,7 @@
  * Trims a string by removing the given characters (multiple) from both beginning and end.
  * @param str The string to trim
  * @param chars A string containing a list of chars to be trimmed
- * @returns The trimmed string  
+ * @returns The trimmed string
  */
 export function trimAny(str: string, chars: string): string {
     var start = 0,
@@ -27,7 +27,7 @@ export function trimAny(str: string, chars: string): string {
  * Trims a string by removing the given character from both beginning and end.
  * @param str The string to trim
  * @param ch The character to remove
- * @returns The trimmed string  
+ * @returns The trimmed string
  */
 export function trim(str: string, ch: string): string {
     var start = 0,
@@ -36,6 +36,36 @@ export function trim(str: string, ch: string): string {
     while (start < end && str[start] === ch) ++start
 
     while (end > start && str[end - 1] === ch) --end
+
+    return start > 0 || end < str.length ? str.substring(start, end) : str
+}
+
+/**
+ * Trims a string by removing the given character from end only.
+ * @param str The string to trim
+ * @param ch The character to remove
+ * @returns The trimmed string
+ */
+export function trim_end(str: string, ch: string): string {
+    var start = 0,
+        end = str.length
+
+    while (end > start && str[end - 1] === ch) --end
+
+    return start > 0 || end < str.length ? str.substring(start, end) : str
+}
+
+/**
+ * Trims a string by removing the given character from start only.
+ * @param str The string to trim
+ * @param ch The character to remove
+ * @returns The trimmed string
+ */
+export function trim_start(str: string, ch: string): string {
+    var start = 0,
+        end = str.length
+
+    while (start < end && str[start] === ch) ++start
 
     return start > 0 || end < str.length ? str.substring(start, end) : str
 }

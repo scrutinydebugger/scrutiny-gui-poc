@@ -254,6 +254,9 @@ export class App {
         this.server_conn = new ServerConnection(this, this.ui, this.datastore)
         this.server_conn.set_endpoint(this.config.server.host, this.config.server.port)
 
+        this.event_logger.disable()
+        this.server_conn.comm_logger.disable()
+
         const that = this
         this.on_event("scrutiny.ready", function () {
             if (that.server_conn != null) {

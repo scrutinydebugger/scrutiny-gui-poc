@@ -11,7 +11,7 @@
 import * as $ from "jquery"
 
 export interface LoadFunctionInterface {
-    (node_id: string, tr: JQueryRow): Array<{ id: string; tr: JQueryRow; nochildren?: boolean; user_data?: any }>
+    (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
 }
 
 export interface TransferFunctionMetadata {
@@ -158,6 +158,17 @@ const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
 function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
     _add_node($table, null, node_id, tr)
     _load_children($table, tr)
+}
+
+/**
+ * Returns the root nodes that contains the given node
+ * @param $table The JQuery table
+ * @param node The given node
+ * @returns The root node containing the given node
+ */
+function get_root_node($table: JQueryTable, node: string | JQueryRow) {
+    const row = _get_row_from_node_or_row($table, node)
+    return _get_root_node($table, row)
 }
 
 /**
@@ -355,9 +366,8 @@ const _make_unique_id = (function () {
     let _counter = 0
     return function _make_unique_id($table: JQuery): string {
         const counter = _counter++
-        const timestamp = Date.now()
         const table_id = $table.attr("id")
-        return `stt_uid_${table_id}_${counter}_${timestamp}`
+        return `stt_uid_${table_id}_${counter}`
     }
 })()
 
@@ -500,6 +510,21 @@ function _get_parent_id(tr: JQueryRow): string | null {
  */
 function _is_root(tr: JQueryRow): boolean {
     return _get_nesting_level(tr) == 0
+}
+
+/**
+ * Returns the root node that contains the given row
+ * @param $table The JQuery table
+ * @param row The given row
+ * @returns The root node
+ */
+function _get_root_node($table: JQueryTable, row: JQueryRow) {
+    let parent = _get_parent($table, row)
+    while (parent !== null) {
+        row = parent
+        parent = _get_parent($table, row)
+    }
+    return row
 }
 
 /**
@@ -647,19 +672,20 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
 
     // Not loaded yet. Must load
     const node_id = _get_node_id(tr)
-    let loaded_children = _get_options($table)["load_fn"](node_id, tr)
+    const node_data = tr.data(DATAKEY_USER_DATA)
+    let loaded_children = _get_options($table)["load_fn"](node_id, tr, node_data)
     if (typeof loaded_children === "undefined") {
         loaded_children = []
     }
 
     for (let i = 0; i < loaded_children.length; i++) {
-        const child_node_id = loaded_children[i]["id"]
+        let child_node_id = loaded_children[i]["id"]
         const child_node_tr = $(loaded_children[i]["tr"]) as JQueryRow
-        const no_children = loaded_children[i]["nochildren"]
+        const no_children = loaded_children[i]["no_children"]
         const user_data = loaded_children[i]["user_data"]
 
         if (typeof child_node_id == "undefined") {
-            throw "Missing key 'id' in load_fn under " + node_id
+            child_node_id = _make_unique_id($table)
         }
 
         if (typeof child_node_tr == "undefined") {
@@ -1747,6 +1773,7 @@ const public_funcs: Record<string, Function> = {
     move_node: move_node,
     load_all: load_all,
     transfer_node: transfer_node,
+    get_root_node: get_root_node,
 }
 
 export function scrutiny_treetable(...args: any[]) {

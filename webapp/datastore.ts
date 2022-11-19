@@ -144,6 +144,7 @@ type DatastoreEntryCacheType = Record<
 
 export interface SubfolderDescription {
     name: string
+    display_path: string
     has_children: boolean
 }
 
@@ -489,9 +490,11 @@ export class Datastore {
         }
 
         folder_names.forEach(function (folder_name, i) {
+            const folder = folders[folder_name]
             children["subfolders"].push({
                 name: folder_name,
-                has_children: folders[folder_name]["has_objects"] || folders[folder_name]["has_subtrees"],
+                display_path: folder.display_path,
+                has_children: folder.has_objects || folder.has_subtrees,
             })
         })
 
