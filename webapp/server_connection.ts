@@ -163,6 +163,8 @@ export class ServerConnection {
     >
     /** Handle for the socket connection timeout timer  */
     connect_timeout_handle: number | null
+    /** Handle on the reconnect delay timer */
+    reconnect_timeout_handle: number | null
     /** Incrementing counter that gives a unique ID to each request */
     actual_request_id: number
 
@@ -197,6 +199,7 @@ export class ServerConnection {
 
         this.enable_reconnect = true
         this.connect_timeout_handle = null
+        this.reconnect_timeout_handle = null
 
         this.get_status_interval_handle = null
         this.actual_request_id = 0
@@ -397,7 +400,7 @@ export class ServerConnection {
      * @returns A unique request ID. null if the request can't be sent
      */
     send_request(cmd: string, params: any = {}): number | null {
-        let reqid:number|null = null
+        let reqid: number | null = null
         if (this.socket !== null) {
             if (this.socket.readyState == this.socket.OPEN) {
                 try {
@@ -453,11 +456,12 @@ export class ServerConnection {
     create_socket(): void {
         const that = this // Javascript is such a beautiful language
 
-        if (this.socket !== null){
-            this.socket.close()
+        if (this.socket !== null) {
+            this.socket.close() // Do before reconnect_timeout_handle=null to avoid launching another reconnect
             this.socket = null
         }
 
+        this.reconnect_timeout_handle = null
         this.socket = new WebSocket("ws://" + this.hostname + ":" + this.port)
         this.socket.onmessage = function (e) {
             that.on_socket_message_callback(e.data)
@@ -541,7 +545,7 @@ export class ServerConnection {
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
 
-        if (this.socket !== null){
+        if (this.socket !== null) {
             this.socket = null
         }
 
@@ -579,7 +583,7 @@ export class ServerConnection {
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
 
-        if (this.socket !== null){
+        if (this.socket !== null) {
             this.socket.close()
             this.socket = null
         }
@@ -595,12 +599,14 @@ export class ServerConnection {
      */
     try_reconnect(delay_ms: number): void {
         const that = this
-        setTimeout(
-            function () {
-                that.create_socket()
-            } as Function,
-            delay_ms
-        )
+        if (this.reconnect_timeout_handle == null) {
+            this.reconnect_timeout_handle = setTimeout(
+                function () {
+                    that.create_socket()
+                } as Function,
+                delay_ms
+            )
+        }
     }
 
     /**

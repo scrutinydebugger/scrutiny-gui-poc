@@ -18,3 +18,44 @@
     background-color: #f0f0f0;
     font-weight: bold;
 }
+
+.varlist-table img.treeicon{
+    display:inline-block;
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: 4px;
+    height: 14px;
+    width: 14px;
+}
+
+.varlist-table tr:hover {
+    background-color: #e0e0ff;
+}
+
+.varlist-table div.treeicon{
+    background-repeat: no-repeat;
+    display: inline-block;
+    
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: 4px;
+    height: 14px;
+    width: 14px;
+    background-size: 14px;
+}
+
+.varlist-table div.treeicon.icon-folder{
+    background-image: url("assets/folder-16x16.png");
+}
+
+.varlist-table div.treeicon.icon-var{
+    background-image: url("assets/var-16x16.png");
+}
+
+.varlist-table div.treeicon.icon-alias{
+    background-image: url("assets/alias-16x16.png");
+}
+
+.varlist-table div.treeicon.icon-rpv{
+    background-image: url("assets/rpv-16x16.png");
+}

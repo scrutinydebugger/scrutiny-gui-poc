@@ -1,20 +1,20 @@
-table.varlist-table .stt-spacer{
+table.watch-table .stt-spacer{
     margin-right: 2px;
 }
 
-table.varlist-table .stt-expander{
+table.watch-table .stt-expander{
     cursor: pointer;
 }
 
-table.varlist-table .stt-expander-opened{
+table.watch-table .stt-expander-opened{
     background-image: url("assets/expander-opened.png");
 }
 
-table.varlist-table .stt-expander-closed{
+table.watch-table .stt-expander-closed{
     background-image: url("assets/expander-closed.png");
 }
 
-table.varlist-table .stt-dragger{
+table.watch-table .stt-dragger{
     height: 12px;
     width: 12px;
     cursor:move;
@@ -24,22 +24,22 @@ table.varlist-table .stt-dragger{
     background-size: 12px;
 }
 
-table.varlist-table tr.stt-insert-below td{
+table.watch-table tr.stt-insert-below td{
     border-bottom: 1px solid rgb(252, 72, 243);
 }
 
-table.varlist-table tr.stt-insert-above td{
+table.watch-table tr.stt-insert-above td{
     border-top:1px solid rgb(252, 72, 243);
 }
 
-table.varlist-table tr.stt-highlighted{
+table.watch-table tr.stt-highlighted{
     background-color: rgb(124, 199, 250);
 }
 
-table.varlist-table tr.stt-disabled td{
+table.watch-table tr.stt-disabled td{
     background-color: #ddd;
 }
 
-table.varlist-table tr.stt-just-dropped{
+table.watch-table tr.stt-just-dropped{
     background-color: rgb(124, 199, 250);
 }

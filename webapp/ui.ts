@@ -54,7 +54,7 @@ export class UI {
      */
     init(): void {
         this.widget_layout.init()
-        let that = this
+        const that = this
         $(window).on("resize", function () {
             that.resize()
         })
@@ -357,22 +357,25 @@ export class UI {
             // Adds a callback to create the instance of the widget
             that.widget_layout.registerComponent(widget_class.widget_name(), function (container: any, state: any) {
                 instance_id++
-                const widget = new widget_class(container.getElement() as HTMLElement, app, instance_id)
+                const scrutiny_widget_container = $("<div>").addClass("scrutiny-widget-container") as JQuery<HTMLDivElement>
+                const golder_layout_container = $(container.getElement()).append(scrutiny_widget_container)
+                golder_layout_container.css("overflow", "auto")
+                const widget = new widget_class(scrutiny_widget_container, app, instance_id)
                 widget.initialize()
                 return widget
             })
         })()
 
         // Add menu item for drag and drop
-        let div = $("<div></div>")
+        const div = $("<div></div>")
         div.addClass("widget_draggable_item")
 
-        let img = $("<img/>")
+        const img = $("<img/>")
         img.attr("src", widget_class.icon_path())
         img.attr("width", "64px")
         img.attr("height", "48px")
 
-        let label = $("<span></span>")
+        const label = $("<span></span>")
         label.addClass("widget_draggable_label")
         label.text(widget_class.display_name())
 
@@ -382,7 +385,7 @@ export class UI {
         $("#sidemenu").append(div)
         $("#sidemenu").append($('<div class="horizontal_separator"></div>'))
 
-        let newItemConfig = {
+        const newItemConfig = {
             title: widget_class.display_name(),
             type: "component",
             componentName: widget_class.widget_name(),
@@ -440,7 +443,7 @@ export class UI {
             $("#device_status_label").text(status_label_text)
         }
 
-        let img_elem = $("#device_status .indicator").first()
+        const img_elem = $("#device_status .indicator").first()
 
         if (img_elem.attr("src") != indicator_img) {
             img_elem.attr("src", indicator_img)

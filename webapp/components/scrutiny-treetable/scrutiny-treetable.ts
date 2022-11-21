@@ -32,10 +32,39 @@ export interface TransferFunctionInterface {
 export interface TransferAllowedFunctionInterface {
     (source_table: JQueryTable, dest_table: JQueryTable, tr: JQuery, new_parent_id: string | null, after_node_id: string | null): boolean
 }
-
-interface DragData {
+export interface DragData {
     source_table_id: string
     dragged_row_id: string
+}
+
+export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): DragData | null {
+    if (typeof e.originalEvent === "undefined") {
+        return null
+    }
+
+    if (e.originalEvent.dataTransfer === null) {
+        return null
+    }
+    const drag_data_str = e.originalEvent.dataTransfer.getData("scrutiny_tree_table.drag_data")
+    if (typeof drag_data_str === "undefined") {
+        return null
+    }
+
+    try {
+        const drag_data = JSON.parse(drag_data_str) as DragData
+
+        if (typeof drag_data.source_table_id === "undefined") {
+            return null
+        }
+
+        if (typeof drag_data.dragged_row_id === "undefined") {
+            return null
+        }
+
+        return drag_data
+    } catch {
+        return null
+    }
 }
 
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -309,15 +338,39 @@ function move_node($table: JQueryTable, row_id: string, new_parent_id?: string |
  * @param after_node_id The row after which the transferred row will be inserted. If not set or null,
  * the transferred row will be set in last position
  */
-function transfer_node(
-    $table: JQueryTable,
+function transfer_node_to(
+    src_table: JQueryTable,
     dest_table: JQueryTable | string,
-    row_id: string,
+    dragged_row_id: string,
     new_parent_id: string | null,
     after_node_id: string | null
 ): void {
+    _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+}
+
+function transfer_node_from(
+    dest_table: JQueryTable,
+    src_table: JQueryTable | string,
+    dragged_row_id: string,
+    new_parent_id: string | null,
+    after_node_id: string | null
+): void {
+    _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+}
+
+function _public_transfer_row(
+    src_table: JQueryTable | string,
+    dest_table: JQueryTable | string,
+    dragged_row_id: string,
+    new_parent_id: string | null,
+    after_node_id: string | null
+): void {
+    if (typeof src_table == "string") {
+        src_table = $(`#${src_table}`) as JQueryTable
+    }
+
     if (typeof dest_table == "string") {
-        dest_table = $(`${dest_table}`) as JQueryTable
+        dest_table = $(`#${dest_table}`) as JQueryTable
     }
 
     if (dest_table.length != 1) {
@@ -332,19 +385,19 @@ function transfer_node(
     if (typeof after_node_id === "undefined") {
         after_node_id = null
     }
-    const tr = _get_row_from_node_or_row($table, row_id)
+    const tr = _get_row_from_node_or_row(src_table, dragged_row_id)
 
     const dest_options = _get_options(dest_table)
     if (dest_options.allow_transfer_fn == null) {
         // User didn't define an  allow_transfer func. We can't do anything
         return
     }
-    const transfer_allowed = dest_options.allow_transfer_fn($table, dest_table, tr, new_parent_id, after_node_id)
+    const transfer_allowed = dest_options.allow_transfer_fn(src_table, dest_table, tr, new_parent_id, after_node_id)
     if (!transfer_allowed) {
         return // User disallowed the transfer
     }
 
-    _transfer_row($table, dest_table, tr, new_parent_id, after_node_id)
+    _transfer_row(src_table, dest_table, tr, new_parent_id, after_node_id)
 }
 
 /**
@@ -1028,7 +1081,9 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                 source_table_id: $table.attr("id") as string, // having an ID is mandatory for this plugin
                 dragged_row_id: _get_node_id(tr),
             }
+
             e.originalEvent.dataTransfer.setDragImage(tr[0], 0, 0)
+            e.originalEvent.dataTransfer.setData("scrutiny_tree_table.drag_data", JSON.stringify(gbl_drag_data))
 
             if (options.droppable) {
                 _select_all_loaded_descendant($table, tr).addClass(CLASS_DISABLED)
@@ -1115,57 +1170,9 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             e.preventDefault() // Required for drop to work?
         })
 
-        tr.on("drop", function (e) {
-            if (options.droppable) {
-                if (gbl_drag_data == null) {
-                    return
-                }
-
-                if (typeof e.pageY == "undefined") {
-                    return
-                }
-
-                const dest_table = $table
-                const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
-                const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
-                const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, tr, e.pageY)
-                if (dnd_result == null) {
-                    return
-                }
-                try {
-                    let moved_rows: JQueryRow | null = null
-                    if (dest_table.is(source_table)) {
-                        moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
-                    } else {
-                        moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
-                    }
-
-                    if (moved_rows != null) {
-                        moved_rows.addClass(CLASS_JUST_DROPPED)
-
-                        dest_table.trigger(EVENT_DROPPED, {
-                            source_table: source_table,
-                            dest_table: dest_table,
-                            rows: moved_rows,
-                        })
-
-                        setTimeout(function () {
-                            ;(moved_rows as JQueryRow).css("transition", `background-color ${options.just_dropped_transition_length}s`)
-                            setTimeout(function () {
-                                ;(moved_rows as JQueryRow).removeClass(CLASS_JUST_DROPPED)
-                                setTimeout(function () {
-                                    ;(moved_rows as JQueryRow).css("transition", "")
-                                }, options.just_dropped_transition_length * 1000)
-                            }, 0)
-                        }, 0)
-                    }
-                } catch (e) {
-                    _stop_drop(dest_table)
-                    throw e
-                }
-                _stop_drop(dest_table)
-                _stop_drop(source_table)
-            }
+        tr.on("drop", function (e: any) {
+            _handle_drop($table, e, tr)
+            e.stopPropagation()
         })
 
         tr.on("dragexit", function () {
@@ -1175,6 +1182,66 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
     header_block.prepend(SPACER_TEMPLATE.clone())
     _set_nesting_level($table, tr, actual_level)
+}
+
+function _handle_drop($table: JQueryTable, e: any, drop_tr: JQueryRow | null) {
+    const options = _get_options($table)
+    if (options.droppable) {
+        if (gbl_drag_data == null) {
+            return
+        }
+
+        if (typeof e.pageY == "undefined") {
+            return
+        }
+
+        const dest_table = $table
+        const source_table = $(`#${gbl_drag_data.source_table_id}`) as JQueryTable
+        const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
+        const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, drop_tr, e.pageY)
+        let moved_rows: JQueryRow | null = null
+        try {
+            if (dnd_result == null) {
+                if (!dest_table.is(source_table)) {
+                    // Artificial drop triggered by the user
+                    moved_rows = _transfer_row(source_table, dest_table, dragged_tr, null, null)
+                } else {
+                    return
+                }
+            } else {
+                if (dest_table.is(source_table)) {
+                    moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                } else {
+                    moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                }
+
+                if (moved_rows != null) {
+                    moved_rows.addClass(CLASS_JUST_DROPPED)
+
+                    dest_table.trigger(EVENT_DROPPED, {
+                        source_table: source_table,
+                        dest_table: dest_table,
+                        rows: moved_rows,
+                    })
+
+                    setTimeout(function () {
+                        ;(moved_rows as JQueryRow).css("transition", `background-color ${options.just_dropped_transition_length}s`)
+                        setTimeout(function () {
+                            ;(moved_rows as JQueryRow).removeClass(CLASS_JUST_DROPPED)
+                            setTimeout(function () {
+                                ;(moved_rows as JQueryRow).css("transition", "")
+                            }, options.just_dropped_transition_length * 1000)
+                        }, 0)
+                    }, 0)
+                }
+            }
+        } catch (e) {
+            _stop_drop(dest_table)
+            throw e
+        }
+        _stop_drop(dest_table)
+        _stop_drop(source_table)
+    }
 }
 
 /**
@@ -1204,15 +1271,21 @@ interface DragNDropResult {
  * @param cursorY The absolute Y position of the cursor
  * @returns A structure telling where to insert the row and under which parent
  */
-function _get_dragndrop_result($table: JQueryTable, dragged_tr: JQueryRow, hover_tr: JQueryRow, cursorY: number): DragNDropResult | null {
-    if (hover_tr.is(dragged_tr) || _is_descendant($table, hover_tr, dragged_tr)) {
-        return null
-    }
-
+function _get_dragndrop_result(
+    $table: JQueryTable,
+    dragged_tr: JQueryRow,
+    hover_tr: JQueryRow | null,
+    cursorY: number
+): DragNDropResult | null {
     if (hover_tr == null) {
         return null
     }
+
     if (hover_tr.length == 0) {
+        return null
+    }
+
+    if (hover_tr.is(dragged_tr) || _is_descendant($table, hover_tr, dragged_tr)) {
         return null
     }
 
@@ -1547,7 +1620,7 @@ function _transfer_row(
     let old_id_to_new_id_map: Record<string, string> = {}
     let new_tr_by_new_id: Record<string, JQueryRow> = {}
 
-    for (let i = 0; lines_to_moves.length; i++) {
+    for (let i = 0; i < lines_to_moves.length; i++) {
         const original_line = $(lines_to_moves[i])
         const original_id = _get_node_id(original_line)
         const original_parent_id = _get_parent_id(original_line)
@@ -1719,7 +1792,7 @@ function init($table: JQueryTable, config: PluginOptions): void {
     const options: PluginOptionsFull = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
-        throw "TreeTable requires a id attribute work properly"
+        throw "TreeTable requires an id attribute work properly"
     }
     $table.addClass(CLASS_TABLE)
 
@@ -1772,7 +1845,8 @@ const public_funcs: Record<string, Function> = {
     collapse_all: collapse_all,
     move_node: move_node,
     load_all: load_all,
-    transfer_node: transfer_node,
+    transfer_node_from: transfer_node_from,
+    transfer_node_to: transfer_node_to,
     get_root_node: get_root_node,
 }
 

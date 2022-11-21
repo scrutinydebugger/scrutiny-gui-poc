@@ -35,6 +35,9 @@ type JQueryRow = JQuery<HTMLTableRowElement>
 const ATTR_DISPLAY_PATH = "display_path"
 const ATTR_ENTRY_TYPE = "entry_type"
 
+const CLASS_TYPE_COL = "type_col"
+const CLASS_NAME_COL = "name_col"
+
 export class VarListWidget extends BaseWidget {
     /** The container in which to put data. That's our widget Canvas in the UI */
     container: JQuery
@@ -60,7 +63,7 @@ export class VarListWidget extends BaseWidget {
      * @param app The Scrutiny App instance
      * @param instance_id A unique instance number for this widget
      */
-    constructor(container: HTMLElement, app: App, instance_id: number) {
+    constructor(container: JQuery<HTMLDivElement>, app: App, instance_id: number) {
         super(container, app, instance_id)
         this.container = $(container)
         this.app = app
@@ -149,50 +152,49 @@ export class VarListWidget extends BaseWidget {
      */
     destroy() {}
 
-    /**
-     * Generate a unique ID assignable to a watchable node
-     * @param display_path The path to the node
-     * @returns A unique name used to identify node globally in the web document
-     */
-    make_node_id(display_path: string): string {
-        if (!this.id_map.hasOwnProperty(display_path)) {
-            this.id_map[display_path] = this.next_tree_id
-            this.next_tree_id++
-        }
-        return this.tree_name + "_" + this.id_map[display_path]
-    }
-
     make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
         const tr = $("<tr></tr>") as JQueryRow
-        const td1 = $(`<td>${entry.default_name}</td>`)
-        const td2 = $("<td></td>")
-        tr.append(td1).append(td2)
-        td1.prepend($(`<span>[${entry.entry_type}] </span>`))
-        td2.text(entry.datatype)
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
+        td_type.text(entry.datatype)
         tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
 
+        const img = $("<div class='treeicon'/>")
+
+        if (entry.entry_type == DatastoreEntryType.Var) {
+            img.addClass("icon-var")
+        } else if (entry.entry_type == DatastoreEntryType.Alias) {
+            img.addClass("icon-alias")
+        } else if (entry.entry_type == DatastoreEntryType.RPV) {
+            img.addClass("icon-rpv")
+        }
+
+        td_name.prepend(img)
         return tr
     }
 
     make_folder_row(subfolder: SubfolderDescription): JQueryRow {
         const tr = $("<tr></tr>") as JQueryRow
-        const td1 = $(`<td>${subfolder.name}</td>`)
-        const td2 = $("<td></td>")
-        tr.append(td1).append(td2)
-        td1.prepend($("<span>[Folder] </span>"))
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${subfolder.name}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
         tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
 
+        const img = $("<div class='treeicon icon-folder' />")
+        td_name.prepend(img)
         return tr
     }
 
     make_root_row(text: string) {
         const tr = $("<tr></tr>") as JQueryRow
-        const td1 = $(`<td>${text}</td>`)
-        const td2 = $("<td></td>")
-        tr.append(td1).append(td2)
-        td1.prepend($("<span>[Root] </span>"))
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${text}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
         tr.attr(ATTR_DISPLAY_PATH, "/")
 
+        const img = $("<div class='treeicon icon-folder' />")
+        td_name.prepend(img)
         return tr
     }
 
@@ -225,6 +227,7 @@ export class VarListWidget extends BaseWidget {
         children["entries"][entry_type].forEach(function (entry, i) {
             output.push({
                 tr: that.make_entry_row(entry),
+                no_children: true,
             })
         })
 

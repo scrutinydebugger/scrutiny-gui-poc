@@ -42,6 +42,7 @@ interface Segments {
 export class Tree<ObjType> {
     datastruct: Node<ObjType>
     nb_obj: number
+    __class__: any
 
     constructor() {
         this.datastruct = {
@@ -49,6 +50,8 @@ export class Tree<ObjType> {
             subtrees: {},
         } as unknown as Node<ObjType>
         this.nb_obj = 0
+
+        this.__class__ = Tree
     }
     count() {
         return this.nb_obj
@@ -61,7 +64,7 @@ export class Tree<ObjType> {
      * all segments are added to the segments output
      * @returns A the list of segments in the path
      */
-    get_segments(path: string, has_name: boolean = true): Segments {
+    static get_segments(path: string, has_name: boolean = true): Segments {
         let output = {
             name: null,
             segments: [],
@@ -111,7 +114,7 @@ export class Tree<ObjType> {
      * @param obj The object to attach to the path
      */
     add(path: string, obj: ObjType): void {
-        const target = this.get_segments(path)
+        const target = this.__class__.get_segments(path)
         let actual_branch = this.datastruct
         for (let i = 0; i < target.segments.length; i++) {
             const segment = target.segments[i]
@@ -136,7 +139,7 @@ export class Tree<ObjType> {
      */
     get_obj(path: string): any {
         let error_str = "" + path + " does not exist in the tree"
-        let target = this.get_segments(path)
+        let target = this.__class__.get_segments(path)
 
         let actual_branch = this.datastruct
         for (let i = 0; i < target.segments.length; i++) {
@@ -171,7 +174,7 @@ export class Tree<ObjType> {
             subtrees: {},
         } as unknown as ShallowNodeDescription<ObjType>
         const error_str = "" + path + " does not exist in the tree"
-        let target = this.get_segments(path, false) // false means no name
+        let target = this.__class__.get_segments(path, false) // false means no name
 
         let actual_branch = this.datastruct
         for (let i = 0; i < target.segments.length; i++) {

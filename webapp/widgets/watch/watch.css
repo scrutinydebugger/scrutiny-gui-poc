@@ -1,29 +1,60 @@
-table.watch-display{
-    border-collapse: collapse;
-    width:100%;
-    font-family: "Arial, sans-serif";
-    font-size: 14px;
-}
-
-table.watch-display tbody tr {
-    padding:0;
+.watch-table {
     margin:0;
-    border:1px solid #ddd;
-    cursor: default;
+    border-collapse: collapse;
+    font-size: small;
 }
 
-table.watch-display tbody tr.selected{
-    background-color: #beebff;
+.watch-table td,
+.watch-table th{
+    border-left: 1px solid #ddd;
+    
+    padding:1px 10px 1px 5px;
 }
 
-table.watch-display  td.value-cell{
-    text-align:center;
+.watch-table th {
+    border-bottom:1px solid #ddd;
+    text-align: left;
+    background-color: #f0f0f0;
+    font-weight: bold;
 }
 
-table.watch-display  td.help-cell img{
-    margin:auto;
-    width: 16px;
-    height: 16px;
-    display:block
+.watch-table img.treeicon{
+    display:inline-block;
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: 4px;
+    height: 14px;
+    width: 14px;
 }
 
+.watch-table tr:hover {
+    background-color: #e0e0ff;
+}
+
+.watch-table div.treeicon{
+    background-repeat: no-repeat;
+    display: inline-block;
+    
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: 4px;
+    height: 14px;
+    width: 14px;
+    background-size: 14px;
+}
+
+.watch-table div.treeicon.icon-folder{
+    background-image: url("assets/folder-16x16.png");
+}
+
+.watch-table div.treeicon.icon-var{
+    background-image: url("assets/var-16x16.png");
+}
+
+.watch-table div.treeicon.icon-alias{
+    background-image: url("assets/alias-16x16.png");
+}
+
+.watch-table div.treeicon.icon-rpv{
+    background-image: url("assets/rpv-16x16.png");
+}

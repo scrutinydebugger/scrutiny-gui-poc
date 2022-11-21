@@ -12,7 +12,7 @@ import { App } from "./app"
  * Represent the interface for any Widget that can be added to the UI
  */
 export class BaseWidget {
-    constructor(container: HTMLElement, app: App, instance_id: number) {}
+    constructor(container: JQuery<HTMLDivElement>, app: App, instance_id: number) {}
 
     /**
      * Initialize the instance of the widget when a new instance is created in the UI

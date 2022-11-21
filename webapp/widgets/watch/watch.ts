@@ -11,6 +11,35 @@ import * as $ from "jquery"
 import { BaseWidget } from "../../base_widget"
 import { App } from "../../app"
 import { DatastoreEntryType } from "../../datastore"
+import { Tree } from "../../tree"
+import * as logging from "../../logging"
+
+import {
+    scrutiny_treetable,
+    PluginOptions as TreeTableOptions,
+    LoadFunctionInterface as TreeTableLoadFunction,
+    TransferAllowedFunctionInterface as TransferAllowedFunction,
+    TransferFunctionInterface as TransferFunction,
+    TransferFunctionMetadata,
+    TransferFunctionOutput,
+    get_drag_data_from_drop_event,
+    DragData,
+} from "../../components/scrutiny-treetable/scrutiny-treetable"
+import {
+    scrutiny_resizable_table,
+    PluginOptions as ResizableTableOptions,
+} from "../../components/scrutiny-resizable-table/scrutiny-resizable-table"
+
+$.extend($.fn, { scrutiny_treetable })
+$.extend($.fn, { scrutiny_resizable_table })
+
+type JQueryRow = JQuery<HTMLTableRowElement>
+type JQueryTable = JQuery<HTMLTableElement>
+
+interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
+    scrutiny_treetable: Function
+    scrutiny_resizable_table: Function
+}
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -31,8 +60,11 @@ export class WatchWidget extends BaseWidget {
     /** The instance ID of this widget. */
     instance_id: number
 
-    display_table: JQuery
+    display_table: ScrutinyTreeTable
+
     next_line_instance: number
+
+    logger: logging.Logger
 
     /**
      *
@@ -40,14 +72,17 @@ export class WatchWidget extends BaseWidget {
      * @param app The Scrutiny App instance
      * @param instance_id A unique instance number for this widget
      */
-    constructor(container: HTMLElement, app: App, instance_id: number) {
+    constructor(container: JQuery<HTMLDivElement>, app: App, instance_id: number) {
         super(container, app, instance_id)
-        this.container = $(container)
+        this.container = container
         this.app = app
         this.instance_id = instance_id
 
-        this.display_table = $()
+        //@ts-ignore
+        this.display_table = null
+
         this.next_line_instance = 0
+        this.logger = logging.getLogger(this.constructor.name)
     }
 
     /**
@@ -55,51 +90,53 @@ export class WatchWidget extends BaseWidget {
      */
     initialize() {
         let that = this
-        let block = $("<div></div>")
-        block.addClass("watch-drop-zone")
-        block.css("height", "100%")
-        block.css("width", "100%")
-        this.container.append(block)
-        let display_table = this.app.get_template(this, "display_table")
-        block.append(display_table)
+        let display_table = this.app.get_template(this, "display_table") as ScrutinyTreeTable
         this.display_table = display_table
         this.next_line_instance = 0
 
-        // todo : remove event handler on tabl close?
-        $(document).on("dnd_move.vakata", function (e, data) {
-            const t = $(data.event.target)
-            if (!t.closest(".jstree").length) {
-                if (t.closest(".watch-drop-zone").length) {
-                    data.helper.find(".jstree-icon").removeClass("jstree-er").addClass("jstree-ok")
-                } else {
-                    data.helper.find(".jstree-icon").removeClass("jstree-ok").addClass("jstree-er")
-                }
-            }
+        this.display_table.attr("id", "watch_widget_" + this.instance_id)
+        const resizable_table_options: ResizableTableOptions = {
+            table_width_constrained: false,
+        }
+
+        const tree_table_options: TreeTableOptions = {
+            load_fn: function (...args) {
+                return that.table_load_fn(...args)
+            } as TreeTableLoadFunction,
+            resizable: true,
+            resize_options: resizable_table_options,
+            draggable: true,
+            droppable: true,
+            allow_transfer_fn: function () {
+                return true
+            },
+            transfer_fn: function (...args): TransferFunctionOutput {
+                return that.element_transfer_fn(...args)
+            },
+        }
+
+        this.display_table.scrutiny_treetable(tree_table_options)
+        this.container.append(this.display_table)
+
+        this.container.on("dragover", function (e) {
+            e.preventDefault()
         })
 
-        // todo : remove event handler on tabl close?
-        $(document).on("dnd_stop.vakata", function (e, data) {
-            const t = $(data.event.target)
-            const dropzone = t.closest(".watch-drop-zone").first()
-            if (dropzone.length) {
-                if (that.container.has(dropzone[0]).length) {
-                    // Make sure we only take our event. Not the one from other watch window.
-                    $(data.data.nodes).each(function (i, nodeid) {
-                        // For each dragged node
-                        let display_path = $("#" + nodeid).attr("display_path") as string
-                        let entry_type = $("#" + nodeid).attr("type") as DatastoreEntryType
-                        that.add_var(entry_type, display_path)
-                    })
-                }
+        this.container.on("drop", function (e) {
+            const drag_data = get_drag_data_from_drop_event(e)
+            if (drag_data == null) {
+                return
             }
-        })
 
-        $(document).on("keydown", function (e) {
-            if (e.key === "Delete") {
-                // Remove selected lines
-                $("table.watch-display tr.selected").each(function () {
-                    that.remove_var($(this) as JQuery<HTMLTableRowElement>)
-                })
+            e.stopPropagation()
+
+            const src_table = $(`#${drag_data.source_table_id}`) as JQueryTable
+            const dragged_row_id = drag_data.dragged_row_id
+            if (src_table.is(that.display_table)) {
+                that.display_table.scrutiny_treetable("move_node", dragged_row_id, null, null) // Put as root node at the end.
+            } else {
+                // Make a row transfer and put at the end as root node
+                that.display_table.scrutiny_treetable("transfer_node_from", src_table, dragged_row_id, null, null)
             }
         })
     }
@@ -107,8 +144,8 @@ export class WatchWidget extends BaseWidget {
     destroy() {
         const that = this
         // Remove all lines even if not selected
-        $("table.watch-display tr").each(function () {
-            that.remove_var($(this) as JQuery<HTMLTableRowElement>)
+        this.display_table.find("tr").each(function () {
+            that.remove_var($(this) as JQueryRow)
         })
     }
 
@@ -130,23 +167,6 @@ export class WatchWidget extends BaseWidget {
         line.append("<td>" + display_path + "</td>")
         line.append('<td class="value-cell"><span>0.0</span></td>')
         line.append('<td class="help-cell"><img src="assets/img/question-mark-grey-64x64.png" /></td>')
-
-        // Homemade selector logic for now. Todo: Do something more fancy
-        line.click(function () {
-            let temp = true
-            if (line.hasClass("selected")) {
-                temp = false
-            }
-
-            $("table.watch-display tr").removeClass("selected")
-
-            if (temp) {
-                line.addClass("selected")
-            } else {
-                line.removeClass("selected")
-            }
-        })
-
         this.display_table.find("tbody").first().append(line)
 
         let update_callback = function (val: number | null) {
@@ -157,12 +177,35 @@ export class WatchWidget extends BaseWidget {
         this.app.datastore.watch(entry_type, display_path, line_id, update_callback)
     }
 
-    remove_var(line: JQuery<HTMLTableRowElement>) {
+    table_load_fn(node_id: string, tr: JQueryRow, user_data?: any): ReturnType<TreeTableLoadFunction> {
+        return []
+    }
+
+    remove_var(line: JQueryRow) {
         const line_id = line.attr("id")
         if (typeof line_id !== "undefined") {
             this.app.datastore.unwatch_all(line_id)
         }
         line.remove()
+    }
+
+    element_transfer_fn(source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput {
+        const new_line = $("<tr></tr>") as JQueryRow
+        const td_name = $("<td></td>")
+        const td_value = $("<td></td>")
+        const td_type = $("<td></td>")
+        new_line.append(td_name).append(td_value).append(td_type)
+
+        const output = { tr: new_line }
+        if (source_table.hasClass("varlist-table") || source_table.hasClass("watch-table")) {
+            td_name.html(bare_line.find(".name_col").html()).addClass("name_col")
+            td_type.html(bare_line.find(".type_col").html()).addClass("type_col")
+        } else {
+            console.log
+            this.logger.warning("Don't know how to convert table row coming from this table")
+        }
+
+        return output
     }
 
     static widget_name() {
@@ -177,7 +220,7 @@ export class WatchWidget extends BaseWidget {
     }
 
     static css_list() {
-        return ["watch.css"]
+        return ["watch.css", "watch-treetable-theme.css"]
     }
 
     static templates() {
