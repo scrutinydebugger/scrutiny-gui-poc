@@ -2,14 +2,15 @@ import { resolve } from "path"
 import { default as glob } from "glob"
 import GitRevisionPlugin from "git-revision-webpack-plugin"
 import webpack from "webpack"
+import { default as nodeExternals } from "webpack-node-externals"
 
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
-
 const OUTPUT_FOLDER = "dist"
 
 export default {
     context: resolve("."),
-    entry: glob.sync("./tests/*.test.ts"),
+    target: "node",
+    entry: glob.sync("./tests/**/*.test.ts"),
     mode: "development",
     module: {
         rules: [
@@ -30,14 +31,18 @@ export default {
             SCRUTINY_VERSION: JSON.stringify(gitRevisionPlugin.version()),
             SCRUTINY_COMMITHASH: JSON.stringify(gitRevisionPlugin.commithash()),
             SCRUTINY_BRANCH: JSON.stringify(gitRevisionPlugin.branch()),
+            SCRUTINY_UNITTEST: true,
         }),
     ],
     output: {
-        filename: "scrutiny-test.js",
+        filename: "scrutiny-test.cjs",
         path: resolve(`${OUTPUT_FOLDER}/js`),
     },
     resolve: {
         extensions: [".ts", ".js"],
+        alias: {
+            "@jquery": resolve("externals/test/jquery"),
+        },
     },
-    externals: {},
+    externals: [nodeExternals()],
 }

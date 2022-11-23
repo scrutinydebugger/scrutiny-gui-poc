@@ -2,6 +2,7 @@ import { resolve } from "path"
 import CopyPlugin from "copy-webpack-plugin"
 import GitRevisionPlugin from "git-revision-webpack-plugin"
 import webpack from "webpack"
+import { default as nodeExternals } from "webpack-node-externals"
 
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
@@ -47,6 +48,7 @@ export default {
             SCRUTINY_COMMITHASH: JSON.stringify(gitRevisionPlugin.commithash()),
             SCRUTINY_BRANCH: JSON.stringify(gitRevisionPlugin.branch()),
             SCRUTINY_DEBUG: DEBUG,
+            SCRUTINY_UNITTEST: false,
         }),
     ],
     output: {
@@ -56,9 +58,9 @@ export default {
     },
     resolve: {
         extensions: [".ts", ".js"],
+        alias: {
+            "@jquery": resolve("externals/prod/jquery"),
+        },
     },
-    externals: {
-        goldenlayout: "GoldenLayout",
-        jquery: "jQuery",
-    },
+    externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, nodeExternals()],
 }

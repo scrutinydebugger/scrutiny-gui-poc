@@ -8,8 +8,17 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import * as $ from "jquery"
+//import * as $ from "jquery"
+import { default as $ } from "@jquery"
+/*
+import { default as StubbedJQuery } from "../../../tests/jquery_stub"
+var $: JQueryStatic = JQuery
 
+declare const SCRUTINY_UNITTEST: boolean
+if (typeof SCRUTINY_UNITTEST !== "undefined" && SCRUTINY_UNITTEST === true) {
+    $ = StubbedJQuery
+}
+*/
 export interface LoadFunctionInterface {
     (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
 }
@@ -114,6 +123,8 @@ const CLASS_DISABLED = "stt-disabled"
 const CLASS_NO_CHILDREN = "stt-no-children"
 /**  Applied on the cell that contains the tree element */
 const CLASS_TREE_CELL = "stt-tree-cell"
+/** Applied on rows that are loaded but hidden */
+const CLASS_HIDDEN = "stt-hidden"
 
 /**  To store the plugin options */
 const DATAKEY_OPTIONS = "stt-dk-options"
@@ -185,6 +196,10 @@ const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
  * @param tr The row to add
  */
 function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
+    if (typeof node_id !== "string") {
+        throw "node_id is not a string"
+    }
+
     _add_node($table, null, node_id, tr)
     _load_children($table, tr)
 }
@@ -408,6 +423,21 @@ function load_all($table: JQueryTable): void {
     _load_all($table)
 }
 
+/**
+ * Returns the list of visible rows in the table
+ * @param $table The Jquery table
+ * @param filter An optional filter to apply on the row set
+ * @returns The list of visible rows that matches the given filter or all if no filter is given
+ */
+function get_visible_rows($table: JQueryTable, filter?: string) {
+    const rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`)
+    if (typeof filter !== "undefined") {
+        rows.filter(filter)
+    }
+
+    return rows
+}
+
 /***  Private functions *** */
 
 /**
@@ -488,7 +518,7 @@ function _find_row($table: JQueryTable, node_id: string): JQueryRow {
     if (node_cache.hasOwnProperty(node_id)) {
         return node_cache[node_id]
     }
-    let row = ($table.find(`tr[${ATTR_ID}="${node_id}"`) as JQueryRow).first() // expensive search
+    let row = ($table.find(`tr[${ATTR_ID}="${node_id}"]`) as JQueryRow).first() // expensive search
     if (row.length == 0) {
         throw `Node "${node_id}" not found`
     }
@@ -661,7 +691,7 @@ function _get_row_header_block($table: JQueryTable, tr: JQueryRow): JQuery {
  * @returns true if visible
  */
 function _is_visible(tr: JQueryRow): boolean {
-    return tr.is(":visible")
+    return !tr.hasClass(CLASS_HIDDEN)
 }
 
 /**
@@ -852,7 +882,7 @@ function _make_non_expandable($table: JQueryTable, tr: JQueryRow): void {
 function _show_children_of_expanded_recursive($table: JQueryTable, tr: JQueryRow): void {
     _get_children($table, tr).each(function () {
         const child = $(this) as JQueryRow
-        child.show()
+        _show_row(child)
         if (_is_expanded($table, child)) {
             _show_children_of_expanded_recursive($table, child)
         }
@@ -870,7 +900,7 @@ function _expand_row($table: JQueryTable, tr: JQueryRow): void {
         // Iterate all immediate children
         children.each(function () {
             const child = $(this) as JQueryRow
-            child.show()
+            _show_row(child)
             _load_children($table, child)
             // Show children of children if they are already expanded. Consider the case where we have 10 levels of expanded rows
             // and level 1 is collapsed, then re-expanded. We want to re-expand all 10 levels, avoiding the user to do 10 clicks again.
@@ -909,9 +939,27 @@ function _toggle_row($table: JQueryTable, tr: JQueryRow): void {
 function _hide_children($table: JQueryTable, tr: JQueryRow): void {
     _get_children($table, tr).each(function () {
         const child = $(this) as JQueryRow
-        child.hide()
+        _hide_row(child)
         _hide_children($table, child)
     })
+}
+
+/**
+ * MAke a row hidden
+ * @param tr The Row to hide
+ */
+function _hide_row(tr: JQueryRow) {
+    tr.hide()
+    tr.addClass(CLASS_HIDDEN) // We use that because :visible does not work with jsdom
+}
+
+/**
+ * Makes a row visible
+ * @param tr The row to show
+ */
+function _show_row(tr: JQueryRow) {
+    tr.show()
+    tr.removeClass(CLASS_HIDDEN) // We use that because :visible does not work with jsdom
 }
 
 /**
@@ -1026,7 +1074,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     if (parent_id === null) {
         // We are adding a root node
         $table.append(tr)
-        tr.show()
+        _show_row(tr)
         $table.trigger(EVENT_SIZE_CHANGED)
     } else {
         // We are adding a subnode
@@ -1052,7 +1100,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
         tr.insertAfter(previous_row)
 
         tr.attr(ATTR_PARENT, parent_id)
-        tr.hide()
+        _hide_row(tr)
         _increase_children_count($table, parent, 1)
     }
 
@@ -1065,9 +1113,9 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
         let dragger = DRAGGER_TEMPLATE.clone()
         header_block.prepend(dragger)
         dragger.attr("draggable", "true")
-        dragger.on("dragstart", function (e) {
+        dragger.on("dragstart", function (e: JQuery.DragEvent) {
             // Most reliable way to pass data is to store in global.
-            // Attaching to the even is not reliable because chrome has some strict security policy
+            // Attaching to the event is not reliable because chrome has some strict security policy
             // that makes the data unavailable in the dragmove event.
             if (typeof e.originalEvent == "undefined") {
                 return
@@ -1090,7 +1138,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             }
         })
 
-        dragger.on("dragend", function (e) {
+        dragger.on("dragend", function (e: JQuery.DragEvent) {
             gbl_drag_data = null
             if (options.droppable) {
                 $table.find(`tr.${CLASS_DISABLED}`).removeClass(CLASS_DISABLED)
@@ -1154,14 +1202,14 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                 const insert_line_tr = _find_row(dest_table, dnd_result.insert_line_display.row_id)
                 if (dnd_result.insert_line_display.insert_type == INSERT_TYPE_ABOVE) {
                     insert_line_tr.addClass(CLASS_INSERT_ABOVE)
-                    let prev_row = (insert_line_tr.prevAll("tr:visible") as JQueryRow).first()
+                    let prev_row = (insert_line_tr.prevAll(`tr:not(.${CLASS_HIDDEN})`) as JQueryRow).first()
                     if (prev_row.length == 0) {
                         prev_row = (dest_table.find("thead:first tr:last") as JQueryRow).first()
                     }
                     prev_row.addClass(CLASS_INSERT_BELOW)
                 } else if (dnd_result.insert_line_display.insert_type == INSERT_TYPE_BELOW) {
                     insert_line_tr.addClass(CLASS_INSERT_BELOW)
-                    insert_line_tr.nextAll("tr:visible").first().addClass(CLASS_INSERT_ABOVE)
+                    insert_line_tr.nextAll(`tr:not(.${CLASS_HIDDEN})`).first().addClass(CLASS_INSERT_ABOVE)
                 } else {
                     _stop_drop(dest_table)
                 }
@@ -1299,9 +1347,9 @@ function _get_dragndrop_result(
     }
 
     const hover_tr_id = hover_tr == null ? null : _get_node_id(hover_tr)
-    const hover_prev_tr = hover_tr.prevAll("tr:visible").first()
+    const hover_prev_tr = hover_tr.prevAll(`tr:not(.${CLASS_HIDDEN})`).first()
     const hover_prev_tr_id = hover_prev_tr.length == 0 ? null : _get_node_id(hover_prev_tr)
-    const hover_next_tr = hover_tr.nextAll("tr:visible").first()
+    const hover_next_tr = hover_tr.nextAll(`tr:not(.${CLASS_HIDDEN})`).first()
     const hover_next_tr_id = hover_next_tr.length == 0 ? null : _get_node_id(hover_next_tr)
 
     const insert_type = _get_row_insert_type(hover_tr, cursorY)
@@ -1848,12 +1896,14 @@ const public_funcs: Record<string, Function> = {
     transfer_node_from: transfer_node_from,
     transfer_node_to: transfer_node_to,
     get_root_node: get_root_node,
+    get_visible_rows: get_visible_rows,
 }
 
 export function scrutiny_treetable(...args: any[]) {
     let hasResults = false
     // @ts-ignore
     const results = $(this).map(function () {
+        // @ts-ignore
         const $table = $(this)
 
         // Jquery plugin like approach.

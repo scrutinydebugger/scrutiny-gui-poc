@@ -7,9 +7,13 @@
         "sourceMap": true,
         "rootDir": "./",
         "downlevelIteration": true,
-        "strict":true
-    },
-    "include": ["webapp/**/*"],
+        "strict":true,
+        "baseUrl": "./",
+        "paths":{
+            "@jquery" : ["externals/prod/jquery"]
+        },
+    },   
+    "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts"],
     "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"]
   
 }

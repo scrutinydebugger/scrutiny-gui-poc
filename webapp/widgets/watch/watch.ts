@@ -11,7 +11,6 @@ import * as $ from "jquery"
 import { BaseWidget } from "../../base_widget"
 import { App } from "../../app"
 import { DatastoreEntryType } from "../../datastore"
-import { Tree } from "../../tree"
 import * as logging from "../../logging"
 
 import {
