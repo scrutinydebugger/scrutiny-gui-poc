@@ -1,3 +1,11 @@
+//    test_treetable_tools.ts
+//        Some tools that provides helpers for quick testing of the tree table plugin
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
 import { scrutiny_treetable, LoadFunctionInterface as TreeTableLoadFn } from "@scrutiny-treetable"
 import { default as $ } from "@jquery"
 import * as dom_testing_tools from "@tests/dom_testing_tools"

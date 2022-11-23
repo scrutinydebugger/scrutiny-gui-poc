@@ -1,3 +1,11 @@
+//    dom_testing_tools.ts
+//        Some testing tools dedicated to DOM handling
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
 import { default as $ } from "@jquery"
 
 export function make_row(nb_col: number): JQuery<HTMLTableRowElement> {

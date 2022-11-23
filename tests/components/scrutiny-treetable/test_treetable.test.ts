@@ -1,3 +1,11 @@
+//    test_treetable.test.ts
+//        Test suite for the tree table plugin
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2022 Scrutiny Debugger
+
 import { scrutiny_treetable, PluginOptions as TreeTableOptions } from "@scrutiny-treetable"
 import { default as $ } from "@jquery"
 import * as dom_testing_tools from "@tests/dom_testing_tools"
