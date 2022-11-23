@@ -8,17 +8,8 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-//import * as $ from "jquery"
 import { default as $ } from "@jquery"
-/*
-import { default as StubbedJQuery } from "../../../tests/jquery_stub"
-var $: JQueryStatic = JQuery
 
-declare const SCRUTINY_UNITTEST: boolean
-if (typeof SCRUTINY_UNITTEST !== "undefined" && SCRUTINY_UNITTEST === true) {
-    $ = StubbedJQuery
-}
-*/
 export interface LoadFunctionInterface {
     (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
 }

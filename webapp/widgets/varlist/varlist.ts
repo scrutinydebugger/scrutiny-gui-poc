@@ -7,20 +7,14 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName } from "../../datastore"
-import { BaseWidget } from "../../base_widget"
-import { App } from "../../app"
-import * as logging from "../../logging"
-import * as $ from "jquery"
-import {
-    scrutiny_treetable,
-    PluginOptions as TreeTableOptions,
-    LoadFunctionInterface as TreeTableLoadFunction,
-} from "../../components/scrutiny-treetable/scrutiny-treetable"
-import {
-    scrutiny_resizable_table,
-    PluginOptions as ResizableTableOptions,
-} from "../../components/scrutiny-resizable-table/scrutiny-resizable-table"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName } from "@src/datastore"
+import { BaseWidget } from "@src/base_widget"
+import { App } from "@src/app"
+import * as logging from "@src/logging"
+import { default as $ } from "@jquery"
+
+import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
+import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -121,11 +115,11 @@ export class VarListWidget extends BaseWidget {
         this.tree_table.scrutiny_treetable("add_root_node", "root_rpv", this.types_root_nodes[DatastoreEntryType.RPV])
 
         // Event handlers
-        $(document).on("scrutiny.datastore.ready", function (data) {
+        $(document).on("scrutiny.datastore.ready", function (data: any) {
             /// that.rebuild_tree() // Todo use data to rebuild only missing nodes
         })
 
-        $(document).on("scrutiny.datastore.clear", function (data) {
+        $(document).on("scrutiny.datastore.clear", function (data: any) {
             //that.rebuild_tree() // Todo : USe data to clear only cleared data
         })
 

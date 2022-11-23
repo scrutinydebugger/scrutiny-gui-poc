@@ -6,7 +6,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { Tree } from "../webapp/tree"
+import { Tree } from "@src/tree"
 import * as assert from "assert"
 import { assert_list_equal_unordered } from "./testing_tools"
 

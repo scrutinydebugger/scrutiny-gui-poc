@@ -7,11 +7,11 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import * as $ from "jquery"
-import { BaseWidget } from "../../base_widget"
-import { App } from "../../app"
-import { DatastoreEntryType } from "../../datastore"
-import * as logging from "../../logging"
+import { default as $ } from "@jquery"
+import { BaseWidget } from "@src/base_widget"
+import { App } from "@src/app"
+import { DatastoreEntryType } from "@src/datastore"
+import * as logging from "@src/logging"
 
 import {
     scrutiny_treetable,

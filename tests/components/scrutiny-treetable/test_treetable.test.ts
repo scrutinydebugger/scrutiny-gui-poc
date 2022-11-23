@@ -1,9 +1,9 @@
-import { scrutiny_treetable, PluginOptions as TreeTableOptions } from "../../../webapp/components/scrutiny-treetable/scrutiny-treetable"
+import { scrutiny_treetable, PluginOptions as TreeTableOptions } from "@scrutiny-treetable"
 import { default as $ } from "@jquery"
-import * as dom_testing_tools from "../../dom_testing_tools"
+import * as dom_testing_tools from "@tests/dom_testing_tools"
 import * as assert from "assert"
 import { get_load_fn, RootNode } from "./test_treetable_tools"
-import * as testing_tools from "../../testing_tools"
+import * as testing_tools from "@tests/testing_tools"
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 interface JQueryScrutinyTable extends JQuery<HTMLTableElement> {

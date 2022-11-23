@@ -42,6 +42,10 @@ export default {
         extensions: [".ts", ".js"],
         alias: {
             "@jquery": resolve("externals/test/jquery"),
+            "@src": resolve("webapp/"),
+            "@tests": resolve("tests"),
+            "@scrutiny-treetable": resolve("webapp/components/scrutiny-treetable/scrutiny-treetable"),
+            "@scrutiny-resizable-table": resolve("webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"),
         },
     },
     externals: [nodeExternals()],

@@ -12,7 +12,7 @@ import { UI } from "./ui"
 import * as logging from "./logging"
 import { BaseWidget } from "./base_widget"
 
-import * as $ from "jquery"
+import { default as $ } from "@jquery"
 
 export interface AppConfig {
     server: {
@@ -127,7 +127,7 @@ export class App {
      */
     on_event(name: string, callback: (data: any) => void) {
         const that = this
-        $(document).on(name, function (data) {
+        $(document).on(name, function (data: any) {
             that.event_logger.debug("Running event callback: " + name)
             callback(data)
         })
@@ -199,7 +199,7 @@ export class App {
         // the template is done loading through Ajax.
         const that = this
         const promise = new Promise(function (resolve: (value?: unknown) => void, reject: (reason?: any) => void) {
-            const template = $("<template id='" + template_id + "'></template>")
+            const template = $("<template id='" + template_id + "'></template>") as JQuery
             $("#template_section").append(template)
             template.load(template_file, "", function (response, status, xhr) {
                 if (status == "success") {

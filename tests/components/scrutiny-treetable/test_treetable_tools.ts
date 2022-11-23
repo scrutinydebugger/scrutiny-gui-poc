@@ -1,9 +1,6 @@
-import {
-    scrutiny_treetable,
-    LoadFunctionInterface as TreeTableLoadFn,
-} from "../../../webapp/components/scrutiny-treetable/scrutiny-treetable"
+import { scrutiny_treetable, LoadFunctionInterface as TreeTableLoadFn } from "@scrutiny-treetable"
 import { default as $ } from "@jquery"
-import * as dom_testing_tools from "../../dom_testing_tools"
+import * as dom_testing_tools from "@tests/dom_testing_tools"
 
 export interface Node {
     cells: string[]

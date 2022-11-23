@@ -8,7 +8,7 @@
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { ServerStatus, DeviceStatus } from "./global_definitions"
-import * as $ from "jquery"
+import { default as $ } from "@jquery"
 import { DeviceInformation, ScrutinyFirmwareDescription } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
@@ -64,7 +64,7 @@ export class UI {
             $("#modal-container").hide()
         })
 
-        $(document).on("keyup", function (e) {
+        $(document).on("keyup", function (e: JQuery.KeyUpEvent) {
             if (e.key == "Escape") {
                 $("#modal-container").hide()
                 $(".tooltip").hide()
@@ -270,7 +270,7 @@ export class UI {
                 if (this.device_info["readonly_memory_regions"].length == 0) {
                     readonly_memory_regions_content = "None"
                 } else {
-                    readonly_memory_regions_content = $("<ul></ul>")
+                    readonly_memory_regions_content = $("<ul></ul>") as JQuery
                     for (let i = 0; i < this.device_info["readonly_memory_regions"].length; i++) {
                         const start = this.device_info["readonly_memory_regions"][i]["start"]
                         const end = this.device_info["readonly_memory_regions"][i]["end"]
@@ -292,7 +292,7 @@ export class UI {
                 if (this.device_info["forbidden_memory_regions"].length == 0) {
                     forbidden_memory_regions_content = "None"
                 } else {
-                    forbidden_memory_regions_content = $("<ul></ul>")
+                    forbidden_memory_regions_content = $("<ul></ul>") as JQuery
                     for (let i = 0; i < this.device_info["forbidden_memory_regions"].length; i++) {
                         const start = this.device_info["forbidden_memory_regions"][i]["start"]
                         const end = this.device_info["forbidden_memory_regions"][i]["end"]
@@ -332,13 +332,13 @@ export class UI {
                     : forbidden_memory_regions_content[0]
             )
 
-            $("#modal-content [show-tooltip]").on("mouseover", function (e) {
-                const tooltip_id = $(this).attr("show-tooltip") as string
+            $("#modal-content [show-tooltip]").on("mouseover", function (ev: JQuery.MouseOverEvent) {
+                const tooltip_id = $(ev.target).attr("show-tooltip") as string
                 $(tooltip_id).show()
             })
 
-            $("#modal-content [show-tooltip]").on("mouseleave", function (e) {
-                const tooltip_id = $(this).attr("show-tooltip") as string
+            $("#modal-content [show-tooltip]").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
+                const tooltip_id = $(ev.target).attr("show-tooltip") as string
                 $(tooltip_id).hide()
             })
         }

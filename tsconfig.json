@@ -10,7 +10,11 @@
         "strict":true,
         "baseUrl": "./",
         "paths":{
-            "@jquery" : ["externals/prod/jquery"]
+            "@jquery" : ["externals/prod/jquery"],
+            "@src/*" : ["webapp/*"],
+            "@tests/*" : ["tests/*"],
+            "@scrutiny-treetable" : ["webapp/components/scrutiny-treetable/scrutiny-treetable"],
+            "@scrutiny-resizable-table" : ["webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"],
         },
     },   
     "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts"],
