@@ -25,7 +25,7 @@ describe("Tree", function () {
         assert_list_equal_unordered(tree.get_all_obj(), [obj1, obj2])
     })
 
-    it("Basic tree access", function () {
+    it("Path manipulation", function () {
         let tree = new Tree()
         assert.equal("a/b/c", tree.join_path("a", "b", "c"))
         assert.equal("/a/b/c", tree.join_path("/a//", "/b/", "/c/"))

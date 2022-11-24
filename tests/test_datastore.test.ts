@@ -12,7 +12,7 @@ import { assert_list_equal_unordered } from "./testing_tools"
 import * as assert from "assert"
 import { FakeApp } from "./fake_app"
 
-describe("DataStore", function () {
+describe("Datastore", function () {
     it("Basic access", function () {
         let app = new FakeApp()
         let ds = new Datastore(app as unknown as App)

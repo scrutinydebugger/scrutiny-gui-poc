@@ -201,9 +201,9 @@ function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): voi
  * @param node The given node
  * @returns The root node containing the given node
  */
-function get_root_node($table: JQueryTable, node: string | JQueryRow) {
+function get_root_node_of($table: JQueryTable, node: string | JQueryRow) {
     const row = _get_row_from_node_or_row($table, node)
-    return _get_root_node($table, row)
+    return _get_root_node_of($table, row)
 }
 
 /**
@@ -301,6 +301,15 @@ function collapse_all($table: JQueryTable, node?: string | JQueryRow): void {
 function is_root($table: JQueryTable, node: string | JQueryRow): boolean {
     let tr = _get_row_from_node_or_row($table, node)
     return _is_root(tr)
+}
+
+/**
+ * Fetch the list of root nodes in the table
+ * @param $table The JQuery table
+ * @returns List of root nodes
+ */
+function get_root_nodes($table: JQueryTable): JQueryRow {
+    return _get_root_nodes($table)
 }
 
 /**
@@ -420,13 +429,27 @@ function load_all($table: JQueryTable): void {
  * @param filter An optional filter to apply on the row set
  * @returns The list of visible rows that matches the given filter or all if no filter is given
  */
-function get_visible_rows($table: JQueryTable, filter?: string) {
+function get_visible_nodes($table: JQueryTable, filter?: string) {
     const rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`)
     if (typeof filter !== "undefined") {
         rows.filter(filter)
     }
 
     return rows
+}
+
+function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
+    if (typeof node_id == "string") {
+        node_id = [node_id]
+    }
+
+    let output = []
+
+    for (let i = 0; i < node_id.length; i++) {
+        output.push(_find_row($table, node_id[i]))
+    }
+
+    return $(output)
 }
 
 /***  Private functions *** */
@@ -592,7 +615,7 @@ function _is_root(tr: JQueryRow): boolean {
  * @param row The given row
  * @returns The root node
  */
-function _get_root_node($table: JQueryTable, row: JQueryRow) {
+function _get_root_node_of($table: JQueryTable, row: JQueryRow) {
     let parent = _get_parent($table, row)
     while (parent !== null) {
         row = parent
@@ -1886,8 +1909,10 @@ const public_funcs: Record<string, Function> = {
     load_all: load_all,
     transfer_node_from: transfer_node_from,
     transfer_node_to: transfer_node_to,
-    get_root_node: get_root_node,
-    get_visible_rows: get_visible_rows,
+    get_root_nodes: get_root_nodes,
+    get_root_node_of: get_root_node_of,
+    get_visible_nodes: get_visible_nodes,
+    get_nodes: get_nodes,
 }
 
 export function scrutiny_treetable(...args: any[]) {
