@@ -187,11 +187,26 @@ const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
  * @param tr The row to add
  */
 function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
+    add_node($table, node_id, tr, null)
+}
+
+/**
+ * Adds a row as a node.
+ * @param $table The JQuery table
+ * @param node_id Node ID to assign to the row
+ * @param tr The row to add
+ * @param new_parent_id The node id of the parent. Set to null to make a root node
+ */
+function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_parent_id: string | null): void {
     if (typeof node_id !== "string") {
         throw "node_id is not a string"
     }
 
-    _add_node($table, null, node_id, tr)
+    if (typeof new_parent_id !== "string" && new_parent_id !== null) {
+        throw "new_parent_id is not a string or null"
+    }
+
+    _add_node($table, new_parent_id, node_id, tr)
     _load_children($table, tr)
 }
 
@@ -1904,6 +1919,7 @@ function init($table: JQueryTable, config: PluginOptions): void {
 // public functions
 const public_funcs: Record<string, Function> = {
     add_root_node: add_root_node,
+    add_node: add_node,
     is_root: is_root,
     get_children: get_children,
     get_children_count: get_children_count,

@@ -274,6 +274,24 @@ describe("scrutiny-treetable", function () {
 
         assert.equal(change_event_count, 1, "Single event for a whole tree deleted")
     })
+
+    it("Add node", function () {
+        table.scrutiny_treetable("load_all")
+
+        let row = dom_testing_tools.make_row_from_content(["this", "is", "a new row"])
+        table.scrutiny_treetable("add_node", "newNode1", row, "node2.3")
+
+        const children = table.scrutiny_treetable("get_children", "node2.3")
+        testing_tools.assert_list_equal_unordered(
+            get_row_ids(children),
+            ["node2.3.1", "node2.3.2", "node2.3.3", "newNode1"],
+            "newNode child of 2.3"
+        )
+        let parent = table.scrutiny_treetable("get_parent", "newNode1")
+        assert.equal(parent.length, 1, "Parent found")
+        assert.equal(parent.is(table.scrutiny_treetable("get_nodes", "node2.3")[0]), true, "Parent is Node2.3")
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "newNode1"), 2, "Nesting level of new node")
+    })
 })
 
 /*
@@ -281,7 +299,10 @@ describe("scrutiny-treetable", function () {
 move_node
 transfer_node_from
 transfer_node_to
+no_children
 
+
+OK - add_node
 OK - delete_node
 OK - get_node_nesting_level
 OK - load_all
