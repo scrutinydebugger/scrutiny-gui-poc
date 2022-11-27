@@ -65,7 +65,9 @@ function get_row_ids(rows: JQueryRow) {
 }
 
 describe("scrutiny-treetable", function () {
-    var body = $("body") as JQuery<HTMLBodyElement>
+    let body = $("body") as JQuery<HTMLBodyElement>
+    let table: JQueryScrutinyTable
+    let tbody: JQuery<HTMLTableSectionElement>
 
     before(() => {
         $.extend($.fn, { scrutiny_treetable })
@@ -73,6 +75,22 @@ describe("scrutiny-treetable", function () {
 
     beforeEach(() => {
         body.html("") // Clear body
+
+        const table_id = "my_treetable"
+        table = dom_testing_tools.make_table(table_id, 3) as JQueryScrutinyTable
+        tbody = table.find("tbody")
+
+        const options: TreeTableOptions = {
+            load_fn: get_load_fn(table_struct),
+        }
+
+        table.scrutiny_treetable(options)
+
+        // add_root_node
+        let root_node_names = Object.keys(table_struct)
+        root_node_names.forEach(function (name) {
+            table.scrutiny_treetable("add_root_node", name, dom_testing_tools.make_row_from_content(table_struct[name].cells))
+        })
     })
 
     it("check_load_fn", function () {
@@ -97,22 +115,6 @@ describe("scrutiny-treetable", function () {
     })
 
     it("Basic usage", function () {
-        const table_id = "my_treetable"
-        const table = dom_testing_tools.make_table(table_id, 3) as JQueryScrutinyTable
-        const tbody = table.find("tbody")
-
-        const options: TreeTableOptions = {
-            load_fn: get_load_fn(table_struct),
-        }
-
-        table.scrutiny_treetable(options)
-
-        // add_root_node
-        let root_node_names = Object.keys(table_struct)
-        root_node_names.forEach(function (name) {
-            table.scrutiny_treetable("add_root_node", name, dom_testing_tools.make_row_from_content(table_struct[name].cells))
-        })
-
         // get_visible_nodes
         let visible_rows = table.scrutiny_treetable("get_visible_nodes") as JQueryRow
         assert.equal(visible_rows.length, 2, "Expect root node count")
@@ -132,6 +134,13 @@ describe("scrutiny-treetable", function () {
         table.scrutiny_treetable("expand_node", "root1")
         assert.equal(expand_event_count, 1)
         assert.equal(collapse_event_count, 0)
+
+        // Nesting
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "root1"), 0)
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node1.1"), 1)
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node1.2"), 1)
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node1.3.1"), 2)
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node1.3.2"), 2)
 
         // get_visible_nodes
         visible_rows = table.scrutiny_treetable("get_visible_nodes") as JQueryRow
@@ -208,16 +217,74 @@ describe("scrutiny-treetable", function () {
         nodes = table.scrutiny_treetable("get_nodes", "node1.3")
         testing_tools.assert_list_equal_unordered(get_row_ids(nodes), ["node1.3"], "Expect get_nodes -> 1 nodes")
     })
+
+    it("Collapse behavior", function () {
+        // We want to make sure that collapsing a node that has expanded children does not collapse them
+        // so they stay visible when the node is expanded again
+        table.scrutiny_treetable("expand_all")
+        let nodes = table.scrutiny_treetable("get_visible_nodes")
+        assert.equal(nodes.length, 16)
+
+        table.scrutiny_treetable("collapse_node", "root1")
+        nodes = table.scrutiny_treetable("get_visible_nodes")
+        assert.equal(nodes.length, 9)
+
+        table.scrutiny_treetable("expand_node", "root1")
+        nodes = table.scrutiny_treetable("get_visible_nodes")
+        assert.equal(nodes.length, 16)
+    })
+
+    it("Loading", function () {
+        assert.notEqual(tbody.find("tr").length, 16)
+        table.scrutiny_treetable("load_all")
+        assert.equal(tbody.find("tr").length, 16)
+    })
+
+    it("Delete node", function () {
+        let change_event_count = 0
+
+        table.on("stt.size-changed", function () {
+            change_event_count++
+        })
+
+        table.scrutiny_treetable("load_all")
+        change_event_count = 0
+        assert.equal(table.scrutiny_treetable("get_nodes", "node2.3.2").length, 1, "Node 2.3.2 exists")
+        table.scrutiny_treetable("delete_node", "node2.3.2")
+        let children = table.scrutiny_treetable("get_children", "node2.3")
+        testing_tools.assert_list_equal_unordered(get_row_ids(children), ["node2.3.1", "node2.3.3"], "Children deleted")
+        assert.equal(tbody.find("tr").length, 15, "Total number of row is reduced by 1")
+        assert.equal(change_event_count, 1, "Size changed event triggered")
+
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node2.3"), 1, "Nesting level of node2.3 is unchanged")
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node2.3.1"), 2, "Nesting level of node2.3.1 is unchanged")
+        assert.equal(table.scrutiny_treetable("get_node_nesting_level", "node2.3.3"), 2, "Nesting level of node2.3.3 is unchanged")
+
+        assert.throws(function () {
+            table.scrutiny_treetable("get_nodes", "node2.3.2")
+        }, "Node 2.3.2 correctly deleted")
+
+        change_event_count = 0
+        table.scrutiny_treetable("delete_node", "root1")
+        assert.equal(tbody.find("tr").length, 7, "Whole tree under root1 is deleted") // 16 - 1 - 8
+
+        assert.throws(function () {
+            table.scrutiny_treetable("get_nodes", "node1.2")
+        }, "All root1 descendant are deleted")
+
+        assert.equal(change_event_count, 1, "Single event for a whole tree deleted")
+    })
 })
 
 /*
 
-delete_node
 move_node
-load_all
 transfer_node_from
 transfer_node_to
 
+OK - delete_node
+OK - get_node_nesting_level
+OK - load_all
 OK - get_nodes
 OK - get_parent
 OK - get_children

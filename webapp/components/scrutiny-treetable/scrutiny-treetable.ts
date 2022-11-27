@@ -452,6 +452,11 @@ function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
     return $(output)
 }
 
+function get_node_nesting_level($table: JQueryTable, node: string | JQueryRow): number {
+    const tr = _get_row_from_node_or_row($table, node)
+    return _get_nesting_level(tr)
+}
+
 /***  Private functions *** */
 
 /**
@@ -1004,7 +1009,7 @@ function _expand_all($table: JQueryTable): void {
 function _expand_descendent($table: JQueryTable, tr: JQueryRow): void {
     _expand_row($table, tr)
     _get_children($table, tr).each(function () {
-        _expand_descendent($table, $(this) as JQueryRow)
+        _expand_descendent($table, $(this))
     })
 }
 
@@ -1511,22 +1516,23 @@ function _get_row_insert_type(tr: JQueryRow, cursorY: number): number {
  * Removes a row from the table and all its descendants
  * @param $table The JQuery table
  * @param tr The row to remove
+ * @param no_event : When true, prevent the plugin from firing a size-change event on node deletion
  */
-function _delete_node($table: JQueryTable, tr: JQueryRow): void {
-    const children = _get_children($table, tr)
-    children.each(function () {
-        _delete_single_row($table, $(this) as JQueryRow)
+function _delete_node($table: JQueryTable, tr: JQueryRow, no_event: boolean = false): void {
+    _get_children($table, tr).each(function () {
+        _delete_node($table, $(this), true)
     })
 
-    _delete_single_row($table, tr)
+    _delete_single_row($table, tr, no_event)
 }
 
 /**
  * Delete a row from the table, leaves the descendants untouched
  * @param $table The JQuery table
  * @param tr The row to delete
+ * @param no_event When true, does not fire an change event after deleting the node
  */
-function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
+function _delete_single_row($table: JQueryTable, tr: JQueryRow, no_event: boolean = false): void {
     const node_cache = $table.data(DATAKEY_NODE_CACHE)
     const node_id = _get_node_id(tr)
     const parent = _get_parent($table, tr)
@@ -1534,7 +1540,9 @@ function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
         delete node_cache[node_id]
     }
     tr.remove()
-    $table.trigger(EVENT_SIZE_CHANGED)
+    if (!no_event) {
+        $table.trigger(EVENT_SIZE_CHANGED)
+    }
 
     if (parent !== null) {
         _increase_children_count($table, parent, -1)
@@ -1913,6 +1921,7 @@ const public_funcs: Record<string, Function> = {
     get_root_node_of: get_root_node_of,
     get_visible_nodes: get_visible_nodes,
     get_nodes: get_nodes,
+    get_node_nesting_level: get_node_nesting_level,
 }
 
 export function scrutiny_treetable(...args: any[]) {
