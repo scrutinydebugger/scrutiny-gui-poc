@@ -13,6 +13,7 @@ import * as dom_testing_tools from "@tests/dom_testing_tools"
 export interface Node {
     cells: string[]
     children?: Record<string, Node>
+    no_children?: boolean
 }
 
 export type RootNode = Record<string, Node>
@@ -22,6 +23,7 @@ export type FlatTree = Record<
     {
         cells: string[]
         parent: string | null
+        no_children?: boolean
     }
 >
 
@@ -42,6 +44,7 @@ function make_flat_tree_recursive(parent: string | null, node: Node, node_name: 
     flat_tree[node_name] = {
         cells: node.cells,
         parent: parent,
+        no_children: node.no_children,
     }
 
     if (typeof node.children !== "undefined") {
@@ -58,7 +61,7 @@ function make_flat_tree_recursive(parent: string | null, node: Node, node_name: 
     }
 }
 
-export function get_load_fn(data: RootNode): TreeTableLoadFn {
+export function get_load_fn(data: RootNode, no_children_nodes: string[] = []): TreeTableLoadFn {
     const flat_tree = make_flat_tree(data)
     return function (node_id: string, tr: JQuery<HTMLTableRowElement>): ReturnType<TreeTableLoadFn> {
         let output: ReturnType<TreeTableLoadFn> = []
@@ -67,6 +70,9 @@ export function get_load_fn(data: RootNode): TreeTableLoadFn {
         for (let i = 0; i < nodes.length; i++) {
             if (flat_tree[nodes[i]].parent == node_id) {
                 let no_children = false
+                if (typeof no_children_nodes.find((s) => s === nodes[i]) !== "undefined") {
+                    no_children = true
+                }
                 output.push({
                     id: nodes[i],
                     tr: dom_testing_tools.make_row_from_content(flat_tree[nodes[i]].cells),

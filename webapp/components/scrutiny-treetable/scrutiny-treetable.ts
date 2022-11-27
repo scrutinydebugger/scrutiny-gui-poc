@@ -77,12 +77,12 @@ interface JQueryResizableTable extends JQueryTable {
 
 var gbl_drag_data: DragData | null = null
 
-const ATTR_ID = "stt-id" // The row ID
-const ATTR_PARENT = "stt-parent-id" // The parent row ID
-const ATTR_LEVEL = "stt-level" // Nesting level. Integer (0,1,2,3). Bigger is deeper
-const ATTR_CHILDREN_COUNT = "stt-children-count" // Number of children for a row
-const ATTR_CHILDREN_LOADED = "stt-children-loaded" // Boolean indicating if the children of this node has been loaded
-const ATTR_MOVING = "stt-moving" // Temporary boolean to handle edge case when moving rows
+export const ATTR_ID = "stt-id" // The row ID
+export const ATTR_PARENT = "stt-parent-id" // The parent row ID
+export const ATTR_LEVEL = "stt-level" // Nesting level. Integer (0,1,2,3). Bigger is deeper
+export const ATTR_CHILDREN_COUNT = "stt-children-count" // Number of children for a row
+export const ATTR_CHILDREN_LOADED = "stt-children-loaded" // Boolean indicating if the children of this node has been loaded
+export const ATTR_MOVING = "stt-moving" // Temporary boolean to handle edge case when moving rows
 
 /**  Applied on the table */
 const CLASS_TABLE = "stt-table"
@@ -455,7 +455,7 @@ function get_visible_nodes($table: JQueryTable, filter?: string) {
 
 function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
     if (typeof node_id == "string") {
-        node_id = [node_id]
+        return _find_row($table, node_id)
     }
 
     let output = []
