@@ -17,17 +17,16 @@ import {
     scrutiny_treetable,
     PluginOptions as TreeTableOptions,
     LoadFunctionInterface as TreeTableLoadFunction,
-    TransferAllowedFunctionInterface as TransferAllowedFunction,
+    TransferPolicyFunctionInterface,
     TransferFunctionInterface as TransferFunction,
     TransferFunctionMetadata,
     TransferFunctionOutput,
+    TransferPolicy,
+    TransferScope,
     get_drag_data_from_drop_event,
     DragData,
-} from "../../components/scrutiny-treetable/scrutiny-treetable"
-import {
-    scrutiny_resizable_table,
-    PluginOptions as ResizableTableOptions,
-} from "../../components/scrutiny-resizable-table/scrutiny-resizable-table"
+} from "@scrutiny-treetable"
+import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -106,8 +105,8 @@ export class WatchWidget extends BaseWidget {
             resize_options: resizable_table_options,
             draggable: true,
             droppable: true,
-            allow_transfer_fn: function () {
-                return true
+            transfer_policy_fn: function () {
+                return { scope: TransferScope.VISIBLE_ONLY }
             },
             transfer_fn: function (...args): TransferFunctionOutput {
                 return that.element_transfer_fn(...args)

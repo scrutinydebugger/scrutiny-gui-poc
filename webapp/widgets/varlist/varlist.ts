@@ -200,7 +200,7 @@ export class VarListWidget extends BaseWidget {
             throw "Row without display_path"
         }
 
-        const root_node = this.tree_table.scrutiny_treetable("get_root_node", tr) as JQueryRow | undefined
+        const root_node = this.tree_table.scrutiny_treetable("get_root_node_of", tr) as JQueryRow | undefined
         if (typeof root_node === "undefined") {
             throw "No root node"
         }

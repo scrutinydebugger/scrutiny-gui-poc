@@ -17,7 +17,6 @@
             "@scrutiny-resizable-table" : ["webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"],
         },
     },   
-    "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts"],
-    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"]
-  
+    "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts", "tests/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"],
 }

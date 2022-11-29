@@ -29,8 +29,31 @@ export interface TransferFunctionInterface {
     (source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput
 }
 
-export interface TransferAllowedFunctionInterface {
-    (source_table: JQueryTable, dest_table: JQueryTable, tr: JQuery, new_parent_id: string | null, after_node_id: string | null): boolean
+export enum TransferScope {
+    NONE = "none",
+    ROW_ONLY = "row",
+    VISIBLE_ONLY = "visible",
+    ALL = "all",
+}
+
+export interface TransferPolicy {
+    scope: TransferScope
+}
+
+export interface TransferPolicyFunctionInterface {
+    (
+        source_table: JQueryTable,
+        dest_table: JQueryTable,
+        tr: JQuery,
+        new_parent_id: string | null,
+        after_node_id: string | null
+    ): TransferPolicy
+}
+
+export interface TransferResult {
+    source_rows: JQueryRow
+    dest_rows: JQueryRow
+    id_map: Record<string, string>
 }
 export interface DragData {
     source_table_id: string
@@ -167,7 +190,7 @@ const DEFAULT_OPTIONS = {
     /** A function called to convert a row when a row is moved from one table to another table. */
     transfer_fn: null as TransferFunctionInterface | null,
     /** A function used to know wether a row is transferable to another table or not.  */
-    allow_transfer_fn: null as TransferAllowedFunctionInterface | null,
+    transfer_policy_fn: null as TransferPolicyFunctionInterface | null,
 }
 
 type PluginOptionsFull = typeof DEFAULT_OPTIONS
@@ -367,6 +390,7 @@ function move_node($table: JQueryTable, row_id: string, new_parent_id?: string |
  * will become a root node in the destination table
  * @param after_node_id The row after which the transferred row will be inserted. If not set or null,
  * the transferred row will be set in last position
+ * @return A dictionanary that maps the old node ID to the new node ID
  */
 function transfer_node_to(
     src_table: JQueryTable,
@@ -374,8 +398,8 @@ function transfer_node_to(
     dragged_row_id: string,
     new_parent_id: string | null,
     after_node_id: string | null
-): void {
-    _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+): TransferResult | null {
+    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
 }
 
 function transfer_node_from(
@@ -384,8 +408,8 @@ function transfer_node_from(
     dragged_row_id: string,
     new_parent_id: string | null,
     after_node_id: string | null
-): void {
-    _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+): TransferResult | null {
+    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
 }
 
 function _public_transfer_row(
@@ -394,7 +418,7 @@ function _public_transfer_row(
     dragged_row_id: string,
     new_parent_id: string | null,
     after_node_id: string | null
-): void {
+): TransferResult | null {
     if (typeof src_table == "string") {
         src_table = $(`#${src_table}`) as JQueryTable
     }
@@ -405,7 +429,7 @@ function _public_transfer_row(
 
     if (dest_table.length != 1) {
         // Can only be done on a single table
-        return
+        return null
     }
 
     if (typeof new_parent_id === "undefined") {
@@ -418,16 +442,20 @@ function _public_transfer_row(
     const tr = _get_row_from_node_or_row(src_table, dragged_row_id)
 
     const dest_options = _get_options(dest_table)
-    if (dest_options.allow_transfer_fn == null) {
-        // User didn't define an  allow_transfer func. We can't do anything
-        return
+    if (dest_options.transfer_policy_fn == null) {
+        // User didn't define an transfer_policy_fn func. We can't do anything
+        return null
     }
-    const transfer_allowed = dest_options.allow_transfer_fn(src_table, dest_table, tr, new_parent_id, after_node_id)
-    if (!transfer_allowed) {
-        return // User disallowed the transfer
+    const transfer_policy = dest_options.transfer_policy_fn(src_table, dest_table, tr, new_parent_id, after_node_id)
+    if (typeof transfer_policy == "undefined" || transfer_policy.scope == TransferScope.NONE) {
+        return null // User disallowed the transfer
     }
 
-    _transfer_row(src_table, dest_table, tr, new_parent_id, after_node_id)
+    let transfer_result = _transfer_row(src_table, dest_table, tr, new_parent_id, after_node_id)
+    if (transfer_result === null) {
+        return null
+    }
+    return transfer_result
 }
 
 /**
@@ -441,16 +469,20 @@ function load_all($table: JQueryTable): void {
 /**
  * Returns the list of visible rows in the table
  * @param $table The Jquery table
+ * @param parent An optional parent to limit the search scope
  * @param filter An optional filter to apply on the row set
  * @returns The list of visible rows that matches the given filter or all if no filter is given
  */
-function get_visible_nodes($table: JQueryTable, filter?: string) {
-    const rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`)
-    if (typeof filter !== "undefined") {
-        rows.filter(filter)
+function get_visible_nodes($table: JQueryTable, parent?: JQueryRow | string | null, filter?: string): JQueryRow {
+    if (typeof parent === "undefined") {
+        parent = null
     }
 
-    return rows
+    if (parent !== null) {
+        parent = _get_row_from_node_or_row($table, parent)
+    }
+
+    return _get_visible_rows($table, parent, filter)
 }
 
 function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
@@ -601,6 +633,28 @@ function _get_parent($table: JQueryTable, tr: JQueryRow): JQueryRow | null {
     }
 
     return _find_row($table, parent_id)
+}
+
+/**
+ * Returns all visible rows in the table that match th given filter and that are under the given parent
+ * @param $table The JQuery Table
+ * @param parent The parent node. Look at all nodes if null
+ * @param filter An optional filter to apply on the output dataset
+ * @returns The visible rows under given parent that match the given filter
+ */
+function _get_visible_rows($table: JQueryTable, parent: JQueryRow | null, filter?: string): JQueryRow {
+    let rows: JQueryRow
+    if (parent == null) {
+        rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`) as JQueryRow
+    } else {
+        rows = _select_all_loaded_descendant($table, parent, `tr:not(.${CLASS_HIDDEN})`)
+    }
+
+    if (typeof filter !== "undefined") {
+        rows.filter(filter)
+    }
+
+    return rows
 }
 
 /**
@@ -1200,17 +1254,20 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             }
             const dest_options = _get_options(dest_table)
             if (!dest_table.is(source_table)) {
-                if (dest_options.allow_transfer_fn == null) {
+                if (dest_options.transfer_policy_fn == null) {
                     return
                 }
-                const transfer_allowed = dest_options.allow_transfer_fn(
+                const transfer_policy = dest_options.transfer_policy_fn(
                     source_table,
                     dest_table,
                     dragged_tr,
                     dnd_result.new_parent_id,
                     dnd_result.after_tr_id
                 )
-                if (!transfer_allowed) {
+                if (typeof transfer_policy === "undefined") {
+                    return
+                }
+                if (transfer_policy.scope == TransferScope.NONE) {
                     return
                 }
             }
@@ -1282,11 +1339,13 @@ function _handle_drop($table: JQueryTable, e: any, drop_tr: JQueryRow | null) {
         const dragged_tr = _find_row(source_table, gbl_drag_data.dragged_row_id)
         const dnd_result = _get_dragndrop_result(dest_table, dragged_tr, drop_tr, e.pageY)
         let moved_rows: JQueryRow | null = null
+        let transfer_result: ReturnType<typeof _transfer_row>
         try {
             if (dnd_result == null) {
                 if (!dest_table.is(source_table)) {
                     // Artificial drop triggered by the user
-                    moved_rows = _transfer_row(source_table, dest_table, dragged_tr, null, null)
+                    transfer_result = _transfer_row(source_table, dest_table, dragged_tr, null, null)
+                    moved_rows = transfer_result === null ? null : transfer_result.dest_rows
                 } else {
                     return
                 }
@@ -1294,7 +1353,8 @@ function _handle_drop($table: JQueryTable, e: any, drop_tr: JQueryRow | null) {
                 if (dest_table.is(source_table)) {
                     moved_rows = _move_row($table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
                 } else {
-                    moved_rows = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                    transfer_result = _transfer_row(source_table, dest_table, dragged_tr, dnd_result.new_parent_id, dnd_result.after_tr_id)
+                    moved_rows = transfer_result === null ? null : transfer_result.dest_rows
                 }
 
                 if (moved_rows != null) {
@@ -1677,11 +1737,11 @@ function _transfer_row(
     tr: JQueryRow,
     new_parent_id?: string | null,
     after_node_id?: string | null
-): JQueryRow | null {
+): TransferResult | null {
     /*Transfer a node from a table to another one */
     const dest_options = _get_options(dest_table)
 
-    if (dest_options.allow_transfer_fn == null) {
+    if (dest_options.transfer_policy_fn == null) {
         throw "Node transfer from another table is not supported"
     }
 
@@ -1692,8 +1752,13 @@ function _transfer_row(
         after_node_id = null
     }
 
-    const transfer_allowed = dest_options.allow_transfer_fn(source_table, dest_table, tr, new_parent_id, after_node_id)
-    if (transfer_allowed == false) {
+    const transfer_policy = dest_options.transfer_policy_fn(source_table, dest_table, tr, new_parent_id, after_node_id)
+
+    if (typeof transfer_policy === "undefined") {
+        throw "Invalid transfer policy returned by transfer_policy_fn"
+    }
+
+    if (transfer_policy.scope == TransferScope.NONE) {
         return null
     }
 
@@ -1701,7 +1766,18 @@ function _transfer_row(
         throw "Node transfer from another table is not supported"
     }
 
-    const lines_to_moves = _load_and_select_all_descendant(source_table, tr) as JQueryRow
+    let lines_to_moves: JQueryRow | null = null
+
+    if (transfer_policy.scope == TransferScope.ROW_ONLY) {
+        lines_to_moves = tr
+    } else if (transfer_policy.scope == TransferScope.VISIBLE_ONLY) {
+        lines_to_moves = _get_visible_rows(source_table, tr) as JQueryRow
+    } else if (transfer_policy.scope == TransferScope.ALL) {
+        lines_to_moves = _load_and_select_all_descendant(source_table, tr) as JQueryRow
+    } else {
+        throw "Invalid transfer policy returned by transfer_policy_fn"
+    }
+
     let old_id_to_new_id_map: Record<string, string> = {}
     let new_tr_by_new_id: Record<string, JQueryRow> = {}
 
@@ -1736,6 +1812,7 @@ function _transfer_row(
         new_tr_by_new_id[new_id] = new_tr
     }
 
+    const already_loaded_nodes: Set<string> = new Set()
     lines_to_moves.each(function () {
         const original_line = $(this) as JQueryRow
         const original_parent_id = _get_parent_id(original_line)
@@ -1749,14 +1826,29 @@ function _transfer_row(
             converted_parent_id = old_id_to_new_id_map[original_parent_id]
         }
 
-        new_tr.attr(ATTR_CHILDREN_LOADED, "1") // Transfer loads all
+        // We mark that the children are loaded only if we've transferred childrens.
+        // We assume all children or none ar transferred here. Partial children should not happen... for now.
+        if (original_parent_id !== null && typeof old_id_to_new_id_map[original_parent_id] !== "undefined") {
+            already_loaded_nodes.add(old_id_to_new_id_map[original_parent_id])
+        }
+
         _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children)
+    })
+
+    // Mark loaded rows for which we saw children
+    already_loaded_nodes.forEach(function (node_id) {
+        _find_row(dest_table, node_id).attr(ATTR_CHILDREN_LOADED, "1")
     })
 
     const new_top_node_id = old_id_to_new_id_map[_get_node_id(tr)]
     const new_top_row = _find_row(dest_table, new_top_node_id)
+    const dest_rows = _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
 
-    return _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
+    return {
+        source_rows: lines_to_moves,
+        dest_rows: dest_rows,
+        id_map: old_id_to_new_id_map,
+    }
 }
 
 /**
@@ -1772,6 +1864,7 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
         .removeClass(CLASS_INSERT_ABOVE)
         .removeClass(CLASS_INSERT_BELOW)
         .removeClass(CLASS_ROW)
+        .removeClass(CLASS_HIDDEN)
         .removeClass(CLASS_NO_CHILDREN)
         .removeAttr(ATTR_ID)
         .removeAttr(ATTR_LEVEL)
@@ -1826,6 +1919,7 @@ function _select_all_loaded_descendant_recursive(
     if (filter != null) {
         tr = tr.filter(filter)
     }
+
     if (tr.length > 0) {
         arr.push(tr[0])
         let children = _get_children($table, tr)
@@ -1836,6 +1930,7 @@ function _select_all_loaded_descendant_recursive(
             _select_all_loaded_descendant_recursive($table, $(this) as JQueryRow, filter, arr)
         })
     }
+
     if (return_val) {
         return $(arr)
     } else {

@@ -10,6 +10,7 @@ const OUTPUT_FOLDER = "dist"
 export default {
     context: resolve("."),
     target: "node",
+    devtool: "source-map",
     entry: glob.sync("./tests/**/*.test.ts"),
     mode: "development",
     module: {
