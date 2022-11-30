@@ -1,3 +1,7 @@
+table.watch-table{
+    cursor: default;
+}
+
 table.watch-table .stt-spacer{
     margin-right: 2px;
 }

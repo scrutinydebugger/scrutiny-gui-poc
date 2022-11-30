@@ -20,10 +20,10 @@ export interface TransferFunctionMetadata {
     user_data: any
 }
 
-export interface TransferFunctionOutput {
+export type TransferFunctionOutput = {
     tr: JQueryRow
     id?: string | null
-}
+} | null
 
 export interface TransferFunctionInterface {
     (source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput
@@ -51,6 +51,7 @@ export interface TransferPolicyFunctionInterface {
 }
 
 export interface TransferResult {
+    new_top_node_id: string
     source_rows: JQueryRow
     dest_rows: JQueryRow
     id_map: Record<string, string>
@@ -58,6 +59,17 @@ export interface TransferResult {
 export interface DragData {
     source_table_id: string
     dragged_row_id: string
+}
+
+export interface TransferCompleteEventData {
+    input_params: {
+        source_table: JQueryTable
+        dest_table: JQueryTable
+        tr: JQueryRow
+        new_parent_id?: string
+        after_node_id?: string
+    }
+    output: TransferResult
 }
 
 export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): DragData | null {
@@ -157,7 +169,10 @@ const EVENT_COLLAPSED = "stt.collapsed"
 const EVENT_EXPANDED = "stt.expanded"
 /**  Triggered when a row is dropped after a drag-n-drop */
 const EVENT_DROPPED = "stt.dropped"
+/** Triggered when the vertical size of the table has changed  */
 const EVENT_SIZE_CHANGED = "stt.size-changed"
+/** Triggered when a transfer completes */
+const EVENT_TRANSFER_COMPLETE = "stt.transfer_complete"
 
 // Enum-ish for drag-n-drop
 const INSERT_TYPE_BELOW = 0
@@ -1820,6 +1835,9 @@ function _transfer_row(
             user_data: original_user_data,
         }
         const transferred_row_data: TransferFunctionOutput = dest_options.transfer_fn(source_table, bare_line, meta)
+        if (transferred_row_data === null) {
+            continue
+        }
 
         let new_id = transferred_row_data["id"]
         let new_tr = transferred_row_data["tr"]
@@ -1872,11 +1890,25 @@ function _transfer_row(
     _load_children(dest_table, new_top_row)
     const dest_rows = _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
 
-    return {
+    const output_struct = {
+        new_top_node_id: new_top_node_id,
         source_rows: lines_to_moves,
         dest_rows: dest_rows,
         id_map: old_id_to_new_id_map,
-    }
+    } as TransferResult
+
+    dest_table.trigger(EVENT_TRANSFER_COMPLETE, {
+        input_params: {
+            source_table: source_table,
+            dest_table: dest_table,
+            tr: tr,
+            new_parent_id: new_parent_id,
+            after_node_id: after_node_id,
+        },
+        output: output_struct,
+    } as TransferCompleteEventData)
+
+    return output_struct
 }
 
 /**
