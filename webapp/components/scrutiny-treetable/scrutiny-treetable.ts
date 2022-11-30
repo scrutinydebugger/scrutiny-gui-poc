@@ -504,6 +504,15 @@ function get_node_nesting_level($table: JQueryTable, node: string | JQueryRow): 
     return _get_nesting_level(tr)
 }
 
+function node_exists($table: JQueryTable, node_id: string): boolean {
+    try {
+        _find_row($table, node_id)
+        return true
+    } catch {
+        return false
+    }
+}
+
 /***  Private functions *** */
 
 /**
@@ -1842,6 +1851,7 @@ function _transfer_row(
 
     const new_top_node_id = old_id_to_new_id_map[_get_node_id(tr)]
     const new_top_row = _find_row(dest_table, new_top_node_id)
+    _load_children(dest_table, new_top_row)
     const dest_rows = _move_row(dest_table, new_top_row, new_parent_id, after_node_id)
 
     return {
@@ -2033,6 +2043,7 @@ const public_funcs: Record<string, Function> = {
     get_visible_nodes: get_visible_nodes,
     get_nodes: get_nodes,
     get_node_nesting_level: get_node_nesting_level,
+    node_exists: node_exists,
 }
 
 export function scrutiny_treetable(...args: any[]) {

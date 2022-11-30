@@ -10,7 +10,7 @@
 import { default as $ } from "@jquery"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
-import { DatastoreEntryType } from "@src/datastore"
+import { DatastoreEntryType, DatastoreEntryWithName, SubfolderDescription } from "@src/datastore"
 import * as logging from "@src/logging"
 
 import {
@@ -38,6 +38,13 @@ interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_treetable: Function
     scrutiny_resizable_table: Function
 }
+
+const ATTR_DISPLAY_PATH = "display_path"
+const ATTR_ENTRY_TYPE = "entry_type"
+
+const CLASS_TYPE_COL = "type_col"
+const CLASS_NAME_COL = "name_col"
+const CLASS_VALUE_COL = "value_col"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -175,8 +182,79 @@ export class WatchWidget extends BaseWidget {
         this.app.datastore.watch(entry_type, display_path, line_id, update_callback)
     }
 
+    make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`)
+        const td_value = $(`<td class"${CLASS_VALUE_COL}"></td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_value).append(td_type)
+        td_type.text(entry.datatype)
+        tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
+
+        const img = $("<div class='treeicon'/>")
+
+        if (entry.entry_type == DatastoreEntryType.Var) {
+            img.addClass("icon-var")
+        } else if (entry.entry_type == DatastoreEntryType.Alias) {
+            img.addClass("icon-alias")
+        } else if (entry.entry_type == DatastoreEntryType.RPV) {
+            img.addClass("icon-rpv")
+        }
+
+        td_name.prepend(img)
+        return tr
+    }
+
+    make_folder_row(subfolder: SubfolderDescription, entry_type: DatastoreEntryType): JQueryRow {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${subfolder.name}</td>`)
+        const td_value = $(`<td class"${CLASS_VALUE_COL}"></td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_value).append(td_type)
+        tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry_type)
+
+        const img = $("<div class='treeicon icon-folder' />")
+        td_name.prepend(img)
+        return tr
+    }
+
+    /**
+     * The tree table load function.  This will be called only for unloaded nodes.
+     * The watch window will contain a mix of user-defined nodes and nodes coming from the varlist widget.
+     * For optimization purpose, we do not load everything coming from the valist because the user could
+     * drag a root node with a HUGE amount of descendant.  These node will have a specific attribute
+     * added by the transfer function and we will fetch the data from the datastore if we need it
+     * @param node_id
+     * @param tr
+     * @param user_data
+     * @returns
+     */
     table_load_fn(node_id: string, tr: JQueryRow, user_data?: any): ReturnType<TreeTableLoadFunction> {
-        return []
+        const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
+        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+        if (typeof display_path === "undefined" || typeof entry_type === "undefined") {
+            return []
+        }
+
+        let output = [] as ReturnType<TreeTableLoadFunction>
+        const that = this
+        const children = this.app.datastore.get_children(entry_type, display_path)
+        children["subfolders"].forEach(function (subfolder, i) {
+            output.push({
+                tr: that.make_folder_row(subfolder, entry_type),
+            })
+        })
+
+        children["entries"][entry_type].forEach(function (entry, i) {
+            output.push({
+                tr: that.make_entry_row(entry),
+                no_children: true,
+            })
+        })
+
+        return output
     }
 
     remove_var(line: JQueryRow) {
@@ -194,12 +272,22 @@ export class WatchWidget extends BaseWidget {
         const td_type = $("<td></td>")
         new_line.append(td_name).append(td_value).append(td_type)
 
+        const display_path = bare_line.attr(ATTR_DISPLAY_PATH)
+        if (typeof display_path !== "undefined") {
+            new_line.attr(ATTR_DISPLAY_PATH, display_path)
+        }
+
+        const entry_type = bare_line.attr(ATTR_ENTRY_TYPE)
+        if (typeof entry_type !== "undefined") {
+            new_line.attr(ATTR_ENTRY_TYPE, entry_type)
+        }
+
         const output = { tr: new_line }
+
         if (source_table.hasClass("varlist-table") || source_table.hasClass("watch-table")) {
             td_name.html(bare_line.find(".name_col").html()).addClass("name_col")
             td_type.html(bare_line.find(".type_col").html()).addClass("type_col")
         } else {
-            console.log
             this.logger.warning("Don't know how to convert table row coming from this table")
         }
 

@@ -7,7 +7,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName } from "@src/datastore"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
@@ -15,6 +15,7 @@ import { default as $ } from "@jquery"
 
 import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+import { AllDatastoreEntryTypes, Datastore } from "../../datastore"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -32,6 +33,25 @@ const ATTR_ENTRY_TYPE = "entry_type"
 const CLASS_TYPE_COL = "type_col"
 const CLASS_NAME_COL = "name_col"
 
+interface RootNodeDesc {
+    id: string
+    label: string
+}
+
+const ROOT_NODE_DESC = {} as Record<DatastoreEntryType, RootNodeDesc>
+ROOT_NODE_DESC[DatastoreEntryType.Var] = {
+    id: "root_var",
+    label: "Var",
+}
+ROOT_NODE_DESC[DatastoreEntryType.Alias] = {
+    id: "root_alias",
+    label: "Alias",
+}
+ROOT_NODE_DESC[DatastoreEntryType.RPV] = {
+    id: "root_rpv",
+    label: "RPV",
+}
+
 export class VarListWidget extends BaseWidget {
     /** The container in which to put data. That's our widget Canvas in the UI */
     container: JQuery
@@ -48,7 +68,6 @@ export class VarListWidget extends BaseWidget {
 
     tree_table: ScrutinyTreeTable
 
-    types_root_nodes: Record<DatastoreEntryType, JQuery<HTMLTableRowElement>>
     logger: logging.Logger
 
     /**
@@ -68,8 +87,7 @@ export class VarListWidget extends BaseWidget {
         this.next_tree_id = 0
         // @ts-ignore
         this.tree_table = null
-        // @ts-ignore
-        this.types_root_nodes = {}
+
         this.logger = logging.getLogger("varlist" + instance_id)
     }
 
@@ -106,38 +124,17 @@ export class VarListWidget extends BaseWidget {
 
         this.tree_table.scrutiny_treetable(tree_table_options)
 
-        this.types_root_nodes[DatastoreEntryType.Var] = this.make_root_row("Var").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.Var)
-        this.types_root_nodes[DatastoreEntryType.Alias] = this.make_root_row("Alias").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.Alias)
-        this.types_root_nodes[DatastoreEntryType.RPV] = this.make_root_row("RPV").attr(ATTR_ENTRY_TYPE, DatastoreEntryType.RPV)
-
-        this.tree_table.scrutiny_treetable("add_root_node", "root_var", this.types_root_nodes[DatastoreEntryType.Var])
-        this.tree_table.scrutiny_treetable("add_root_node", "root_alias", this.types_root_nodes[DatastoreEntryType.Alias])
-        this.tree_table.scrutiny_treetable("add_root_node", "root_rpv", this.types_root_nodes[DatastoreEntryType.RPV])
-
         // Event handlers
         $(document).on("scrutiny.datastore.ready", function (data: any) {
-            /// that.rebuild_tree() // Todo use data to rebuild only missing nodes
+            that.rebuild_tree(data["entry_type"]) // Todo use data to rebuild only missing nodes
         })
 
         $(document).on("scrutiny.datastore.clear", function (data: any) {
-            //that.rebuild_tree() // Todo : USe data to clear only cleared data
+            that.clear_tree(data["entry_type"]) // Todo : USe data to clear only cleared data
         })
 
-        // Setup
-        //this.rebuild_tree()
-        // Todo rebuild by type
-        /*
-        for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
-            if (this.app.datastore.is_ready(AllDatastoreEntryTypes[i])) {
-                this.rebuild_tree(AllDatastoreEntryTypes[i])
-            } else {
-                // TODO complete this?
-            }
-        }
-        */
-
         setTimeout(function () {
-            //that.rebuild_tree()
+            that.rebuild_tree()
         })
     }
 
@@ -153,6 +150,7 @@ export class VarListWidget extends BaseWidget {
         tr.append(td_name).append(td_type)
         td_type.text(entry.datatype)
         tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
 
         const img = $("<div class='treeicon'/>")
 
@@ -168,24 +166,26 @@ export class VarListWidget extends BaseWidget {
         return tr
     }
 
-    make_folder_row(subfolder: SubfolderDescription): JQueryRow {
+    make_folder_row(subfolder: SubfolderDescription, entry_type: DatastoreEntryType): JQueryRow {
         const tr = $("<tr></tr>") as JQueryRow
         const td_name = $(`<td class="${CLASS_NAME_COL}">${subfolder.name}</td>`)
         const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
         tr.append(td_name).append(td_type)
         tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry_type)
 
         const img = $("<div class='treeicon icon-folder' />")
         td_name.prepend(img)
         return tr
     }
 
-    make_root_row(text: string) {
+    make_root_row(text: string, entry_type: DatastoreEntryType) {
         const tr = $("<tr></tr>") as JQueryRow
         const td_name = $(`<td class="${CLASS_NAME_COL}">${text}</td>`)
         const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
         tr.append(td_name).append(td_type)
         tr.attr(ATTR_DISPLAY_PATH, "/")
+        tr.attr(ATTR_ENTRY_TYPE, entry_type)
 
         const img = $("<div class='treeicon icon-folder' />")
         td_name.prepend(img)
@@ -200,21 +200,16 @@ export class VarListWidget extends BaseWidget {
             throw "Row without display_path"
         }
 
-        const root_node = this.tree_table.scrutiny_treetable("get_root_node_of", tr) as JQueryRow | undefined
-        if (typeof root_node === "undefined") {
-            throw "No root node"
-        }
-
-        const entry_type = root_node.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
-        if (typeof entry_type === "undefined") {
-            throw "Root node with no entry type"
+        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+        if (typeof entry_type == "undefined") {
+            throw "Row without entry_type"
         }
 
         const children = this.app.datastore.get_children(entry_type, display_path)
 
         children["subfolders"].forEach(function (subfolder, i) {
             output.push({
-                tr: that.make_folder_row(subfolder),
+                tr: that.make_folder_row(subfolder, entry_type),
             })
         })
 
@@ -239,14 +234,37 @@ export class VarListWidget extends BaseWidget {
     /**
      * Rebuild the tree. Called on datastore ready event
      */
-    rebuild_tree() {
-        this.clear_tree()
-        const that = this
+    rebuild_tree(entry_type?: DatastoreEntryType) {
+        let entry_type_list: DatastoreEntryType[] = []
+        if (typeof entry_type === "undefined") {
+            entry_type_list = AllDatastoreEntryTypes
+        } else {
+            entry_type_list = [entry_type]
+        }
+
+        for (let i = 0; i < entry_type_list.length; i++) {
+            this.tree_table.scrutiny_treetable(
+                "add_root_node",
+                ROOT_NODE_DESC[entry_type_list[i]].id,
+                this.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
+            )
+        }
     }
 
     // Erase the tree. Called on datastore.clear event
-    clear_tree() {
-        this.get_tree_container().html("")
+    clear_tree(entry_type?: DatastoreEntryType) {
+        let entry_type_list: DatastoreEntryType[] = []
+        if (typeof entry_type === "undefined") {
+            entry_type_list = AllDatastoreEntryTypes
+        } else {
+            entry_type_list = [entry_type]
+        }
+
+        for (let i = 0; i < entry_type_list.length; i++) {
+            if (this.tree_table.scrutiny_treetable("node_exists", ROOT_NODE_DESC[entry_type_list[i]].id)) {
+                this.tree_table.scrutiny_treetable("delete_node", ROOT_NODE_DESC[entry_type_list[i]].id)
+            }
+        }
     }
 
     static widget_name() {

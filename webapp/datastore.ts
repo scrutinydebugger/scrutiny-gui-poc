@@ -45,6 +45,8 @@ export class DatastoreEntry {
     /** The numerical value of the entry */
     value: number | null
 
+    
+
     /** A list of callback classified by watchers. These callback are called when the value changes. */
     callbacks: {
         [index: string]: ValueChangeCallback[]

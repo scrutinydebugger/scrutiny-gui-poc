@@ -814,6 +814,12 @@ describe("scrutiny-treetable", function () {
                 [id_map["node2.1"], id_map["node2.2"], id_map["node2.3"], id_map["node2.4"]],
                 "Children should be the same"
             )
+
+            assert.equal(table2.tt("get_node_nesting_level", id_map["root2"]), 1)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.1"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.2"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.3"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.4"]), 2)
         })
 
         it("Transfer Policy - All rows", function () {
@@ -905,6 +911,15 @@ describe("scrutiny-treetable", function () {
                 id_map["node2.3.2"],
                 id_map["node2.3.3"],
             ])
+
+            assert.equal(table2.tt("get_node_nesting_level", id_map["root2"]), 1)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.1"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.2"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.3"]), 2)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.3.1"]), 3)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.3.2"]), 3)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.3.3"]), 3)
+            assert.equal(table2.tt("get_node_nesting_level", id_map["node2.4"]), 2)
         })
     })
 })
