@@ -32,6 +32,7 @@ const ATTR_ENTRY_TYPE = "entry_type"
 
 const CLASS_TYPE_COL = "type_col"
 const CLASS_NAME_COL = "name_col"
+const CLASS_ENTRY_NODE = "entry_node"
 
 interface RootNodeDesc {
     id: string
@@ -151,6 +152,7 @@ export class VarListWidget extends BaseWidget {
         td_type.text(entry.datatype)
         tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
         tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
+        tr.addClass(CLASS_ENTRY_NODE)
 
         const img = $("<div class='treeicon'/>")
 

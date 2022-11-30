@@ -413,7 +413,7 @@ function transfer_node_from(
 }
 
 function _public_transfer_row(
-    src_table: JQueryTable | string,
+    src_table: JQueryTable | string, // Notice the parameter order inversion
     dest_table: JQueryTable | string,
     dragged_row_id: string,
     new_parent_id: string | null,
@@ -485,6 +485,12 @@ function get_visible_nodes($table: JQueryTable, parent?: JQueryRow | string | nu
     return _get_visible_rows($table, parent, filter)
 }
 
+/**
+ * Get the table TR JQuery elements that matches the given ID or list of IDs
+ * @param $table The JQuery Table
+ * @param node_id The ID or list of node ID of teh node we want
+ * @returns A JQuery object with all the matching nodes
+ */
 function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
     if (typeof node_id == "string") {
         return _find_row($table, node_id)
@@ -499,11 +505,23 @@ function get_nodes($table: JQueryTable, node_id: string[] | string): JQueryRow {
     return $(output)
 }
 
+/**
+ * Returns the nesting level of a nood into the tree. 0 Means root node, 1 is directly under a root node, etc.
+ * @param $table The JQuery Table
+ * @param node The node to get the level.
+ * @returns The nesting level
+ */
 function get_node_nesting_level($table: JQueryTable, node: string | JQueryRow): number {
     const tr = _get_row_from_node_or_row($table, node)
     return _get_nesting_level(tr)
 }
 
+/**
+ * Tells if a row exists within the tree
+ * @param $table The JQuery Table
+ * @param node_id The node to check the existence
+ * @returns Returns true if a node exist in the Tree with the given node ID
+ */
 function node_exists($table: JQueryTable, node_id: string): boolean {
     try {
         _find_row($table, node_id)

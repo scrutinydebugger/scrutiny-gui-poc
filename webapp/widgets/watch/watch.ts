@@ -27,12 +27,14 @@ import {
     DragData,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+import { DatastoreEntry } from "../../datastore"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
+type JQueryCell = JQuery<HTMLTableCellElement>
 
 interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_treetable: Function
@@ -45,6 +47,7 @@ const ATTR_ENTRY_TYPE = "entry_type"
 const CLASS_TYPE_COL = "type_col"
 const CLASS_NAME_COL = "name_col"
 const CLASS_VALUE_COL = "value_col"
+const CLASS_ENTRY_NODE = "entry_node"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -52,9 +55,9 @@ export class WatchWidget extends BaseWidget {
         - Easy value edit
         - Multi selection
         - Property view (edition?)
-        - Tree view
+        - Tree view                 CHECK
         - Rename variables
-        - resize table
+        - resize table              CHECK
         - Display hex value
      */
 
@@ -85,7 +88,6 @@ export class WatchWidget extends BaseWidget {
 
         //@ts-ignore
         this.display_table = null
-
         this.next_line_instance = 0
         this.logger = logging.getLogger(this.constructor.name)
     }
@@ -158,39 +160,38 @@ export class WatchWidget extends BaseWidget {
         return "WatchWidget" + this.instance_id
     }
 
-    get_line_id(instance: number) {
-        return this.get_instance_name() + "_line_" + instance
+    get_or_make_lin_id(line: JQueryRow) {
+        let line_id = line.attr("id")
+        if (typeof line_id === "undefined") {
+            const line_instance = this.next_line_instance++
+            line_id = this.get_instance_name() + "_line_" + line_instance
+            line.attr("id", line_id)
+        }
+        return line_id
     }
 
-    add_var(entry_type: DatastoreEntryType, display_path: string) {
-        let line = $("<tr></tr>")
-        let line_instance = this.next_line_instance++
-        let line_id = this.get_line_id(line_instance)
-        line.attr("id", line_id)
-        line.attr("display_path", display_path)
-        line.attr("type", entry_type)
-        line.append("<td>" + display_path + "</td>")
-        line.append('<td class="value-cell"><span>0.0</span></td>')
-        line.append('<td class="help-cell"><img src="assets/img/question-mark-grey-64x64.png" /></td>')
-        this.display_table.find("tbody").first().append(line)
-
+    start_watching(entry: DatastoreEntry, line: JQueryRow, value_cell: JQueryCell) {
+        let line_id = this.get_or_make_lin_id(line)
         let update_callback = function (val: number | null) {
             const newval = val === null ? "N/A" : "" + val
-            line.find(".value-cell span").text(newval)
+            value_cell.text(newval)
         }
-        update_callback(this.app.datastore.get_value(entry_type, display_path))
-        this.app.datastore.watch(entry_type, display_path, line_id, update_callback)
+        update_callback(this.app.datastore.get_value(entry.entry_type, entry.display_path))
+        this.app.datastore.watch(entry.entry_type, entry.display_path, line_id, update_callback)
     }
 
     make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
         const tr = $("<tr></tr>") as JQueryRow
         const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`)
         const td_value = $(`<td class"${CLASS_VALUE_COL}"></td>`)
-        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        const td_type = $(`<td class="${CLASS_TYPE_COL}"></td>`)
         tr.append(td_name).append(td_value).append(td_type)
         td_type.text(entry.datatype)
         tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
         tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
+        tr.addClass(CLASS_ENTRY_NODE)
+
+        this.start_watching(entry, tr, td_value)
 
         const img = $("<div class='treeicon'/>")
 
@@ -267,29 +268,40 @@ export class WatchWidget extends BaseWidget {
 
     element_transfer_fn(source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput {
         const new_line = $("<tr></tr>") as JQueryRow
-        const td_name = $("<td></td>")
-        const td_value = $("<td></td>")
-        const td_type = $("<td></td>")
+        const td_name = $(`<td class=${CLASS_NAME_COL}></td>`)
+        const td_value = $(`<td class=${CLASS_VALUE_COL}></td>`)
+        const td_type = $(`<td class=${CLASS_TYPE_COL}></td>`)
         new_line.append(td_name).append(td_value).append(td_type)
-
-        const display_path = bare_line.attr(ATTR_DISPLAY_PATH)
-        if (typeof display_path !== "undefined") {
-            new_line.attr(ATTR_DISPLAY_PATH, display_path)
-        }
-
-        const entry_type = bare_line.attr(ATTR_ENTRY_TYPE)
-        if (typeof entry_type !== "undefined") {
-            new_line.attr(ATTR_ENTRY_TYPE, entry_type)
-        }
-
         const output = { tr: new_line }
 
-        if (source_table.hasClass("varlist-table") || source_table.hasClass("watch-table")) {
-            td_name.html(bare_line.find(".name_col").html()).addClass("name_col")
-            td_type.html(bare_line.find(".type_col").html()).addClass("type_col")
-        } else {
-            this.logger.warning("Don't know how to convert table row coming from this table")
+        if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
+            this.logger.error("Don't know how to convert table row coming from this table")
+            return output
         }
+
+        const display_path = bare_line.attr(ATTR_DISPLAY_PATH) as string | undefined
+        const entry_type = bare_line.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+        const is_node = bare_line.hasClass(CLASS_ENTRY_NODE)
+
+        if (typeof display_path === "undefined") {
+            this.logger.error("Missing display path on node")
+            return output
+        }
+
+        if (typeof entry_type === "undefined") {
+            this.logger.error("Missing entry type on node")
+            return output
+        }
+
+        new_line.attr(ATTR_DISPLAY_PATH, display_path)
+        new_line.attr(ATTR_ENTRY_TYPE, entry_type)
+        if (is_node) {
+            const entry = this.app.datastore.get_entry(entry_type, display_path)
+            this.start_watching(entry, new_line, td_value)
+        }
+
+        td_name.html(bare_line.find(".name_col").html()).addClass("name_col")
+        td_type.html(bare_line.find(".type_col").html()).addClass("type_col")
 
         return output
     }
