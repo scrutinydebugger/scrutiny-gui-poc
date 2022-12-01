@@ -36,6 +36,10 @@ table.stt-table tr.stt-highlighted{
     background-color: rgb(124, 199, 250);
 }
 
+table.stt-table tr.stt-selected{
+    background-color: rgb(124, 199, 250);
+}
+
 table.stt-table tr.stt-disabled td{
     background-color: #ddd;
 }

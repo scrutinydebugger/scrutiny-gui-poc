@@ -151,6 +151,10 @@ const CLASS_NO_CHILDREN = "stt-no-children"
 const CLASS_TREE_CELL = "stt-tree-cell"
 /** Applied on rows that are loaded but hidden */
 const CLASS_HIDDEN = "stt-hidden"
+/** Applied on rows selected */
+const CLASS_SELECTED = "stt-selected"
+/** Applied on tables that has focus, after beng clicked on */
+const CLASS_FOCUS = "stt-focus"
 
 /**  To store the plugin options */
 const DATAKEY_OPTIONS = "stt-dk-options"
@@ -174,6 +178,9 @@ const EVENT_SIZE_CHANGED = "stt.size-changed"
 /** Triggered when a transfer completes */
 const EVENT_TRANSFER_COMPLETE = "stt.transfer_complete"
 
+const EVENT_BLUR = "stt.blur"
+const EVENT_FOCUS = "stt.focus"
+
 // Enum-ish for drag-n-drop
 const INSERT_TYPE_BELOW = 0
 const INSERT_TYPE_INTO = 1
@@ -196,6 +203,10 @@ const DEFAULT_OPTIONS = {
     col_index: 1,
     /**  Makes the table resizable using the scrutiny_resizable_table plugin */
     resizable: false,
+    /** Make the table navigable with the keyboard */
+    navigable: true,
+    /** Allow the user to delete nodes through the UI */
+    deletable: false,
     /**  Options passed to the scrutiny_resizable_table plugin */
     resize_options: {},
     /** Loading function to dynamically load the table */
@@ -675,6 +686,22 @@ function _get_parent($table: JQueryTable, tr: JQueryRow): JQueryRow | null {
     }
 
     return _find_row($table, parent_id)
+}
+
+function _get_focused_table(): JQueryTable {
+    return $(`table.${CLASS_TABLE}.${CLASS_FOCUS}`) as JQueryTable
+}
+
+function _is_focused($table: JQueryTable): boolean {
+    return $table.hasClass(CLASS_FOCUS)
+}
+
+function _set_focused($table: JQueryTable): void {
+    $table.addClass(CLASS_FOCUS)
+}
+
+function _set_blurred($table: JQueryTable): void {
+    $table.removeClass(CLASS_FOCUS)
 }
 
 /**
@@ -1201,6 +1228,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     let actual_level = 0 // Start at 0 for root node
     _set_node_id(tr, node_id)
     tr.addClass(CLASS_ROW)
+
     if (parent_id === null) {
         // We are adding a root node
         $table.append(tr)
@@ -1239,6 +1267,34 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
     const options = _get_options($table)
 
+    // Selection logic
+    tr.on("mousedown", function (e) {
+        const already_selected = $table.find(`tr.${CLASS_SELECTED}`)
+        let multiselect = false
+        if (e.shiftKey) {
+            _make_text_unselectable($table)
+            setTimeout(function () {
+                _make_text_selectable($table)
+            }, 0)
+            if (already_selected.length == 1) {
+                multiselect = true
+
+                if (tr.index() < already_selected.index()) {
+                    tr.nextUntil(already_selected).addClass(CLASS_SELECTED)
+                    tr.addClass(CLASS_SELECTED)
+                } else if (tr.index() > already_selected.index()) {
+                    already_selected.nextUntil(tr).addClass(CLASS_SELECTED)
+                    tr.addClass(CLASS_SELECTED)
+                }
+            }
+        }
+        if (!multiselect) {
+            $table.find(`tr.${CLASS_SELECTED}`).removeClass(CLASS_SELECTED)
+            tr.addClass(CLASS_SELECTED)
+        }
+    })
+
+    // Drag and drop logic
     if (options.draggable) {
         let dragger = DRAGGER_TEMPLATE.clone()
         header_block.prepend(dragger)
@@ -1523,6 +1579,22 @@ function _get_dragndrop_result(
     }
 
     return result
+}
+
+/**
+ * Make the text in the table unselectable. Useful to avoid glitches while resizing the columns
+ * @param $table The table
+ */
+function _make_text_unselectable($table: JQueryTable): void {
+    $table.attr("unselectable", "on").css("user-select", "none")
+}
+
+/**
+ * Make the text in the table selectable
+ * @param $table The table
+ */
+function _make_text_selectable($table: JQueryTable): void {
+    $table.attr("unselectable", "").css("user-select", "")
 }
 
 /**
@@ -1926,6 +1998,8 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
         .removeClass(CLASS_ROW)
         .removeClass(CLASS_HIDDEN)
         .removeClass(CLASS_NO_CHILDREN)
+        .removeClass(CLASS_SELECTED)
+        .removeClass(CLASS_FOCUS)
         .removeAttr(ATTR_ID)
         .removeAttr(ATTR_LEVEL)
         .removeAttr(ATTR_CHILDREN_COUNT)
@@ -2029,6 +2103,8 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
  * @param config The user configuration for the plugin
  */
 function init($table: JQueryTable, config: PluginOptions): void {
+    global_init()
+
     const options: PluginOptionsFull = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
@@ -2070,6 +2146,58 @@ function init($table: JQueryTable, config: PluginOptions): void {
         })
     }
 }
+
+const global_init = (function () {
+    let executed = false
+    return function () {
+        if (!executed) {
+            executed = true
+            const body = $("body") as JQuery<HTMLBodyElement>
+            body.on("click", function (e) {
+                const clicked_object = $(e.target)
+                const parent_table = clicked_object.parents(`table.${CLASS_TABLE}`).first() as JQueryTable
+                _get_focused_table().removeClass(CLASS_FOCUS)
+                if (parent_table.length > 0) {
+                    const focus_id = parent_table.attr("id") as string
+                    _set_blurred(_get_focused_table().filter(`:not(#${focus_id})`))
+                    if (!_is_focused(parent_table)) {
+                        _set_focused(parent_table)
+                    }
+                } else {
+                    _set_blurred(_get_focused_table())
+                }
+            })
+
+            body.on("keydown", function (e) {
+                const focused_table = _get_focused_table()
+                if (focused_table.length == 0) {
+                    return
+                }
+
+                const selected_row = focused_table.find(`tr.${CLASS_SELECTED}`).first() as JQueryRow
+                if (selected_row.length > 0) {
+                    if (e.key == "ArrowRight") {
+                        _expand_row(focused_table, selected_row)
+                    } else if (e.key == "ArrowLeft") {
+                        _collapse_row(focused_table, selected_row)
+                    } else if (e.key == "ArrowUp") {
+                        const prev = selected_row.prevAll(`tr:not(.${CLASS_HIDDEN}):first`)
+                        if (prev.length > 0) {
+                            selected_row.removeClass(CLASS_SELECTED)
+                            prev.addClass(CLASS_SELECTED)
+                        }
+                    } else if (e.key == "ArrowDown") {
+                        const next = selected_row.nextAll(`tr:not(.${CLASS_HIDDEN}):first`)
+                        if (next.length > 0) {
+                            selected_row.removeClass(CLASS_SELECTED)
+                            next.addClass(CLASS_SELECTED)
+                        }
+                    }
+                }
+            })
+        }
+    }
+})()
 
 // public functions
 const public_funcs: Record<string, Function> = {

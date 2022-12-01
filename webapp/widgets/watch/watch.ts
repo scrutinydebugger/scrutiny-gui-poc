@@ -11,7 +11,6 @@ import { default as $ } from "@jquery"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import { DatastoreEntryType, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
-import * as API from "@src/server_api"
 import * as logging from "@src/logging"
 
 import {
