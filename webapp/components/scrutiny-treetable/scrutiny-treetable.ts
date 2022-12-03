@@ -72,7 +72,7 @@ export interface TransferCompleteEventData {
     output: TransferResult
 }
 
-export type EnterKeyCallback = (selected_row: JQueryRow) => void
+export type SelectedRowKeydownCallback = (e: JQuery.KeyDownEvent, selected_row: JQueryRow) => void
 export type PreDeleteCallback = (row: JQueryRow) => void
 
 export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): DragData | null {
@@ -216,7 +216,7 @@ const DEFAULT_OPTIONS = {
     /** A function used to know wether a row is transferable to another table or not.  */
     transfer_policy_fn: null as TransferPolicyFunctionInterface | null,
     /** Callback called when the user press ENTER while navigating the tree */
-    enter_key_callback: null as EnterKeyCallback | null,
+    keydown_callback: null as SelectedRowKeydownCallback | null,
     pre_delete_callback: null as PreDeleteCallback | null,
 
     scrollable_element: null as null | JQuery,
@@ -1082,10 +1082,11 @@ function _allow_children(tr: JQueryRow): void {
 function _make_expandable($table: JQueryTable, tr: JQueryRow): void {
     const header_block = _get_row_header_block($table, tr)
     if (header_block.find(`.${CLASS_EXPANDER}`).length == 0) {
-        const expander = $table.data(DATAKEY_EXPANDER_CLOSED).clone()
+        const expander = $table.data(DATAKEY_EXPANDER_CLOSED).clone() as JQuery<HTMLDivElement>
         header_block.find(`.${CLASS_SPACER}`).first().append(expander)
-        expander.click(function () {
+        expander.on("click", function (e) {
             _toggle_row($table, tr)
+            e.stopPropagation()
         })
     }
 }
@@ -2238,6 +2239,7 @@ function _global_init_body() {
         if (focused_table.length == 0) {
             return
         }
+        const options = _get_options(focused_table)
 
         const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
         const first_selected_row = selected_rows.first() as JQueryRow
@@ -2249,7 +2251,6 @@ function _global_init_body() {
                 _collapse_row(focused_table, first_selected_row)
                 e.preventDefault()
             } else if (e.key == "ArrowUp" || e.key == "ArrowDown") {
-                const options = _get_options(focused_table)
                 const row_height = first_selected_row.outerHeight()
                 let scroll_delta = 50
                 if (typeof row_height !== "undefined") {
@@ -2295,7 +2296,6 @@ function _global_init_body() {
 
                 e.preventDefault()
             } else if (e.key == "Delete") {
-                const options = _get_options(focused_table)
                 if (options.allow_delete) {
                     let nodes_to_be_deleted = $()
                     for (let i = 0; i < selected_rows.length; i++) {
@@ -2313,15 +2313,13 @@ function _global_init_body() {
 
                     e.preventDefault()
                 }
-            } else if (e.key == "Enter") {
-                const options = _get_options(focused_table)
-                if (options.enter_key_callback != null) {
-                    options.enter_key_callback(selected_rows)
-                }
-                e.preventDefault()
             } else if (e.key == "Escape") {
                 selected_rows.removeClass(CLASS_SELECTED)
                 e.preventDefault()
+            } else {
+                if (options.keydown_callback !== null) {
+                    options.keydown_callback(e, selected_rows)
+                }
             }
         }
     })

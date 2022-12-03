@@ -22,6 +22,7 @@ import {
     TransferScope,
     get_drag_data_from_drop_event,
     TransferCompleteEventData,
+    SelectedRowKeydownCallback,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 
@@ -59,12 +60,12 @@ const CLASS_WATCHED = "watched"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
-        - Stop watching when tab is not visible to free bandwidth on device link which may be slow and increase refresh rate of other vars    
+        - Stop watching when tab is not visible 
         - Easy value edit           CHECK
         - Multi selection
         - Property view (edition?)
         - Tree view                 CHECK
-        - Rename variables
+        - Rename variables  CHECK
         - resize table              CHECK
         - Display hex value
      */
@@ -130,17 +131,30 @@ export class WatchWidget extends BaseWidget {
             transfer_fn: function (...args): TransferFunctionOutput {
                 return that.element_transfer_fn(...args)
             },
-            enter_key_callback: function (selected_rows: JQueryRow) {
+            keydown_callback: function (e: JQuery.KeyDownEvent, selected_rows: JQueryRow) {
                 const first_row = selected_rows.first()
-                if (selected_rows.length > 1) {
-                    that.display_table.scrutiny_treetable("select_node", first_row)
-                }
+                if (e.key == "Enter") {
+                    if (selected_rows.length > 1) {
+                        that.display_table.scrutiny_treetable("select_node", first_row)
+                    }
 
-                if (!selected_rows.hasClass(CLASS_LIVE_EDIT)) {
                     const td = first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryCell
-                    that.start_live_edit(td, function (val: string) {
-                        that.live_edit_value_cell_changed(td, val)
-                    })
+                    if (!td.hasClass(CLASS_LIVE_EDIT)) {
+                        that.start_live_edit(td, function (val: string) {
+                            that.live_edit_value_cell_changed(td, val)
+                        })
+                    }
+                } else if (e.key == "F2") {
+                    if (selected_rows.length > 1) {
+                        that.display_table.scrutiny_treetable("select_node", first_row)
+                    }
+
+                    const td = first_row.find(`td.${CLASS_NAME_COL}`) as JQueryCell
+                    if (!td.hasClass(CLASS_LIVE_EDIT)) {
+                        that.start_live_edit(td, function (val: string) {
+                            that.live_edit_name_cell_changed(td, val)
+                        })
+                    }
                 }
             },
             pre_delete_callback: function (tr: JQueryRow) {
