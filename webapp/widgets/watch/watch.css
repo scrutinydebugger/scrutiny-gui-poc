@@ -58,3 +58,9 @@
 .watch-table div.treeicon.icon-rpv{
     background-image: url("assets/rpv-16x16.png");
 }
+
+.watch-table td>div.cell_content {
+    margin:0;
+    padding:0;
+    display:inline-block;
+}

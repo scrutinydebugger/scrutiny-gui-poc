@@ -524,6 +524,25 @@ function get_visible_nodes($table: JQueryTable, parent?: JQueryRow | string | nu
 }
 
 /**
+ * Returns the list of hidden rows in the table
+ * @param $table The Jquery table
+ * @param parent An optional parent to limit the search scope
+ * @param filter An optional filter to apply on the row set
+ * @returns The list of hidden rows that matches the given filter or all if no filter is given
+ */
+function get_hidden_nodes($table: JQueryTable, parent?: JQueryRow | string | null, filter?: string): JQueryRow {
+    if (typeof parent === "undefined") {
+        parent = null
+    }
+
+    if (parent !== null) {
+        parent = _get_row_from_node_or_row($table, parent)
+    }
+
+    return _get_hidden_rows($table, parent, filter)
+}
+
+/**
  * Get the table TR JQuery elements that matches the given ID or list of IDs
  * @param $table The JQuery Table
  * @param node_id The ID or list of node ID of teh node we want
@@ -747,11 +766,33 @@ function _get_visible_rows($table: JQueryTable, parent: JQueryRow | null, filter
     if (parent == null) {
         rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`) as JQueryRow
     } else {
-        rows = _select_all_loaded_descendant($table, parent, `tr:not(.${CLASS_HIDDEN})`)
+        rows = _select_all_loaded_descendant($table, parent).filter(`tr:not(.${CLASS_HIDDEN})`)
     }
 
     if (typeof filter !== "undefined") {
-        rows.filter(filter)
+        rows = rows.filter(filter)
+    }
+
+    return rows
+}
+
+/**
+ * Returns all hidden rows in the table that match th given filter and that are under the given parent
+ * @param $table The Jquery table
+ * @param parent The parent node. Look at all nodes if null
+ * @param filter An optional filter to apply on the output dataset
+ * @returns The hidden rows under given parent that match the given filter
+ */
+function _get_hidden_rows($table: JQueryTable, parent: JQueryRow | null, filter?: string): JQueryRow {
+    let rows: JQueryRow
+    if (parent == null) {
+        rows = $table.find(`tbody tr.${CLASS_HIDDEN}`) as JQueryRow
+    } else {
+        rows = _select_all_loaded_descendant($table, parent).filter(`tr.${CLASS_HIDDEN}`)
+    }
+
+    if (typeof filter !== "undefined") {
+        rows = rows.filter(filter)
     }
 
     return rows
@@ -1808,7 +1849,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                let after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr, `tr[${ATTR_MOVING}!="1"]`).last()
+                let after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -1846,7 +1887,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                const after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr, `tr[${ATTR_MOVING}!="1"]`).last()
+                const after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -2055,11 +2096,10 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
  * Returns all the descendants under a given row. The given row will be part of the output list
  * @param $table The JQuery table
  * @param tr The JQuery row parent of the wanted descendants
- * @param filter A JQuery filter to apply on the descendants
  * @returns The list of descendants, parent row included
  */
-function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filter?: string): JQueryRow {
-    const result = _select_all_loaded_descendant_recursive($table, tr, filter)
+function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow): JQueryRow {
+    const result = _select_all_loaded_descendant_recursive($table, tr)
     if (result == null) {
         throw "Did not get descendant results" // for static analyzer
     }
@@ -2070,16 +2110,10 @@ function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow, filte
  *
  * @param $table The JQuery table
  * @param tr The JQuery row parent of the wanted descendants
- * @param filter A JQuery filter to apply on the descendants
  * @param arr An optional array for recursive patten. Internally set, should be unset by the user
  * @returns
  */
-function _select_all_loaded_descendant_recursive(
-    $table: JQueryTable,
-    tr: JQueryRow,
-    filter?: string | null,
-    arr?: HTMLTableRowElement[]
-): JQueryRow | null {
+function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | null {
     /* Select a node and all its descendant, only the loaded ones */
     let return_val = false
     if (typeof arr === "undefined") {
@@ -2087,22 +2121,11 @@ function _select_all_loaded_descendant_recursive(
         return_val = true
     }
 
-    if (typeof filter === "undefined") {
-        filter = null
-    }
-
-    if (filter != null) {
-        tr = tr.filter(filter)
-    }
-
     if (tr.length > 0) {
         arr.push(tr[0])
         let children = _get_children($table, tr)
-        if (filter != null) {
-            children.filter(filter)
-        }
         children.each(function () {
-            _select_all_loaded_descendant_recursive($table, $(this) as JQueryRow, filter, arr)
+            _select_all_loaded_descendant_recursive($table, $(this) as JQueryRow, arr)
         })
     }
 
@@ -2324,6 +2347,7 @@ const public_funcs: Record<string, Function> = {
     get_root_nodes: get_root_nodes,
     get_root_node_of: get_root_node_of,
     get_visible_nodes: get_visible_nodes,
+    get_hidden_nodes: get_hidden_nodes,
     get_nodes: get_nodes,
     get_node_nesting_level: get_node_nesting_level,
     node_exists: node_exists,

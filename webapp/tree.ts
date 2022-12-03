@@ -76,7 +76,7 @@ export class Tree<ObjType> {
         if (has_name) {
             node_name = segments.pop()
             if (typeof node_name == "undefined" || node_name === "") {
-                throw "Empty node name"
+                throw "Empty node name in " + path
             }
             output.name = node_name
         } else {

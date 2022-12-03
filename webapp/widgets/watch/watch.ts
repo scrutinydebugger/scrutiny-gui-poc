@@ -31,6 +31,7 @@ $.extend($.fn, { scrutiny_resizable_table })
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
+type LiveEditCompleteCallback = (val: string) => void
 
 interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_treetable: Function
@@ -53,6 +54,8 @@ const CLASS_NAME_COL = "name_col"
 const CLASS_VALUE_COL = "value_col"
 const CLASS_ENTRY_NODE = "entry_node"
 const CLASS_LIVE_EDIT = "live_edit"
+const CLASS_CELL_CONTENT = "cell_content"
+const CLASS_WATCHED = "watched"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -134,7 +137,10 @@ export class WatchWidget extends BaseWidget {
                 }
 
                 if (!selected_rows.hasClass(CLASS_LIVE_EDIT)) {
-                    that.start_live_edit(first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryCell)
+                    const td = first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryCell
+                    that.start_live_edit(td, function (val: string) {
+                        that.live_edit_value_cell_changed(td, val)
+                    })
                 }
             },
             pre_delete_callback: function (tr: JQueryRow) {
@@ -176,6 +182,15 @@ export class WatchWidget extends BaseWidget {
         // Collapse a folder and its descendant after its dropped in the widget
         this.display_table.on("stt.transfer_complete", function (e, data: TransferCompleteEventData) {
             that.display_table.scrutiny_treetable("collapse_all", data.output.new_top_node_id)
+            that.watch_all_visible(data.output.new_top_node_id)
+        })
+
+        this.display_table.on("stt.expanded", function (event, data) {
+            that.watch_all_visible($(event.target))
+        })
+
+        this.display_table.on("stt.collapsed", function (event, data) {
+            that.unwatch_all_hidden($(event.target))
         })
     }
 
@@ -192,6 +207,15 @@ export class WatchWidget extends BaseWidget {
         return "WatchWidget" + this.instance_id
     }
 
+    get_entry_from_row(tr: JQueryRow): DatastoreEntry {
+        const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
+        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+        if (typeof display_path !== "undefined" && typeof entry_type !== "undefined") {
+            return this.app.datastore.get_entry(entry_type, display_path)
+        }
+        throw "Missing proeprty on row"
+    }
+
     get_or_make_line_id(line: JQueryRow) {
         let line_id = line.attr("id")
         if (typeof line_id === "undefined") {
@@ -200,6 +224,27 @@ export class WatchWidget extends BaseWidget {
             line.attr("id", line_id)
         }
         return line_id
+    }
+
+    watch_all_visible(optional_parent?: JQueryRow | string | null) {
+        const that = this
+        const filter = `.${CLASS_ENTRY_NODE}:not(.${CLASS_WATCHED})`
+        const to_watch = this.display_table.scrutiny_treetable("get_visible_nodes", optional_parent, filter) as JQueryRow
+        to_watch.each(function () {
+            const tr = $(this)
+            const entry = that.get_entry_from_row(tr)
+            that.start_watching(entry, tr)
+        })
+    }
+
+    unwatch_all_hidden(optional_parent?: JQueryRow | string | null) {
+        const that = this
+        const filter = `.${CLASS_ENTRY_NODE}.${CLASS_WATCHED}`
+        const to_unwatch = this.display_table.scrutiny_treetable("get_hidden_nodes", optional_parent, filter) as JQueryRow
+        to_unwatch.each(function () {
+            const tr = $(this)
+            that.stop_watching(tr)
+        })
     }
 
     start_watching(entry: DatastoreEntry, line: JQueryRow, value_cell?: JQueryCell) {
@@ -211,11 +256,12 @@ export class WatchWidget extends BaseWidget {
         const value_cell2 = value_cell
         let update_callback = function (val: number | null) {
             const newval = val === null ? "N/A" : "" + val
-            const span = value_cell2.find("span").first()
+            const span = value_cell2.find(`span`).first()
             span.text(newval) // If user is editing, span will not exist
         }
         update_callback(this.app.datastore.get_value(entry.entry_type, entry.display_path))
         this.app.datastore.watch(entry.entry_type, entry.display_path, line_id, update_callback)
+        line.addClass(CLASS_WATCHED)
     }
 
     stop_watching(line: JQueryRow) {
@@ -223,31 +269,40 @@ export class WatchWidget extends BaseWidget {
         if (typeof line_id !== "undefined") {
             this.app.datastore.unwatch_all(line_id)
         }
+        line.removeClass(CLASS_WATCHED)
+        this.set_display_value(line, "N/A")
+    }
+
+    set_display_value(tr: JQueryRow, val: string | number) {
+        tr.find(`td.${CLASS_VALUE_COL} span`).text(val)
     }
 
     cancel_all_live_edit() {
-        const that = this
-        ;($(`.${CLASS_LIVE_EDIT}`) as JQueryCell).each(function () {
-            that.init_entry_value_cell($(this), $(this).attr(ATTR_LIVE_EDIT_CANCEL_VAL))
+        const live_edited_cells = $(`.${CLASS_LIVE_EDIT}`) as JQueryCell
+        live_edited_cells.each(function () {
+            const cell = $(this)
+            const content = cell.find(`.${CLASS_CELL_CONTENT}`)
+            content.html()
+            content.text(cell.attr(ATTR_LIVE_EDIT_CANCEL_VAL))
         })
     }
 
-    init_entry_value_cell(td: JQueryCell, val?: string) {
+    init_entry_live_editable_cell(td: JQueryCell, complete_callback: LiveEditCompleteCallback, val?: string) {
         const that = this
-        const span = $("<span></span>") as JQuery<HTMLSpanElement>
+        const span = $(`<span></span>`) as JQuery<HTMLSpanElement>
         if (typeof val !== "undefined") {
             span.text(val)
         }
-        td.html(span[0])
+        td.find(`div.${CLASS_CELL_CONTENT}`).html(span[0])
         td.removeClass(CLASS_LIVE_EDIT)
         td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
 
         td.on("dblclick", function () {
-            that.start_live_edit(td)
+            that.start_live_edit(td, complete_callback)
         })
     }
 
-    start_live_edit(td: JQueryCell) {
+    start_live_edit(td: JQueryCell, complete_callback: LiveEditCompleteCallback) {
         const that = this
         this.cancel_all_live_edit()
         td.addClass(CLASS_LIVE_EDIT)
@@ -261,24 +316,24 @@ export class WatchWidget extends BaseWidget {
         const input = $("<input type='text' />") as JQuery<HTMLInputElement>
 
         input.on("blur", function () {
-            that.write_value(td, $(this).val())
-            that.init_entry_value_cell(td, $(this).val())
+            complete_callback($(this).val())
+            that.init_entry_live_editable_cell(td, complete_callback, $(this).val())
         })
 
         input.on("keydown", function (e) {
             if (e.key == "Enter") {
-                that.write_value(td, $(this).val())
-                that.init_entry_value_cell(td, $(this).val())
+                complete_callback($(this).val())
+                that.init_entry_live_editable_cell(td, complete_callback, $(this).val())
                 e.stopPropagation()
             }
 
             if (e.key == "Escape") {
-                that.init_entry_value_cell(td, value)
+                that.init_entry_live_editable_cell(td, complete_callback, value)
                 e.stopPropagation()
             }
         })
         input.val(value)
-        td.html(input[0])
+        td.find(`div.${CLASS_CELL_CONTENT}`).html(input[0])
 
         setTimeout(function () {
             td.find("input").trigger("focus").trigger("select")
@@ -306,19 +361,51 @@ export class WatchWidget extends BaseWidget {
         this.app.server_conn.send_request("write_value", data)
     }
 
-    make_entry_row(entry: DatastoreEntryWithName): TableRowDetails {
+    make_basic_row(): TableRowDetails {
         const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`) as JQueryCell
-        const td_value = $(`<td class="${CLASS_VALUE_COL}"></td>`) as JQueryCell
-        const td_type = $(`<td class="${CLASS_TYPE_COL}"></td>`) as JQueryCell
+        const td_name = $(`<td class="${CLASS_NAME_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
+        const td_value = $(`<td class="${CLASS_VALUE_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
+        const td_type = $(`<td class="${CLASS_TYPE_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
         tr.append(td_name).append(td_value).append(td_type)
-        td_type.text(entry.datatype)
-        tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
-        tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
-        tr.addClass(CLASS_ENTRY_NODE)
 
-        this.init_entry_value_cell(td_value, "N/A")
-        this.start_watching(entry, tr, td_value)
+        return {
+            tr: tr,
+            td_name: td_name,
+            td_value: td_value,
+            td_type: td_type,
+        }
+    }
+
+    live_edit_value_cell_changed(td: JQueryCell, val: string) {
+        this.write_value(td, val)
+    }
+
+    live_edit_name_cell_changed(td: JQueryCell, val: string) {}
+
+    make_entry_row(entry: DatastoreEntryWithName): TableRowDetails {
+        const that = this
+        const row_data = this.make_basic_row()
+
+        row_data.td_type.find(`div.${CLASS_CELL_CONTENT}`).text(entry.datatype)
+        row_data.tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
+        row_data.tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
+        row_data.tr.addClass(CLASS_ENTRY_NODE)
+
+        this.init_entry_live_editable_cell(
+            row_data.td_value,
+            function (val: string) {
+                that.live_edit_value_cell_changed(row_data.td_value, val)
+            },
+            "N/A"
+        )
+        this.init_entry_live_editable_cell(
+            row_data.td_name,
+            function (val: string) {
+                that.live_edit_name_cell_changed(row_data.td_name, val)
+            },
+            entry.default_name
+        )
+        //this.start_watching(entry, tr, td_value)
 
         const img = $("<div class='treeicon'/>")
 
@@ -330,32 +417,27 @@ export class WatchWidget extends BaseWidget {
             img.addClass("icon-rpv")
         }
 
-        td_name.prepend(img)
-        return {
-            tr: tr,
-            td_name: td_name,
-            td_value: td_value,
-            td_type: td_type,
-        }
+        row_data.td_name.prepend(img)
+        return row_data
     }
 
     make_folder_row(text: string, display_path: string, entry_type: DatastoreEntryType): TableRowDetails {
-        const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}">${text}</td>`) as JQueryCell
-        const td_value = $(`<td class"${CLASS_VALUE_COL}"></td>`) as JQueryCell
-        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`) as JQueryCell
-        tr.append(td_name).append(td_value).append(td_type)
-        tr.attr(ATTR_DISPLAY_PATH, display_path)
-        tr.attr(ATTR_ENTRY_TYPE, entry_type)
+        const that = this
+        const row_data = this.make_basic_row()
+        row_data.tr.attr(ATTR_DISPLAY_PATH, display_path)
+        row_data.tr.attr(ATTR_ENTRY_TYPE, entry_type)
+
+        this.init_entry_live_editable_cell(
+            row_data.td_name,
+            function (val: string) {
+                that.live_edit_name_cell_changed(row_data.td_name, val)
+            },
+            text
+        )
 
         const img = $("<div class='treeicon icon-folder' />")
-        td_name.prepend(img)
-        return {
-            tr: tr,
-            td_name: td_name,
-            td_value: td_value,
-            td_type: td_type,
-        }
+        row_data.td_name.prepend(img)
+        return row_data
     }
 
     /**
@@ -419,7 +501,7 @@ export class WatchWidget extends BaseWidget {
         if (is_node) {
             const entry = this.app.datastore.get_entry(entry_type, display_path)
             const new_row_data = this.make_entry_row(entry)
-            this.start_watching(entry, new_row_data.tr, new_row_data.td_value)
+            //this.start_watching(entry, new_row_data.tr, new_row_data.td_value)
             new_line = new_row_data.tr
         } else {
             const text_name = bare_line.find(`td.${CLASS_NAME_COL}`).text()
