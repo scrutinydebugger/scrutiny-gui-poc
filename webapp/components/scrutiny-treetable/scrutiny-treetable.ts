@@ -72,6 +72,9 @@ export interface TransferCompleteEventData {
     output: TransferResult
 }
 
+export type EnterKeyCallback = (selected_row: JQueryRow) => void
+export type PreDeleteCallback = (row: JQueryRow) => void
+
 export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, undefined, HTMLElement, HTMLElement>): DragData | null {
     if (typeof e.originalEvent === "undefined") {
         return null
@@ -176,10 +179,7 @@ const EVENT_DROPPED = "stt.dropped"
 /** Triggered when the vertical size of the table has changed  */
 const EVENT_SIZE_CHANGED = "stt.size-changed"
 /** Triggered when a transfer completes */
-const EVENT_TRANSFER_COMPLETE = "stt.transfer_complete"
-
-const EVENT_BLUR = "stt.blur"
-const EVENT_FOCUS = "stt.focus"
+const EVENT_TRANSFER_COMPLETE = "stt.transfer-complete"
 
 // Enum-ish for drag-n-drop
 const INSERT_TYPE_BELOW = 0
@@ -203,11 +203,9 @@ const DEFAULT_OPTIONS = {
     col_index: 1,
     /**  Makes the table resizable using the scrutiny_resizable_table plugin */
     resizable: false,
-    /** Make the table navigable with the keyboard */
-    navigable: true,
+    /**  Let the user delete a node with the keyboard Delete key*/
+    allow_delete: false,
     /** Allow the user to delete nodes through the UI */
-    deletable: false,
-    /**  Options passed to the scrutiny_resizable_table plugin */
     resize_options: {},
     /** Loading function to dynamically load the table */
     load_fn: function () {
@@ -217,6 +215,11 @@ const DEFAULT_OPTIONS = {
     transfer_fn: null as TransferFunctionInterface | null,
     /** A function used to know wether a row is transferable to another table or not.  */
     transfer_policy_fn: null as TransferPolicyFunctionInterface | null,
+    /** Callback called when the user press ENTER while navigating the tree */
+    enter_key_callback: null as EnterKeyCallback | null,
+    pre_delete_callback: null as PreDeleteCallback | null,
+
+    scrollable_element: null as null | JQuery,
 }
 
 type PluginOptionsFull = typeof DEFAULT_OPTIONS
@@ -228,6 +231,10 @@ const EXPANDER_CLOSED_TEMPLATE = $(`<div class='${CLASS_EXPANDER} ${CLASS_EXPAND
 const DRAGGER_TEMPLATE = $(`<div class='${CLASS_DRAGGER}' />`)
 
 /***  Public functions *** */
+
+export function get_node_id(tr: JQueryRow): string {
+    return _get_node_id(tr)
+}
 
 /**
  * Adds a row as a root node.
@@ -266,8 +273,8 @@ function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_paren
  * @returns The root node containing the given node
  */
 function get_root_node_of($table: JQueryTable, node: string | JQueryRow) {
-    const row = _get_row_from_node_or_row($table, node)
-    return _get_root_node_of($table, row)
+    const tr = _get_row_from_node_or_row($table, node)
+    return _get_root_node_of($table, tr)
 }
 
 /**
@@ -288,7 +295,7 @@ function get_children($table: JQueryTable, node: string | JQueryRow): JQueryRow 
  * @returns The parent if node
  */
 function get_parent($table: JQueryTable, node: string | JQueryRow): JQueryRow | null {
-    let tr = _get_row_from_node_or_row($table, node)
+    const tr = _get_row_from_node_or_row($table, node)
     return _get_parent($table, tr)
 }
 
@@ -299,7 +306,7 @@ function get_parent($table: JQueryTable, node: string | JQueryRow): JQueryRow | 
  * @returns The immediate children nodes
  */
 function get_children_count($table: JQueryTable, node: string | JQueryRow): number {
-    let tr = _get_row_from_node_or_row($table, node)
+    const tr = _get_row_from_node_or_row($table, node)
     return _get_children_count(tr)
 }
 
@@ -309,7 +316,7 @@ function get_children_count($table: JQueryTable, node: string | JQueryRow): numb
  * @param node The row to delete
  */
 function delete_node($table: JQueryTable, node: string | JQueryRow): void {
-    let tr = _get_row_from_node_or_row($table, node)
+    const tr = _get_row_from_node_or_row($table, node)
     _delete_node($table, tr)
 }
 
@@ -319,7 +326,7 @@ function delete_node($table: JQueryTable, node: string | JQueryRow): void {
  * @param node The row to expand
  */
 function expand_node($table: JQueryTable, node: string | JQueryRow): void {
-    let tr = _get_row_from_node_or_row($table, node)
+    const tr = _get_row_from_node_or_row($table, node)
     if (_is_visible(tr)) {
         _expand_row($table, tr)
     }
@@ -339,7 +346,7 @@ function expand_all($table: JQueryTable): void {
  * @param node The row to expand
  */
 function collapse_node($table: JQueryTable, node: string | JQueryRow): void {
-    let tr = _get_row_from_node_or_row($table, node)
+    const tr = _get_row_from_node_or_row($table, node)
     _collapse_row($table, tr)
 }
 
@@ -386,18 +393,20 @@ function get_root_nodes($table: JQueryTable): JQueryRow {
  * @param after_node_id The row after which the moved row will be inserted. If not set or null,
  * the moved row will be set in last position
  */
-function move_node($table: JQueryTable, row_id: string, new_parent_id?: string | null, after_node_id?: string | null) {
+function move_node($table: JQueryTable, row_id: string, new_parent?: JQueryRow | string | null, after_node?: JQueryRow | string | null) {
     let options = _get_options($table)
     if (!options.move_allowed) {
         throw "Moving node is not allowed"
     }
 
-    if (typeof new_parent_id === "undefined") {
-        new_parent_id = null
+    let new_parent_id: string | null = null
+    if (typeof new_parent !== "undefined" && new_parent !== null) {
+        new_parent_id = _get_node_id(_get_row_from_node_or_row($table, new_parent))
     }
 
-    if (typeof after_node_id === "undefined") {
-        after_node_id = null
+    let after_node_id: string | null = null
+    if (typeof after_node !== "undefined" && after_node !== null) {
+        after_node_id = _get_node_id(_get_row_from_node_or_row($table, after_node))
     }
 
     const tr = _get_row_from_node_or_row($table, row_id)
@@ -422,28 +431,28 @@ function transfer_node_to(
     src_table: JQueryTable,
     dest_table: JQueryTable | string,
     dragged_row_id: string,
-    new_parent_id: string | null,
-    after_node_id: string | null
+    new_parent: JQueryRow | string | null,
+    after_node: JQueryRow | string | null
 ): TransferResult | null {
-    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent, after_node)
 }
 
 function transfer_node_from(
     dest_table: JQueryTable,
     src_table: JQueryTable | string,
     dragged_row_id: string,
-    new_parent_id: string | null,
-    after_node_id: string | null
+    new_parent: JQueryRow | string | null,
+    after_node: JQueryRow | string | null
 ): TransferResult | null {
-    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent_id, after_node_id)
+    return _public_transfer_row(src_table, dest_table, dragged_row_id, new_parent, after_node)
 }
 
 function _public_transfer_row(
     src_table: JQueryTable | string, // Notice the parameter order inversion
     dest_table: JQueryTable | string,
     dragged_row_id: string,
-    new_parent_id: string | null,
-    after_node_id: string | null
+    new_parent: JQueryRow | string | null,
+    after_node: JQueryRow | string | null
 ): TransferResult | null {
     if (typeof src_table == "string") {
         src_table = $(`#${src_table}`) as JQueryTable
@@ -458,13 +467,16 @@ function _public_transfer_row(
         return null
     }
 
-    if (typeof new_parent_id === "undefined") {
-        new_parent_id = null
+    let new_parent_id: string | null = null
+    let after_node_id: string | null = null
+    if (typeof new_parent !== "undefined" && new_parent !== null) {
+        new_parent_id = _get_node_id(_get_row_from_node_or_row(dest_table, new_parent))
     }
 
-    if (typeof after_node_id === "undefined") {
-        after_node_id = null
+    if (typeof after_node !== "undefined" && after_node !== null) {
+        after_node_id = _get_node_id(_get_row_from_node_or_row(dest_table, after_node))
     }
+
     const tr = _get_row_from_node_or_row(src_table, dragged_row_id)
 
     const dest_options = _get_options(dest_table)
@@ -688,18 +700,37 @@ function _get_parent($table: JQueryTable, tr: JQueryRow): JQueryRow | null {
     return _find_row($table, parent_id)
 }
 
+/**
+ * Return the table in the document that has the focus.
+ * @returns The focused table
+ */
 function _get_focused_table(): JQueryTable {
     return $(`table.${CLASS_TABLE}.${CLASS_FOCUS}`) as JQueryTable
 }
 
+/**
+ * Tells if the focus is on the given table
+ * @param $table The JQuery table
+ * @returns True if focus is on the table
+ */
 function _is_focused($table: JQueryTable): boolean {
     return $table.hasClass(CLASS_FOCUS)
 }
 
+/**
+ * Put the focus on the given table
+ * @param $table The JQuery table
+ */
 function _set_focused($table: JQueryTable): void {
+    const focus_id = $table.attr("id")
+    _set_blurred(_get_focused_table().filter(`:not(#${focus_id})`))
     $table.addClass(CLASS_FOCUS)
 }
 
+/**
+ * Removes the focus from the given table
+ * @param $table The JQuery table
+ */
 function _set_blurred($table: JQueryTable): void {
     $table.removeClass(CLASS_FOCUS)
 }
@@ -1705,33 +1736,43 @@ function _get_row_insert_type(tr: JQueryRow, cursorY: number): number {
  * Removes a row from the table and all its descendants
  * @param $table The JQuery table
  * @param tr The row to remove
- * @param no_event : When true, prevent the plugin from firing a size-change event on node deletion
+ * @param no_size_event : When true, prevent the plugin from firing a size-change event on node deletion
  */
-function _delete_node($table: JQueryTable, tr: JQueryRow, no_event: boolean = false): void {
+function _delete_node($table: JQueryTable, tr: JQueryRow): void {
+    const result = _delete_node_recursive($table, tr, 0)
+    if (result === null) {
+        throw "No rows returned after delete"
+    }
+
+    $table.trigger(EVENT_SIZE_CHANGED)
+}
+
+function _delete_node_recursive($table: JQueryTable, tr: JQueryRow, recurse_level: number, arr?: string[]): void {
     _get_children($table, tr).each(function () {
-        _delete_node($table, $(this), true)
+        _delete_node_recursive($table, $(this), recurse_level + 1, arr)
     })
 
-    _delete_single_row($table, tr, no_event)
+    _delete_single_row($table, tr)
 }
 
 /**
  * Delete a row from the table, leaves the descendants untouched
  * @param $table The JQuery table
  * @param tr The row to delete
- * @param no_event When true, does not fire an change event after deleting the node
+ * @param resize_event  When true, fire a change event after deleting the node
  */
-function _delete_single_row($table: JQueryTable, tr: JQueryRow, no_event: boolean = false): void {
+function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
     const node_cache = $table.data(DATAKEY_NODE_CACHE)
     const node_id = _get_node_id(tr)
     const parent = _get_parent($table, tr)
     if (node_cache.hasOwnProperty(node_id)) {
         delete node_cache[node_id]
     }
-    tr.remove()
-    if (!no_event) {
-        $table.trigger(EVENT_SIZE_CHANGED)
+    const options = _get_options($table)
+    if (options.pre_delete_callback !== null) {
+        options.pre_delete_callback(tr)
     }
+    tr.remove()
 
     if (parent !== null) {
         _increase_children_count($table, parent, -1)
@@ -2103,7 +2144,7 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
  * @param config The user configuration for the plugin
  */
 function init($table: JQueryTable, config: PluginOptions): void {
-    global_init()
+    _global_init()
 
     const options: PluginOptionsFull = $.extend({}, DEFAULT_OPTIONS, config)
     const table_id = $table.attr("id")
@@ -2147,57 +2188,121 @@ function init($table: JQueryTable, config: PluginOptions): void {
     }
 }
 
-const global_init = (function () {
+const _global_init = (function () {
     let executed = false
     return function () {
         if (!executed) {
             executed = true
-            const body = $("body") as JQuery<HTMLBodyElement>
-            body.on("click", function (e) {
-                const clicked_object = $(e.target)
-                const parent_table = clicked_object.parents(`table.${CLASS_TABLE}`).first() as JQueryTable
-                _get_focused_table().removeClass(CLASS_FOCUS)
-                if (parent_table.length > 0) {
-                    const focus_id = parent_table.attr("id") as string
-                    _set_blurred(_get_focused_table().filter(`:not(#${focus_id})`))
-                    if (!_is_focused(parent_table)) {
-                        _set_focused(parent_table)
-                    }
-                } else {
-                    _set_blurred(_get_focused_table())
-                }
-            })
-
-            body.on("keydown", function (e) {
-                const focused_table = _get_focused_table()
-                if (focused_table.length == 0) {
-                    return
-                }
-
-                const selected_row = focused_table.find(`tr.${CLASS_SELECTED}`).first() as JQueryRow
-                if (selected_row.length > 0) {
-                    if (e.key == "ArrowRight") {
-                        _expand_row(focused_table, selected_row)
-                    } else if (e.key == "ArrowLeft") {
-                        _collapse_row(focused_table, selected_row)
-                    } else if (e.key == "ArrowUp") {
-                        const prev = selected_row.prevAll(`tr:not(.${CLASS_HIDDEN}):first`)
-                        if (prev.length > 0) {
-                            selected_row.removeClass(CLASS_SELECTED)
-                            prev.addClass(CLASS_SELECTED)
-                        }
-                    } else if (e.key == "ArrowDown") {
-                        const next = selected_row.nextAll(`tr:not(.${CLASS_HIDDEN}):first`)
-                        if (next.length > 0) {
-                            selected_row.removeClass(CLASS_SELECTED)
-                            next.addClass(CLASS_SELECTED)
-                        }
-                    }
-                }
-            })
+            _global_init_body()
         }
     }
 })()
+
+function _global_init_body() {
+    const body = $("body") as JQuery<HTMLBodyElement>
+    body.on("click", function (e) {
+        const clicked_object = $(e.target)
+        const parent_table = clicked_object.parents(`table.${CLASS_TABLE}`).first() as JQueryTable
+        if (parent_table.length > 0) {
+            _set_focused(parent_table)
+        } else {
+            _set_blurred(_get_focused_table())
+        }
+    })
+
+    body.on("keydown", function (e) {
+        const focused_table = _get_focused_table()
+        if (focused_table.length == 0) {
+            return
+        }
+
+        const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
+        const first_selected_row = selected_rows.first() as JQueryRow
+        if (first_selected_row.length > 0) {
+            if (e.key == "ArrowRight") {
+                _expand_row(focused_table, first_selected_row)
+                e.preventDefault()
+            } else if (e.key == "ArrowLeft") {
+                _collapse_row(focused_table, first_selected_row)
+                e.preventDefault()
+            } else if (e.key == "ArrowUp" || e.key == "ArrowDown") {
+                const options = _get_options(focused_table)
+                const row_height = first_selected_row.outerHeight()
+                let scroll_delta = 50
+                if (typeof row_height !== "undefined") {
+                    scroll_delta = row_height * 1
+                }
+                if (e.key == "ArrowUp") {
+                    const prev = first_selected_row.prevAll(`tr:not(.${CLASS_HIDDEN}):first`)
+                    if (prev.length > 0) {
+                        first_selected_row.removeClass(CLASS_SELECTED)
+                        prev.addClass(CLASS_SELECTED)
+
+                        if (options.scrollable_element !== null && options.scrollable_element.length == 1) {
+                            const bounding_element_rect = options.scrollable_element[0].getBoundingClientRect()
+                            const new_selected_rect = prev[0].getBoundingClientRect()
+                            if (new_selected_rect.y < bounding_element_rect.y) {
+                                const actual_scrolltop = options.scrollable_element.scrollTop()
+                                if (typeof actual_scrolltop !== "undefined") {
+                                    options.scrollable_element.scrollTop(actual_scrolltop - bounding_element_rect.y + new_selected_rect.y)
+                                }
+                            }
+                        }
+                    }
+                } else if (e.key == "ArrowDown") {
+                    const next = first_selected_row.nextAll(`tr:not(.${CLASS_HIDDEN}):first`)
+                    if (next.length > 0) {
+                        first_selected_row.removeClass(CLASS_SELECTED)
+                        next.addClass(CLASS_SELECTED)
+
+                        if (options.scrollable_element !== null && options.scrollable_element.length == 1) {
+                            const bounding_element_rect = options.scrollable_element[0].getBoundingClientRect()
+                            const new_selected_rect = next[0].getBoundingClientRect()
+                            if (new_selected_rect.bottom > bounding_element_rect.bottom) {
+                                const actual_scrolltop = options.scrollable_element.scrollTop()
+                                if (typeof actual_scrolltop !== "undefined") {
+                                    options.scrollable_element.scrollTop(
+                                        actual_scrolltop + new_selected_rect.bottom - bounding_element_rect.bottom
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                e.preventDefault()
+            } else if (e.key == "Delete") {
+                const options = _get_options(focused_table)
+                if (options.allow_delete) {
+                    let nodes_to_be_deleted = $()
+                    for (let i = 0; i < selected_rows.length; i++) {
+                        nodes_to_be_deleted = nodes_to_be_deleted.add(_select_all_loaded_descendant(focused_table, $(selected_rows[i])))
+                    }
+                    const prev = nodes_to_be_deleted.first().prev(`tr:not(.${CLASS_HIDDEN})`)
+                    const next = nodes_to_be_deleted.last().next(`tr:not(.${CLASS_HIDDEN})`)
+
+                    _delete_node(focused_table, selected_rows)
+                    if (next.length > 0) {
+                        next.addClass(CLASS_SELECTED)
+                    } else if (prev.length > 0) {
+                        prev.addClass(CLASS_SELECTED)
+                    }
+
+                    e.preventDefault()
+                }
+            } else if (e.key == "Enter") {
+                const options = _get_options(focused_table)
+                if (options.enter_key_callback != null) {
+                    options.enter_key_callback(selected_rows)
+                }
+                e.preventDefault()
+            } else if (e.key == "Escape") {
+                selected_rows.removeClass(CLASS_SELECTED)
+                e.preventDefault()
+            }
+        }
+    })
+}
 
 // public functions
 const public_funcs: Record<string, Function> = {

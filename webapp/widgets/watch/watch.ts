@@ -57,7 +57,7 @@ const CLASS_LIVE_EDIT = "live_edit"
 export class WatchWidget extends BaseWidget {
     /* TODO :
         - Stop watching when tab is not visible to free bandwidth on device link which may be slow and increase refresh rate of other vars    
-        - Easy value edit
+        - Easy value edit           CHECK
         - Multi selection
         - Property view (edition?)
         - Tree view                 CHECK
@@ -119,11 +119,26 @@ export class WatchWidget extends BaseWidget {
             resize_options: resizable_table_options,
             draggable: true,
             droppable: true,
+            allow_delete: true,
+            scrollable_element: this.container.parent(),
             transfer_policy_fn: function () {
                 return { scope: TransferScope.VISIBLE_ONLY }
             },
             transfer_fn: function (...args): TransferFunctionOutput {
                 return that.element_transfer_fn(...args)
+            },
+            enter_key_callback: function (selected_rows: JQueryRow) {
+                const first_row = selected_rows.first()
+                if (selected_rows.length > 1) {
+                    that.display_table.scrutiny_treetable("select_node", first_row)
+                }
+
+                if (!selected_rows.hasClass(CLASS_LIVE_EDIT)) {
+                    that.start_live_edit(first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryCell)
+                }
+            },
+            pre_delete_callback: function (tr: JQueryRow) {
+                that.stop_watching(tr)
             },
         }
 
@@ -146,11 +161,15 @@ export class WatchWidget extends BaseWidget {
 
             const src_table = $(`#${drag_data.source_table_id}`) as JQueryTable
             const dragged_row_id = drag_data.dragged_row_id
+            let last_root_node = that.display_table.scrutiny_treetable("get_root_nodes").last()
+            if (last_root_node.length == 0) {
+                last_root_node = null
+            }
             if (src_table.is(that.display_table)) {
-                that.display_table.scrutiny_treetable("move_node", dragged_row_id, null, null) // Put as root node at the end.
+                that.display_table.scrutiny_treetable("move_node", dragged_row_id, null, last_root_node) // Put as root node at the end.
             } else {
                 // Make a row transfer and put at the end as root node
-                that.display_table.scrutiny_treetable("transfer_node_from", src_table, dragged_row_id, null, null)
+                that.display_table.scrutiny_treetable("transfer_node_from", src_table, dragged_row_id, null, last_root_node)
             }
         })
 
@@ -164,7 +183,8 @@ export class WatchWidget extends BaseWidget {
         const that = this
         // Remove all lines even if not selected
         this.display_table.find("tr").each(function () {
-            that.remove_var($(this) as JQueryRow)
+            that.stop_watching($(this) as JQueryRow)
+            $(this).remove()
         })
     }
 
@@ -172,7 +192,7 @@ export class WatchWidget extends BaseWidget {
         return "WatchWidget" + this.instance_id
     }
 
-    get_or_make_lin_id(line: JQueryRow) {
+    get_or_make_line_id(line: JQueryRow) {
         let line_id = line.attr("id")
         if (typeof line_id === "undefined") {
             const line_instance = this.next_line_instance++
@@ -183,7 +203,7 @@ export class WatchWidget extends BaseWidget {
     }
 
     start_watching(entry: DatastoreEntry, line: JQueryRow, value_cell?: JQueryCell) {
-        let line_id = this.get_or_make_lin_id(line)
+        let line_id = this.get_or_make_line_id(line)
 
         if (typeof value_cell === "undefined") {
             value_cell = line.find(`td.${CLASS_VALUE_COL}`) as JQueryCell
@@ -196,6 +216,13 @@ export class WatchWidget extends BaseWidget {
         }
         update_callback(this.app.datastore.get_value(entry.entry_type, entry.display_path))
         this.app.datastore.watch(entry.entry_type, entry.display_path, line_id, update_callback)
+    }
+
+    stop_watching(line: JQueryRow) {
+        const line_id = line.attr("id")
+        if (typeof line_id !== "undefined") {
+            this.app.datastore.unwatch_all(line_id)
+        }
     }
 
     cancel_all_live_edit() {
@@ -216,38 +243,46 @@ export class WatchWidget extends BaseWidget {
         td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
 
         td.on("dblclick", function () {
-            that.cancel_all_live_edit()
-            td.addClass(CLASS_LIVE_EDIT)
-            td.off("dblclick") // Remove handler so they don't stack
-            const span = $(this)
-            const value = span.text()
-            td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, value)
-            const input = $("<input type='text' />") as JQuery<HTMLInputElement>
+            that.start_live_edit(td)
+        })
+    }
 
-            input.on("blur", function () {
+    start_live_edit(td: JQueryCell) {
+        const that = this
+        this.cancel_all_live_edit()
+        td.addClass(CLASS_LIVE_EDIT)
+        td.off("dblclick") // Remove handler so they don't stack
+        const span = td.find("span")
+        if (span.length == 0) {
+            return
+        }
+        const value = span.text()
+        td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, value)
+        const input = $("<input type='text' />") as JQuery<HTMLInputElement>
+
+        input.on("blur", function () {
+            that.write_value(td, $(this).val())
+            that.init_entry_value_cell(td, $(this).val())
+        })
+
+        input.on("keydown", function (e) {
+            if (e.key == "Enter") {
                 that.write_value(td, $(this).val())
                 that.init_entry_value_cell(td, $(this).val())
-            })
+                e.stopPropagation()
+            }
 
-            input.on("keydown", function (e) {
-                if (e.key == "Enter") {
-                    that.write_value(td, $(this).val())
-                    that.init_entry_value_cell(td, $(this).val())
-                    e.preventDefault()
-                }
-
-                if (e.key == "Escape") {
-                    that.init_entry_value_cell(td, value)
-                    e.preventDefault()
-                }
-            })
-            input.val(value)
-            td.html(input[0])
-
-            setTimeout(function () {
-                td.find("input").trigger("focus").trigger("select")
-            }, 0)
+            if (e.key == "Escape") {
+                that.init_entry_value_cell(td, value)
+                e.stopPropagation()
+            }
         })
+        input.val(value)
+        td.html(input[0])
+
+        setTimeout(function () {
+            td.find("input").trigger("focus").trigger("select")
+        }, 0)
     }
 
     write_value(td: JQueryCell, val: string) {
@@ -268,14 +303,13 @@ export class WatchWidget extends BaseWidget {
                 },
             ],
         }
-        console.log(data)
         this.app.server_conn.send_request("write_value", data)
     }
 
     make_entry_row(entry: DatastoreEntryWithName): TableRowDetails {
         const tr = $("<tr></tr>") as JQueryRow
         const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`) as JQueryCell
-        const td_value = $(`<td class"${CLASS_VALUE_COL}"></td>`) as JQueryCell
+        const td_value = $(`<td class="${CLASS_VALUE_COL}"></td>`) as JQueryCell
         const td_type = $(`<td class="${CLASS_TYPE_COL}"></td>`) as JQueryCell
         tr.append(td_name).append(td_value).append(td_type)
         td_type.text(entry.datatype)
@@ -359,14 +393,6 @@ export class WatchWidget extends BaseWidget {
         })
 
         return output
-    }
-
-    remove_var(line: JQueryRow) {
-        const line_id = line.attr("id")
-        if (typeof line_id !== "undefined") {
-            this.app.datastore.unwatch_all(line_id)
-        }
-        line.remove()
     }
 
     element_transfer_fn(source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput {

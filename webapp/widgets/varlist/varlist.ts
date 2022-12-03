@@ -121,6 +121,8 @@ export class VarListWidget extends BaseWidget {
             resizable: true,
             resize_options: resizable_table_options,
             draggable: true,
+            allow_delete: false,
+            scrollable_element: this.container.parent(),
         }
 
         this.tree_table.scrutiny_treetable(tree_table_options)

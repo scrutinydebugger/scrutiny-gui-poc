@@ -24,7 +24,6 @@ import * as dom_testing_tools from "@tests/dom_testing_tools"
 import * as assert from "assert"
 import { get_load_fn, RootNode } from "./test_treetable_tools"
 import * as testing_tools from "@tests/testing_tools"
-import { test } from "mocha"
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
@@ -382,6 +381,15 @@ describe("scrutiny-treetable", function () {
 
     describe("Node manipulation", function () {
         it("Delete node", function () {
+            let deleted_callback_count = 0
+            let deleted_rows: string[] = []
+            init_table_with_options({
+                pre_delete_callback: function (tr: JQueryRow) {
+                    deleted_callback_count++
+                    deleted_rows.push(tr.attr("stt-id") as string)
+                },
+            })
+
             let change_event_count = 0
 
             table.on("stt.size-changed", function () {
@@ -392,10 +400,13 @@ describe("scrutiny-treetable", function () {
             change_event_count = 0
             assert.equal(table.tt("get_nodes", "node2.3.2").length, 1, "Node 2.3.2 exists")
             table.tt("delete_node", "node2.3.2")
+            testing_tools.assert_list_equal_unordered(deleted_rows, ["node2.3.2"])
+
             let children = table.tt("get_children", "node2.3")
             testing_tools.assert_list_equal_unordered(get_row_ids(children), ["node2.3.1", "node2.3.3"], "Children deleted")
             assert.equal(tbody.find("tr").length, 15, "Total number of row is reduced by 1")
             assert.equal(change_event_count, 1, "Size changed event triggered")
+            assert.equal(deleted_callback_count, 1, "Deleted event triggered 1x")
 
             assert.equal(table.tt("get_node_nesting_level", "node2.3"), 1, "Nesting level of node2.3 is unchanged")
             assert.equal(table.tt("get_node_nesting_level", "node2.3.1"), 2, "Nesting level of node2.3.1 is unchanged")
@@ -406,8 +417,22 @@ describe("scrutiny-treetable", function () {
             }, "Node 2.3.2 correctly deleted")
 
             change_event_count = 0
+            deleted_callback_count = 0
+            deleted_rows = []
             table.tt("delete_node", "root1")
             assert.equal(tbody.find("tr").length, 7, "Whole tree under root1 is deleted") // 16 - 1 - 8
+
+            assert.equal(deleted_callback_count, 8, "Deleted event triggered 8x")
+            testing_tools.assert_list_equal_unordered(deleted_rows, [
+                "root1",
+                "node1.1",
+                "node1.2",
+                "node1.3",
+                "node1.4",
+                "node1.3.1",
+                "node1.3.2",
+                "node1.3.3",
+            ])
 
             assert.throws(function () {
                 table.tt("get_nodes", "node1.2")
