@@ -295,9 +295,10 @@ export class WatchWidget extends BaseWidget {
         const live_edited_cells = $(`.${CLASS_LIVE_EDIT}`) as JQueryCell
         live_edited_cells.each(function () {
             const cell = $(this)
+            cell.removeClass(CLASS_LIVE_EDIT)
             const content = cell.find(`.${CLASS_CELL_CONTENT}`)
-            content.html()
-            content.text(cell.attr(ATTR_LIVE_EDIT_CANCEL_VAL))
+            const last_val = cell.attr(ATTR_LIVE_EDIT_CANCEL_VAL)
+            content.html(`<span>${last_val}</span>`)
         })
     }
 
@@ -307,11 +308,12 @@ export class WatchWidget extends BaseWidget {
         if (typeof val !== "undefined") {
             span.text(val)
         }
-        td.find(`div.${CLASS_CELL_CONTENT}`).html(span[0])
+        const cell_content = td.find(`div.${CLASS_CELL_CONTENT}`)
+        cell_content.html(span[0])
         td.removeClass(CLASS_LIVE_EDIT)
         td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
 
-        td.on("dblclick", function () {
+        cell_content.on("dblclick", function () {
             that.start_live_edit(td, complete_callback)
         })
     }
