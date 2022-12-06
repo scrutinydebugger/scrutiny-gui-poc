@@ -8,7 +8,7 @@
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { ServerStatus, DeviceStatus } from "./global_definitions"
-import * as $ from "jquery"
+import { default as $ } from "@jquery"
 import { DeviceInformation, ScrutinyFirmwareDescription } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
@@ -54,7 +54,7 @@ export class UI {
      */
     init(): void {
         this.widget_layout.init()
-        let that = this
+        const that = this
         $(window).on("resize", function () {
             that.resize()
         })
@@ -64,7 +64,7 @@ export class UI {
             $("#modal-container").hide()
         })
 
-        $(document).on("keyup", function (e) {
+        $(document).on("keyup", function (e: JQuery.KeyUpEvent) {
             if (e.key == "Escape") {
                 $("#modal-container").hide()
                 $(".tooltip").hide()
@@ -270,7 +270,7 @@ export class UI {
                 if (this.device_info["readonly_memory_regions"].length == 0) {
                     readonly_memory_regions_content = "None"
                 } else {
-                    readonly_memory_regions_content = $("<ul></ul>")
+                    readonly_memory_regions_content = $("<ul></ul>") as JQuery
                     for (let i = 0; i < this.device_info["readonly_memory_regions"].length; i++) {
                         const start = this.device_info["readonly_memory_regions"][i]["start"]
                         const end = this.device_info["readonly_memory_regions"][i]["end"]
@@ -292,7 +292,7 @@ export class UI {
                 if (this.device_info["forbidden_memory_regions"].length == 0) {
                     forbidden_memory_regions_content = "None"
                 } else {
-                    forbidden_memory_regions_content = $("<ul></ul>")
+                    forbidden_memory_regions_content = $("<ul></ul>") as JQuery
                     for (let i = 0; i < this.device_info["forbidden_memory_regions"].length; i++) {
                         const start = this.device_info["forbidden_memory_regions"][i]["start"]
                         const end = this.device_info["forbidden_memory_regions"][i]["end"]
@@ -332,13 +332,13 @@ export class UI {
                     : forbidden_memory_regions_content[0]
             )
 
-            $("#modal-content [show-tooltip]").on("mouseover", function (e) {
-                const tooltip_id = $(this).attr("show-tooltip") as string
+            $("#modal-content [show-tooltip]").on("mouseover", function (ev: JQuery.MouseOverEvent) {
+                const tooltip_id = $(ev.target).attr("show-tooltip") as string
                 $(tooltip_id).show()
             })
 
-            $("#modal-content [show-tooltip]").on("mouseleave", function (e) {
-                const tooltip_id = $(this).attr("show-tooltip") as string
+            $("#modal-content [show-tooltip]").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
+                const tooltip_id = $(ev.target).attr("show-tooltip") as string
                 $(tooltip_id).hide()
             })
         }
@@ -357,22 +357,25 @@ export class UI {
             // Adds a callback to create the instance of the widget
             that.widget_layout.registerComponent(widget_class.widget_name(), function (container: any, state: any) {
                 instance_id++
-                const widget = new widget_class(container.getElement() as HTMLElement, app, instance_id)
+                const scrutiny_widget_container = $("<div>").addClass("scrutiny-widget-container") as JQuery<HTMLDivElement>
+                const golder_layout_container = $(container.getElement()).append(scrutiny_widget_container)
+                golder_layout_container.css("overflow", "auto")
+                const widget = new widget_class(scrutiny_widget_container, app, instance_id)
                 widget.initialize()
                 return widget
             })
         })()
 
         // Add menu item for drag and drop
-        let div = $("<div></div>")
+        const div = $("<div></div>")
         div.addClass("widget_draggable_item")
 
-        let img = $("<img/>")
+        const img = $("<img/>")
         img.attr("src", widget_class.icon_path())
         img.attr("width", "64px")
         img.attr("height", "48px")
 
-        let label = $("<span></span>")
+        const label = $("<span></span>")
         label.addClass("widget_draggable_label")
         label.text(widget_class.display_name())
 
@@ -382,7 +385,7 @@ export class UI {
         $("#sidemenu").append(div)
         $("#sidemenu").append($('<div class="horizontal_separator"></div>'))
 
-        let newItemConfig = {
+        const newItemConfig = {
             title: widget_class.display_name(),
             type: "component",
             componentName: widget_class.widget_name(),
@@ -440,7 +443,7 @@ export class UI {
             $("#device_status_label").text(status_label_text)
         }
 
-        let img_elem = $("#device_status .indicator").first()
+        const img_elem = $("#device_status .indicator").first()
 
         if (img_elem.attr("src") != indicator_img) {
             img_elem.attr("src", indicator_img)

@@ -6,7 +6,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { Tree } from "../webapp/tree"
+import { Tree } from "@src/tree"
 import * as assert from "assert"
 import { assert_list_equal_unordered } from "./testing_tools"
 
@@ -23,5 +23,11 @@ describe("Tree", function () {
         assert.equal(tree.count(), 2)
         assert_list_equal_unordered(tree.get_all_paths(), ["/a/b/c", "/a/b/d/x"])
         assert_list_equal_unordered(tree.get_all_obj(), [obj1, obj2])
+    })
+
+    it("Path manipulation", function () {
+        let tree = new Tree()
+        assert.equal("a/b/c", tree.join_path("a", "b", "c"))
+        assert.equal("/a/b/c", tree.join_path("/a//", "/b/", "/c/"))
     })
 })

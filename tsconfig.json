@@ -7,9 +7,16 @@
         "sourceMap": true,
         "rootDir": "./",
         "downlevelIteration": true,
-        "strict":true
-    },
-    "include": ["webapp/**/*"],
-    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"]
-  
+        "strict":true,
+        "baseUrl": "./",
+        "paths":{
+            "@jquery" : ["externals/prod/jquery"],
+            "@src/*" : ["webapp/*"],
+            "@tests/*" : ["tests/*"],
+            "@scrutiny-treetable" : ["webapp/components/scrutiny-treetable/scrutiny-treetable"],
+            "@scrutiny-resizable-table" : ["webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"],
+        },
+    },   
+    "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts", "tests/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"],
 }

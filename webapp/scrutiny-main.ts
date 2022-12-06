@@ -14,13 +14,6 @@ import { BaseWidget } from "./base_widget"
 import { VarListWidget } from "./widgets/varlist/varlist"
 import { WatchWidget } from "./widgets/watch/watch"
 
-import * as $ from "jquery"
-import { scrutiny_treetable } from "./components/scrutiny-treetable/scrutiny-treetable"
-import { scrutiny_resizable_table } from "./components/scrutiny-resizable-table/scrutiny-resizable-table"
-
-$.extend($.fn, { scrutiny_treetable })
-$.extend($.fn, { scrutiny_resizable_table })
-
 var default_config: AppConfig = {
     server: {
         host: "localhost",

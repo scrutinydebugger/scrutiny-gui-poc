@@ -1,21 +1,17 @@
 {
   "type": "module",
-  "imports": {
-    "#appjs/*": {
-      "default": "./dist/js/*"
-    },
-    "#tests/*": {
-      "default": "./dist/tests/*"
-    }
-  },
+  "imports": {},
   "devDependencies": {
     "@types/jquery": "^3.5.14",
+    "@types/jsdom": "^20.0.1",
     "@types/mocha": "^10.0.0",
     "assert": "^2.0.0",
     "chai": "^4.3.7",
     "copy-webpack-plugin": "^11.0.0",
-    "git-revision-webpack-plugin": "^5.0.0",
     "eslint": "^8.25.0",
+    "git-revision-webpack-plugin": "^5.0.0",
+    "jquery": "^3.6.1",
+    "jsdom": "^20.0.3",
     "mocha": "^10.1.0",
     "prettier": "2.7.1",
     "source-map-loader": "^4.0.1",
@@ -30,12 +26,15 @@
     "build": "webpack",
     "dist": "webpack",
     "dev": "webpack --watch",
-    "test": "webpack --config webpack-test.config.js && mocha dist/js/scrutiny-test.js"
+    "test": "webpack --config webpack-test.config.js && mocha dist/js/scrutiny-test.cjs"
   },
   "dependencies": {
     "assert": "^2.0.0",
     "glob": "^8.0.3",
-    "mocha-loader": "^5.1.5"
+    "mocha-loader": "^5.1.5",
+    "module-alias": "^2.2.2",
+    "source-map-support": "^0.5.21",
+    "webpack-node-externals": "^3.0.0"
   },
   "overrides": {
     "mocha-loader": {

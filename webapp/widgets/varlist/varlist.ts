@@ -7,10 +7,51 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, AllDatastoreEntryTypes } from "../../datastore"
-import { BaseWidget } from "../../base_widget"
-import { App } from "../../app"
-import * as $ from "jquery"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
+import { BaseWidget } from "@src/base_widget"
+import { App } from "@src/app"
+import * as logging from "@src/logging"
+import { default as $ } from "@jquery"
+
+import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
+import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+import { AllDatastoreEntryTypes, Datastore } from "../../datastore"
+
+$.extend($.fn, { scrutiny_treetable })
+$.extend($.fn, { scrutiny_resizable_table })
+
+interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
+    scrutiny_treetable: Function
+    scrutiny_resizable_table: Function
+}
+
+type JQueryRow = JQuery<HTMLTableRowElement>
+
+const ATTR_DISPLAY_PATH = "display_path"
+const ATTR_ENTRY_TYPE = "entry_type"
+
+const CLASS_TYPE_COL = "type_col"
+const CLASS_NAME_COL = "name_col"
+const CLASS_ENTRY_NODE = "entry_node"
+
+interface RootNodeDesc {
+    id: string
+    label: string
+}
+
+const ROOT_NODE_DESC = {} as Record<DatastoreEntryType, RootNodeDesc>
+ROOT_NODE_DESC[DatastoreEntryType.Var] = {
+    id: "root_var",
+    label: "Var",
+}
+ROOT_NODE_DESC[DatastoreEntryType.Alias] = {
+    id: "root_alias",
+    label: "Alias",
+}
+ROOT_NODE_DESC[DatastoreEntryType.RPV] = {
+    id: "root_rpv",
+    label: "RPV",
+}
 
 export class VarListWidget extends BaseWidget {
     /** The container in which to put data. That's our widget Canvas in the UI */
@@ -20,11 +61,15 @@ export class VarListWidget extends BaseWidget {
     /** The instance ID of this widget. */
     instance_id: number
     /** The name attributed the to the tree used to compute a unique HTML ID */
-    treename: string
+    tree_name: string
     /** A map mapping element display path with a unique numeric ID within this tree*/
     id_map: Record<string, number>
     /** Counter to generate the next tree ID */
     next_tree_id: number
+
+    tree_table: ScrutinyTreeTable
+
+    logger: logging.Logger
 
     /**
      *
@@ -32,15 +77,19 @@ export class VarListWidget extends BaseWidget {
      * @param app The Scrutiny App instance
      * @param instance_id A unique instance number for this widget
      */
-    constructor(container: HTMLElement, app: App, instance_id: number) {
+    constructor(container: JQuery<HTMLDivElement>, app: App, instance_id: number) {
         super(container, app, instance_id)
         this.container = $(container)
         this.app = app
         this.instance_id = instance_id
 
-        this.treename = ""
+        this.tree_name = ""
         this.id_map = {}
         this.next_tree_id = 0
+        // @ts-ignore
+        this.tree_table = null
+
+        this.logger = logging.getLogger("varlist" + instance_id)
     }
 
     /**
@@ -48,7 +97,7 @@ export class VarListWidget extends BaseWidget {
      */
     initialize(): void {
         const that = this
-        this.treename = "varlist_tree_" + this.instance_id
+        this.tree_name = "varlist_tree_" + this.instance_id
         this.id_map = {}
         this.next_tree_id = 0
 
@@ -58,31 +107,34 @@ export class VarListWidget extends BaseWidget {
         }
         this.container.html(template_content[0])
 
+        this.tree_table = template_content.find("table.varlist-table").first() as ScrutinyTreeTable
+        this.tree_table.attr("id", this.tree_name)
+
+        const resizable_table_options: ResizableTableOptions = {
+            table_width_constrained: false,
+        }
+
+        const tree_table_options: TreeTableOptions = {
+            load_fn: function (...args) {
+                return that.table_load_fn(...args)
+            } as TreeTableLoadFunction,
+            resizable: true,
+            resize_options: resizable_table_options,
+            draggable: true,
+            allow_delete: false,
+            scrollable_element: this.container.parent(),
+        }
+
+        this.tree_table.scrutiny_treetable(tree_table_options)
+
         // Event handlers
-        $(document).on("scrutiny.datastore.ready", function (data) {
-            that.rebuild_tree() // Todo use data to rebuild only missing nodes
+        $(document).on("scrutiny.datastore.ready", function (data: any) {
+            that.rebuild_tree(data["entry_type"]) // Todo use data to rebuild only missing nodes
         })
 
-        $(document).on("scrutiny.datastore.clear", function (data) {
-            that.rebuild_tree() // Todo : USe data to clear only cleared data
+        $(document).on("scrutiny.datastore.clear", function (data: any) {
+            that.clear_tree(data["entry_type"]) // Todo : USe data to clear only cleared data
         })
-
-        if (this.app.datastore === null) {
-            throw "App not initialized properly"
-        }
-
-        // Setup
-        this.rebuild_tree()
-        // Todo rebuild by type
-        /*
-        for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
-            if (this.app.datastore.is_ready(AllDatastoreEntryTypes[i])) {
-                this.rebuild_tree(AllDatastoreEntryTypes[i])
-            } else {
-                // TODO complete this?
-            }
-        }
-        */
 
         setTimeout(function () {
             that.rebuild_tree()
@@ -94,85 +146,85 @@ export class VarListWidget extends BaseWidget {
      */
     destroy() {}
 
-    /**
-     * Generate a unique ID assignable to a watchable node
-     * @param display_path The path to the node
-     * @returns A unique name used to identify node globally in the web document
-     */
-    make_node_id(display_path: string): string {
-        if (!this.id_map.hasOwnProperty(display_path)) {
-            this.id_map[display_path] = this.next_tree_id
-            this.next_tree_id++
+    make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
+        td_type.text(entry.datatype)
+        tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
+        tr.addClass(CLASS_ENTRY_NODE)
+
+        const img = $("<div class='treeicon'/>")
+
+        if (entry.entry_type == DatastoreEntryType.Var) {
+            img.addClass("icon-var")
+        } else if (entry.entry_type == DatastoreEntryType.Alias) {
+            img.addClass("icon-alias")
+        } else if (entry.entry_type == DatastoreEntryType.RPV) {
+            img.addClass("icon-rpv")
         }
-        return this.treename + "_" + this.id_map[display_path]
+
+        td_name.prepend(img)
+        return tr
     }
 
-    /**
-     *
-     * @param parent Parent to read children from
-     * @param callback JsTree callback to inform of the result
-     */
-    fetch_jstree_subnodes(parent: any, callback: Function) {
-        // jstree root has id="#"
-        if (this.app.datastore === null) {
-            throw "Application not initialized properly"
-        }
-        let node_type_map: Record<DatastoreEntryType, string> = {} as Record<DatastoreEntryType, string>
-        node_type_map[DatastoreEntryType.Var] = "var"
-        node_type_map[DatastoreEntryType.Alias] = "alias"
-        node_type_map[DatastoreEntryType.RPV] = "rpv"
+    make_folder_row(subfolder: SubfolderDescription, entry_type: DatastoreEntryType): JQueryRow {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${subfolder.name}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
+        tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
+        tr.attr(ATTR_ENTRY_TYPE, entry_type)
 
+        const img = $("<div class='treeicon icon-folder' />")
+        td_name.prepend(img)
+        return tr
+    }
+
+    make_root_row(text: string, entry_type: DatastoreEntryType) {
+        const tr = $("<tr></tr>") as JQueryRow
+        const td_name = $(`<td class="${CLASS_NAME_COL}">${text}</td>`)
+        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
+        tr.append(td_name).append(td_type)
+        tr.attr(ATTR_DISPLAY_PATH, "/")
+        tr.attr(ATTR_ENTRY_TYPE, entry_type)
+
+        const img = $("<div class='treeicon icon-folder' />")
+        td_name.prepend(img)
+        return tr
+    }
+
+    table_load_fn(node_id: string, tr: JQueryRow, user_data?: any): ReturnType<TreeTableLoadFunction> {
         const that = this
-        if (parent.id == "#") {
-            let display_path = "/"
-            callback([
-                {
-                    text: "/",
-                    id: that.make_node_id(display_path),
-                    children: true,
-                    li_attr: {
-                        display_path: display_path,
-                    },
-                },
-            ])
-        } else {
-            let jstree_childrens: any[] = []
-
-            for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
-                let entry_type = AllDatastoreEntryTypes[i]
-                let children = this.app.datastore.get_children(entry_type, parent.li_attr.display_path)
-                // Add folders node
-                children["subfolders"].forEach(function (subfolder, i) {
-                    let separator = parent.li_attr.display_path === "/" ? "" : "/"
-                    let display_path = parent.li_attr.display_path + separator + subfolder.name
-                    jstree_childrens.push({
-                        text: subfolder.name,
-                        children: subfolder.has_children, // true if it has children
-                        id: that.make_node_id(display_path),
-                        li_attr: {
-                            display_path: display_path,
-                        },
-                    })
-                })
-
-                // Entries are organized by entry type
-                children["entries"][entry_type].forEach(function (entry, i) {
-                    jstree_childrens.push({
-                        text: entry.default_name,
-                        id: that.make_node_id(entry.display_path),
-                        li_attr: {
-                            display_path: entry.display_path,
-                            type: entry.entry_type,
-                        },
-                        type: node_type_map[entry_type],
-                    })
-                })
-            }
-
-            // Add entries node
-
-            callback(jstree_childrens) // This callback adds the subnodes
+        let output = [] as ReturnType<TreeTableLoadFunction>
+        const display_path = tr.attr(ATTR_DISPLAY_PATH)
+        if (typeof display_path == "undefined") {
+            throw "Row without display_path"
         }
+
+        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+        if (typeof entry_type == "undefined") {
+            throw "Row without entry_type"
+        }
+
+        const children = this.app.datastore.get_children(entry_type, display_path)
+
+        children["subfolders"].forEach(function (subfolder, i) {
+            output.push({
+                tr: that.make_folder_row(subfolder, entry_type),
+            })
+        })
+
+        children["entries"][entry_type].forEach(function (entry, i) {
+            output.push({
+                tr: that.make_entry_row(entry),
+                no_children: true,
+            })
+        })
+
+        return output
     }
 
     /**
@@ -186,48 +238,37 @@ export class VarListWidget extends BaseWidget {
     /**
      * Rebuild the tree. Called on datastore ready event
      */
-    rebuild_tree() {
-        this.clear_tree()
+    rebuild_tree(entry_type?: DatastoreEntryType) {
+        let entry_type_list: DatastoreEntryType[] = []
+        if (typeof entry_type === "undefined") {
+            entry_type_list = AllDatastoreEntryTypes
+        } else {
+            entry_type_list = [entry_type]
+        }
 
-        const that = this
-        //@ts-ignore
-        let thetree = $("<div class='varlist-tree'></div>").jstree({
-            plugins: ["dnd", "types"], // Drag and drop
-            core: {
-                //@ts-ignore
-                data: function (obj, cb) {
-                    that.fetch_jstree_subnodes(obj, cb)
-                },
-                animation: 75,
-                themes: {
-                    variant: "small",
-                },
-            },
-            types: {
-                alias: {
-                    icon: "assets/img/alias-16x16.png",
-                },
-                var: {
-                    icon: "assets/img/var-16x16.png",
-                },
-                rpv: {
-                    icon: "assets/img/rpv-16x16.png",
-                },
-            },
-        })
-
-        // Open root on load complete.
-        let root_node_id = this.make_node_id("/")
-        thetree.bind("loaded.jstree", function () {
-            thetree.jstree().open_node(root_node_id)
-        })
-
-        this.get_tree_container().append(thetree)
+        for (let i = 0; i < entry_type_list.length; i++) {
+            this.tree_table.scrutiny_treetable(
+                "add_root_node",
+                ROOT_NODE_DESC[entry_type_list[i]].id,
+                this.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
+            )
+        }
     }
 
     // Erase the tree. Called on datastore.clear event
-    clear_tree() {
-        this.get_tree_container().html("")
+    clear_tree(entry_type?: DatastoreEntryType) {
+        let entry_type_list: DatastoreEntryType[] = []
+        if (typeof entry_type === "undefined") {
+            entry_type_list = AllDatastoreEntryTypes
+        } else {
+            entry_type_list = [entry_type]
+        }
+
+        for (let i = 0; i < entry_type_list.length; i++) {
+            if (this.tree_table.scrutiny_treetable("node_exists", ROOT_NODE_DESC[entry_type_list[i]].id)) {
+                this.tree_table.scrutiny_treetable("delete_node", ROOT_NODE_DESC[entry_type_list[i]].id)
+            }
+        }
     }
 
     static widget_name() {
@@ -242,7 +283,7 @@ export class VarListWidget extends BaseWidget {
     }
 
     static css_list() {
-        return ["varlist.css"]
+        return ["varlist.css", "treetable-theme.css", "resizable-table-theme.css"]
     }
 
     static templates() {

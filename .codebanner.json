@@ -78,6 +78,15 @@
         },
         "tests/test_tree.test.ts": {
             "docstring": "Unit tests for the Tree storage class"
+        },
+        "tests/dom_testing_tools.ts": {
+            "docstring": "Some testing tools dedicated to DOM handling"
+        },
+        "tests/components/scrutiny-treetable/test_treetable_tools.ts": {
+            "docstring": "Some tools that provides helpers for quick testing of the tree table plugin"
+        },
+        "tests/components/scrutiny-treetable/test_treetable.test.ts": {
+            "docstring": "Test suite for the tree table plugin"
         }
     }
 }

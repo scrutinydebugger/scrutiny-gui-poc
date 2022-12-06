@@ -12,7 +12,7 @@ import { UI } from "./ui"
 import * as logging from "./logging"
 import { BaseWidget } from "./base_widget"
 
-import * as $ from "jquery"
+import { default as $ } from "@jquery"
 
 export interface AppConfig {
     server: {
@@ -127,7 +127,7 @@ export class App {
      */
     on_event(name: string, callback: (data: any) => void) {
         const that = this
-        $(document).on(name, function (data) {
+        $(document).on(name, function (data: any) {
             that.event_logger.debug("Running event callback: " + name)
             callback(data)
         })
@@ -198,8 +198,8 @@ export class App {
         // Append the template node to the DOM and register a promise for the init stage when
         // the template is done loading through Ajax.
         const that = this
-        let promise = new Promise(function (resolve: (value?: unknown) => void, reject: (reason?: any) => void) {
-            let template = $("<template id='" + template_id + "'></template>")
+        const promise = new Promise(function (resolve: (value?: unknown) => void, reject: (reason?: any) => void) {
+            const template = $("<template id='" + template_id + "'></template>") as JQuery
             $("#template_section").append(template)
             template.load(template_file, "", function (response, status, xhr) {
                 if (status == "success") {
@@ -224,21 +224,21 @@ export class App {
         // This is done once at initialization, not for each instance.
 
         // Load all CSS required by the widget
-        let css_list = widget_class.css_list() // This is a static method
-        let file_prefix = "widgets/" + widget_class.widget_name() + "/"
+        const css_list = widget_class.css_list() // This is a static method
+        const file_prefix = "widgets/" + widget_class.widget_name() + "/"
         for (let i = 0; i < css_list.length; i++) {
-            let path = file_prefix + css_list[i]
+            const path = file_prefix + css_list[i]
             $("head").append('<link rel="stylesheet" href="' + path + '" type="text/css" />')
         }
 
         // Load all templates required by the widget.
-        let templates = widget_class.templates() // This is a static method
+        const templates = widget_class.templates() // This is a static method
         const keys = Object.keys(templates)
         for (let i = 0; i < keys.length; i++) {
-            let template_name = keys[i]
+            const template_name = keys[i]
             let template_file = templates[keys[i]]
             template_file = file_prefix + template_file
-            let template_id = this.get_template_id(widget_class.widget_name(), template_name)
+            const template_id = this.get_template_id(widget_class.widget_name(), template_name)
             this.load_template(template_id, template_file) // Launch ajax and append template to DOM
         }
     }
@@ -253,6 +253,9 @@ export class App {
 
         this.server_conn = new ServerConnection(this, this.ui, this.datastore)
         this.server_conn.set_endpoint(this.config.server.host, this.config.server.port)
+
+        this.event_logger.disable()
+        this.server_conn.comm_logger.disable()
 
         const that = this
         this.on_event("scrutiny.ready", function () {

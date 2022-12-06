@@ -45,6 +45,8 @@ export class DatastoreEntry {
     /** The numerical value of the entry */
     value: number | null
 
+    
+
     /** A list of callback classified by watchers. These callback are called when the value changes. */
     callbacks: {
         [index: string]: ValueChangeCallback[]
@@ -144,12 +146,13 @@ type DatastoreEntryCacheType = Record<
 
 export interface SubfolderDescription {
     name: string
+    display_path: string
     has_children: boolean
 }
 
 type DatastoreTreesType = Record<DatastoreEntryType, Tree<DatastoreEntryWithName>>
 type DatastoreReadyType = Record<DatastoreEntryType, boolean>
-interface DatastoreEntryWithName extends DatastoreEntry {
+export interface DatastoreEntryWithName extends DatastoreEntry {
     default_name?: string
 }
 
@@ -489,9 +492,11 @@ export class Datastore {
         }
 
         folder_names.forEach(function (folder_name, i) {
+            const folder = folders[folder_name]
             children["subfolders"].push({
                 name: folder_name,
-                has_children: folders[folder_name]["has_objects"] || folders[folder_name]["has_subtrees"],
+                display_path: folder.display_path,
+                has_children: folder.has_objects || folder.has_subtrees,
             })
         })
 

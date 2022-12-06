@@ -32,7 +32,11 @@ table.stt-table tr.stt-insert-above td{
     border-top:1px solid rgb(252, 72, 243);
 }
 
-table.stt-table tr.stt-highligted{
+table.stt-table tr.stt-highlighted{
+    background-color: rgb(124, 199, 250);
+}
+
+table.stt-table tr.stt-selected{
     background-color: rgb(124, 199, 250);
 }
 

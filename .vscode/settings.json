@@ -6,37 +6,10 @@
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true
     },
-    "[javascript]":{
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "editor.formatOnSave": true
-    },
-    "cSpell.words": [
-        "baudrate",
-        "cfloat",
-        "COMMITHASH",
-        "databits",
-        "DATAKEY",
-        "datalog",
-        "datastruct",
-        "Debuggable",
-        "divs",
-        "dragmove",
-        "dragndrop",
-        "enumdef",
-        "funcname",
-        "goldenlayout",
-        "jstree",
-        "nochildren",
-        "portname",
-        "reqid",
-        "Roadmap",
-        "scrutinydebugger",
-        "serverid",
-        "sidemenu",
-        "stopbits",
-        "treetable",
-        "userdata",
-        "varlist",
-        "watchables"
+    "eslint.workingDirectories": [
+        {
+            "mode": "auto"
+        }
     ]
+    
 }
