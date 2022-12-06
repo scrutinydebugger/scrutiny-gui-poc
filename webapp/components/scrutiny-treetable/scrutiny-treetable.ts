@@ -588,6 +588,17 @@ function node_exists($table: JQueryTable, node_id: string): boolean {
     }
 }
 
+/**
+ * Select a node in the table with visual cursor
+ * @param $table The JQuery Table
+ * @param node The node to select
+ */
+function select_node($table: JQueryTable, node: string | JQueryRow) {
+    const tr = _get_row_from_node_or_row($table, node)
+    $table.find(`tr.${CLASS_SELECTED}`).removeClass(CLASS_SELECTED)
+    tr.addClass(CLASS_SELECTED)
+}
+
 /***  Private functions *** */
 
 /**
@@ -766,7 +777,7 @@ function _get_visible_rows($table: JQueryTable, parent: JQueryRow | null, filter
     if (parent == null) {
         rows = $table.find(`tbody tr:not(.${CLASS_HIDDEN})`) as JQueryRow
     } else {
-        rows = _select_all_loaded_descendant($table, parent).filter(`tr:not(.${CLASS_HIDDEN})`)
+        rows = _get_all_loaded_descendant($table, parent).filter(`tr:not(.${CLASS_HIDDEN})`)
     }
 
     if (typeof filter !== "undefined") {
@@ -788,7 +799,7 @@ function _get_hidden_rows($table: JQueryTable, parent: JQueryRow | null, filter?
     if (parent == null) {
         rows = $table.find(`tbody tr.${CLASS_HIDDEN}`) as JQueryRow
     } else {
-        rows = _select_all_loaded_descendant($table, parent).filter(`tr.${CLASS_HIDDEN}`)
+        rows = _get_all_loaded_descendant($table, parent).filter(`tr.${CLASS_HIDDEN}`)
     }
 
     if (typeof filter !== "undefined") {
@@ -1088,6 +1099,15 @@ function _make_expandable($table: JQueryTable, tr: JQueryRow): void {
             _toggle_row($table, tr)
             e.stopPropagation()
         })
+
+        // Prevents conflicts with user event handlers on the cell or row.
+        header_block.on("dblclick", function (e) {
+            e.stopPropagation()
+        })
+
+        header_block.on("click", function (e) {
+            e.stopPropagation()
+        })
     }
 }
 
@@ -1343,14 +1363,14 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     // Selection logic
     tr.on("mousedown", function (e) {
         const already_selected = $table.find(`tr.${CLASS_SELECTED}`)
-        let multiselect = false
+        let multi_select = false
         if (e.shiftKey) {
             _make_text_unselectable($table)
             setTimeout(function () {
                 _make_text_selectable($table)
             }, 0)
             if (already_selected.length == 1) {
-                multiselect = true
+                multi_select = true
 
                 if (tr.index() < already_selected.index()) {
                     tr.nextUntil(already_selected).addClass(CLASS_SELECTED)
@@ -1360,8 +1380,12 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                     tr.addClass(CLASS_SELECTED)
                 }
             }
+        } else if (e.ctrlKey) {
+            tr.addClass(CLASS_SELECTED)
+            multi_select = true
         }
-        if (!multiselect) {
+
+        if (!multi_select) {
             $table.find(`tr.${CLASS_SELECTED}`).removeClass(CLASS_SELECTED)
             tr.addClass(CLASS_SELECTED)
         }
@@ -1393,7 +1417,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             e.originalEvent.dataTransfer.setData("scrutiny_tree_table.drag_data", JSON.stringify(gbl_drag_data))
 
             if (options.droppable) {
-                _select_all_loaded_descendant($table, tr).addClass(CLASS_DISABLED)
+                _get_all_loaded_descendant($table, tr).addClass(CLASS_DISABLED)
             }
         })
 
@@ -1454,7 +1478,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             if (dnd_result.new_parent_id != null) {
                 dest_table.find(`tr.${CLASS_HIGHLIGHTED}`).removeClass(CLASS_HIGHLIGHTED)
                 const new_parent_tr = _find_row(dest_table, dnd_result.new_parent_id)
-                const descendant = _select_all_loaded_descendant(dest_table, new_parent_tr)
+                const descendant = _get_all_loaded_descendant(dest_table, new_parent_tr)
                 descendant.addClass(CLASS_HIGHLIGHTED)
             } else {
                 dest_table.find("tr").removeClass(CLASS_HIGHLIGHTED)
@@ -1835,7 +1859,7 @@ function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
 function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | null, after_node_id: string | null): JQueryRow {
     let tr_id = _get_node_id(tr)
     //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
-    const tree_to_move = _select_all_loaded_descendant($table, tr)
+    const tree_to_move = _get_all_loaded_descendant($table, tr)
     const tr_original_parent = _get_parent($table, tr)
     let new_nesting_level: number | null = null
     if (new_parent_id == null) {
@@ -1850,7 +1874,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                let after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
+                let after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -1888,7 +1912,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                const after_tr_last_descendant = _select_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
+                const after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -1970,7 +1994,7 @@ function _transfer_row(
     } else if (transfer_policy.scope == TransferScope.VISIBLE_ONLY) {
         lines_to_moves = _get_visible_rows(source_table, tr) as JQueryRow
     } else if (transfer_policy.scope == TransferScope.ALL) {
-        lines_to_moves = _load_and_select_all_descendant(source_table, tr) as JQueryRow
+        lines_to_moves = _load_and_get_all_descendant(source_table, tr) as JQueryRow
     } else {
         throw "Invalid transfer policy returned by transfer_policy_fn"
     }
@@ -2099,8 +2123,8 @@ function _make_bare_node_copy(tr: JQueryRow): JQueryRow {
  * @param tr The JQuery row parent of the wanted descendants
  * @returns The list of descendants, parent row included
  */
-function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow): JQueryRow {
-    const result = _select_all_loaded_descendant_recursive($table, tr)
+function _get_all_loaded_descendant($table: JQueryTable, tr: JQueryRow): JQueryRow {
+    const result = _get_all_loaded_descendant_recursive($table, tr)
     if (result == null) {
         throw "Did not get descendant results" // for static analyzer
     }
@@ -2114,7 +2138,7 @@ function _select_all_loaded_descendant($table: JQueryTable, tr: JQueryRow): JQue
  * @param arr An optional array for recursive patten. Internally set, should be unset by the user
  * @returns
  */
-function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | null {
+function _get_all_loaded_descendant_recursive($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | null {
     /* Select a node and all its descendant, only the loaded ones */
     let return_val = false
     if (typeof arr === "undefined") {
@@ -2126,7 +2150,7 @@ function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQuery
         arr.push(tr[0])
         let children = _get_children($table, tr)
         children.each(function () {
-            _select_all_loaded_descendant_recursive($table, $(this) as JQueryRow, arr)
+            _get_all_loaded_descendant_recursive($table, $(this) as JQueryRow, arr)
         })
     }
 
@@ -2144,7 +2168,7 @@ function _select_all_loaded_descendant_recursive($table: JQueryTable, tr: JQuery
  * @param arr An optional array for recursive patten. Internally set, should be unset by the user
  * @returns List of descendants under the given parent, including the parent itself
  */
-function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | void {
+function _load_and_get_all_descendant($table: JQueryTable, tr: JQueryRow, arr?: HTMLTableRowElement[]): JQueryRow | void {
     let return_val = false
     if (typeof arr === "undefined") {
         arr = []
@@ -2154,7 +2178,7 @@ function _load_and_select_all_descendant($table: JQueryTable, tr: JQueryRow, arr
     _load_children($table, tr)
     let children = _get_children($table, tr)
     children.each(function () {
-        _load_and_select_all_descendant($table, $(this) as JQueryRow, arr)
+        _load_and_get_all_descendant($table, $(this) as JQueryRow, arr)
     })
 
     if (return_val) {
@@ -2242,53 +2266,43 @@ function _global_init_body() {
         const options = _get_options(focused_table)
 
         const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
-        const first_selected_row = selected_rows.first() as JQueryRow
+        const first_selected_row = selected_rows.first()
+        const not_first_selected_row = selected_rows.not(first_selected_row)
+        const last_selected_row = selected_rows.last()
         if (first_selected_row.length > 0) {
             if (e.key == "ArrowRight") {
+                not_first_selected_row.removeClass(CLASS_SELECTED)
                 _expand_row(focused_table, first_selected_row)
                 e.preventDefault()
             } else if (e.key == "ArrowLeft") {
+                not_first_selected_row.removeClass(CLASS_SELECTED)
                 _collapse_row(focused_table, first_selected_row)
                 e.preventDefault()
             } else if (e.key == "ArrowUp" || e.key == "ArrowDown") {
-                const row_height = first_selected_row.outerHeight()
-                let scroll_delta = 50
-                if (typeof row_height !== "undefined") {
-                    scroll_delta = row_height * 1
-                }
+                let newly_selected: JQueryRow | null = null
                 if (e.key == "ArrowUp") {
-                    const prev = first_selected_row.prevAll(`tr:not(.${CLASS_HIDDEN}):first`)
-                    if (prev.length > 0) {
-                        first_selected_row.removeClass(CLASS_SELECTED)
-                        prev.addClass(CLASS_SELECTED)
-
-                        if (options.scrollable_element !== null && options.scrollable_element.length == 1) {
-                            const bounding_element_rect = options.scrollable_element[0].getBoundingClientRect()
-                            const new_selected_rect = prev[0].getBoundingClientRect()
-                            if (new_selected_rect.y < bounding_element_rect.y) {
-                                const actual_scrolltop = options.scrollable_element.scrollTop()
-                                if (typeof actual_scrolltop !== "undefined") {
-                                    options.scrollable_element.scrollTop(actual_scrolltop - bounding_element_rect.y + new_selected_rect.y)
-                                }
-                            }
-                        }
-                    }
+                    newly_selected = first_selected_row.prevAll(`tr:not(.${CLASS_HIDDEN}):first`)
                 } else if (e.key == "ArrowDown") {
-                    const next = first_selected_row.nextAll(`tr:not(.${CLASS_HIDDEN}):first`)
-                    if (next.length > 0) {
-                        first_selected_row.removeClass(CLASS_SELECTED)
-                        next.addClass(CLASS_SELECTED)
+                    newly_selected = last_selected_row.nextAll(`tr:not(.${CLASS_HIDDEN}):first`)
+                }
 
-                        if (options.scrollable_element !== null && options.scrollable_element.length == 1) {
-                            const bounding_element_rect = options.scrollable_element[0].getBoundingClientRect()
-                            const new_selected_rect = next[0].getBoundingClientRect()
-                            if (new_selected_rect.bottom > bounding_element_rect.bottom) {
-                                const actual_scrolltop = options.scrollable_element.scrollTop()
-                                if (typeof actual_scrolltop !== "undefined") {
-                                    options.scrollable_element.scrollTop(
-                                        actual_scrolltop + new_selected_rect.bottom - bounding_element_rect.bottom
-                                    )
-                                }
+                if (newly_selected !== null && newly_selected.length > 0) {
+                    if (!e.shiftKey && newly_selected.length > 0) {
+                        selected_rows.not(newly_selected).removeClass(CLASS_SELECTED)
+                    }
+                    newly_selected.addClass(CLASS_SELECTED)
+
+                    if (options.scrollable_element !== null && options.scrollable_element.length == 1) {
+                        const bounding_element_rect = options.scrollable_element[0].getBoundingClientRect()
+                        const new_selected_rect = newly_selected[0].getBoundingClientRect()
+                        const actual_scrolltop = options.scrollable_element.scrollTop()
+                        if (typeof actual_scrolltop !== "undefined") {
+                            if (new_selected_rect.y < bounding_element_rect.y) {
+                                options.scrollable_element.scrollTop(actual_scrolltop - bounding_element_rect.y + new_selected_rect.y)
+                            } else if (new_selected_rect.bottom > bounding_element_rect.bottom) {
+                                options.scrollable_element.scrollTop(
+                                    actual_scrolltop + new_selected_rect.bottom - bounding_element_rect.bottom
+                                )
                             }
                         }
                     }
@@ -2299,7 +2313,7 @@ function _global_init_body() {
                 if (options.allow_delete) {
                     let nodes_to_be_deleted = $()
                     for (let i = 0; i < selected_rows.length; i++) {
-                        nodes_to_be_deleted = nodes_to_be_deleted.add(_select_all_loaded_descendant(focused_table, $(selected_rows[i])))
+                        nodes_to_be_deleted = nodes_to_be_deleted.add(_get_all_loaded_descendant(focused_table, $(selected_rows[i])))
                     }
                     const prev = nodes_to_be_deleted.first().prev(`tr:not(.${CLASS_HIDDEN})`)
                     const next = nodes_to_be_deleted.last().next(`tr:not(.${CLASS_HIDDEN})`)
@@ -2349,6 +2363,7 @@ const public_funcs: Record<string, Function> = {
     get_nodes: get_nodes,
     get_node_nesting_level: get_node_nesting_level,
     node_exists: node_exists,
+    select_node: select_node,
 }
 
 export function scrutiny_treetable(...args: any[]) {

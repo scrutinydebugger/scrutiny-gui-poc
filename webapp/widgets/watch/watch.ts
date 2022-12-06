@@ -12,6 +12,7 @@ import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import { DatastoreEntryType, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
 import * as logging from "@src/logging"
+import { trim } from "@src/tools"
 
 import {
     scrutiny_treetable,
@@ -22,7 +23,6 @@ import {
     TransferScope,
     get_drag_data_from_drop_event,
     TransferCompleteEventData,
-    SelectedRowKeydownCallback,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 
@@ -313,7 +313,7 @@ export class WatchWidget extends BaseWidget {
         td.removeClass(CLASS_LIVE_EDIT)
         td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
 
-        cell_content.on("dblclick", function () {
+        td.on("dblclick", function () {
             that.start_live_edit(td, complete_callback)
         })
     }
@@ -356,25 +356,39 @@ export class WatchWidget extends BaseWidget {
         }, 0)
     }
 
-    write_value(td: JQueryCell, val: string) {
+    write_value(td: JQueryCell, val: string): number | null {
         const tr = td.parent("tr") as unknown as JQueryRow
         const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
         const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
 
         if (typeof entry_type === "undefined" || typeof display_path === "undefined") {
-            return
+            return null
         }
         const entry = this.app.datastore.get_entry(entry_type, display_path)
-        const valnum = parseFloat(val) // TODO : Make this robust
-        const data = {
-            updates: [
-                {
-                    watchable: entry.server_id,
-                    value: valnum,
-                },
-            ],
+        let value_valid = true
+        let valnum = 0
+
+        val = trim(val.toLowerCase(), " ")
+        if (val === "true") {
+            valnum = 1
+        } else if (val === "false") {
+            valnum = 0
+        } else {
+            valnum = parseFloat(val)
+            if (isNaN(valnum)) {
+                value_valid = false
+            }
         }
-        this.app.server_conn.send_request("write_value", data)
+
+        if (!value_valid) {
+            return null
+        }
+
+        const data = {
+            updates: [{ watchable: entry.server_id, value: valnum }],
+        }
+        // todo : Handle feedback? Display something on bad value? (like a fading red glow)
+        return this.app.server_conn.send_request("write_value", data)
     }
 
     make_basic_row(): TableRowDetails {

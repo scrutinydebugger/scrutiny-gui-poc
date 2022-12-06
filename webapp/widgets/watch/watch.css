@@ -64,3 +64,9 @@
     padding:0;
     display:inline-block;
 }
+
+.watch-table input[type="text"] {
+    margin:0;
+    padding:0;
+    border:0;
+}
