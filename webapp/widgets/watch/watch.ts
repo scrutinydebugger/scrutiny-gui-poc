@@ -60,12 +60,12 @@ const CLASS_WATCHED = "watched"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
-        - Stop watching when tab is not visible 
+        - Stop watching when tab is not visible (on collapse : OK.  On tab hide : TODO)
         - Easy value edit           CHECK
-        - Multi selection
+        - Multi selection           CHECK
         - Property view (edition?)
         - Tree view                 CHECK
-        - Rename variables  CHECK
+        - Rename variables          CHECK   
         - resize table              CHECK
         - Display hex value
      */
@@ -172,25 +172,13 @@ export class WatchWidget extends BaseWidget {
 
         // Drop in the widget, but not on the table
         this.container.on("drop", function (e) {
-            const drag_data = get_drag_data_from_drop_event(e)
-            if (drag_data == null) {
-                return
-            }
-
-            e.stopPropagation()
-
-            const src_table = $(`#${drag_data.source_table_id}`) as JQueryTable
-            const dragged_row_id = drag_data.dragged_row_id
             let last_root_node = that.display_table.scrutiny_treetable("get_root_nodes").last()
             if (last_root_node.length == 0) {
                 last_root_node = null
             }
-            if (src_table.is(that.display_table)) {
-                that.display_table.scrutiny_treetable("move_node", dragged_row_id, null, last_root_node) // Put as root node at the end.
-            } else {
-                // Make a row transfer and put at the end as root node
-                that.display_table.scrutiny_treetable("transfer_node_from", src_table, dragged_row_id, null, last_root_node)
-            }
+
+            that.display_table.scrutiny_treetable("handle_drop_event", e, null, last_root_node)
+            e.stopPropagation()
         })
 
         // Collapse a folder and its descendant after its dropped in the widget
