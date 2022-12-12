@@ -384,9 +384,7 @@ export class ServerConnection {
      */
     stop(): void {
         this.enable_reconnect = false
-        if (this.socket !== null) {
-            this.socket.close()
-        }
+        this.close_socket()
 
         if (this.server_status == ServerStatus.Connected) {
             this.app.trigger_event("scrutiny.server.disconnected")
@@ -455,11 +453,7 @@ export class ServerConnection {
      */
     create_socket(): void {
         const that = this // Javascript is such a beautiful language
-
-        if (this.socket !== null) {
-            this.socket.close() // Do before reconnect_timeout_handle=null to avoid launching another reconnect
-            this.socket = null
-        }
+        this.close_socket()
 
         this.reconnect_timeout_handle = null
         this.socket = new WebSocket("ws://" + this.hostname + ":" + this.port)
@@ -480,12 +474,20 @@ export class ServerConnection {
             function () {
                 if (that.socket !== null) {
                     if (that.socket.readyState != that.socket.OPEN) {
-                        that.socket.close()
+                        that.close_socket()
                     }
                 }
             } as Function,
             this.connect_timeout
         )
+    }
+
+    close_socket() {
+        if (this.socket !== null) {
+            this.logger.debug("Destroying socket")
+            this.socket.close()
+            this.socket = null
+        }
     }
 
     /**
@@ -583,10 +585,7 @@ export class ServerConnection {
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
 
-        if (this.socket !== null) {
-            this.socket.close()
-            this.socket = null
-        }
+        this.close_socket()
 
         if (this.enable_reconnect) {
             this.try_reconnect(this.reconnect_interval)
