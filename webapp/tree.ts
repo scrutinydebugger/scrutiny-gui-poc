@@ -132,6 +132,25 @@ export class Tree<ObjType> {
         }
     }
 
+    path_valid(path: string): boolean {
+        let target = this.__class__.get_segments(path, false)
+        let actual_branch = this.datastruct
+        for (let i = 0; i < target.segments.length; i++) {
+            let segment = target.segments[i]
+            if (i < target.segments.length - 1) {
+                if (!actual_branch.subtrees.hasOwnProperty(segment)) {
+                    return false
+                }
+            } else {
+                if (!actual_branch.subtrees.hasOwnProperty(segment) && !actual_branch.objects.hasOwnProperty(segment)) {
+                    return false
+                }
+            }
+            actual_branch = actual_branch.subtrees[segment]
+        }
+        return true
+    }
+
     /**
      * Returns the object attached to the given path.
      * @param path The tree path to read from in the format /aaa/bbb/ccc

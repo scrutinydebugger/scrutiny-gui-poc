@@ -9,7 +9,6 @@
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
 import { default as $ } from "@jquery"
-import { makeArray } from "jquery"
 
 export interface LoadFunctionInterface {
     (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
@@ -1920,7 +1919,7 @@ function _delete_node($table: JQueryTable, tr: JQueryRow): void {
 }
 
 function _delete_node_recursive($table: JQueryTable, tr: JQueryRow, recurse_level: number, arr?: string[]): void {
-    if (tr.parents('table').length > 0) {
+    if (tr.parents("table").length > 0) {
         _get_children($table, tr).each(function () {
             _delete_node_recursive($table, $(this), recurse_level + 1, arr)
         })
@@ -2067,7 +2066,7 @@ function _transfer_row(
     new_parent?: JQueryRow | string | null,
     after_node?: JQueryRow | string | null
 ): TransferResult | null {
-    /*Transfer a node from a table to another one */
+    // TODO : Improve speed of this. Big transfer blocks the UI for a while
     const dest_options = _get_options(dest_table)
 
     if (dest_options.transfer_policy_fn == null) {

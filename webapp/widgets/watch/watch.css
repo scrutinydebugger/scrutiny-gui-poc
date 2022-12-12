@@ -27,9 +27,22 @@
     width: 14px;
 }
 
-.watch-table tr:hover {
+.watch-table tr:hover,
+.watch-table tr.unavailable:hover {
     background-color: #e0e0ff;
 }
+
+.watch-table tr.unavailable {
+    background-color: #eee;
+    color:#666;
+}
+
+/** The following element is to detect entries that are not being watched and visible. For debug purpose*/
+/**
+.watch-table tr:not(.unavailable):not(.watched).entry_node{
+    background-color: #ff7777;
+}
+*/
 
 .watch-table div.treeicon{
     background-repeat: no-repeat;

@@ -45,8 +45,6 @@ export class DatastoreEntry {
     /** The numerical value of the entry */
     value: number | null
 
-    
-
     /** A list of callback classified by watchers. These callback are called when the value changes. */
     callbacks: {
         [index: string]: ValueChangeCallback[]
@@ -324,18 +322,28 @@ export class Datastore {
     }
 
     /**
-     * Tells if a node identified by its display path exists in the datastore
+     * Tells if the given path point to an existing entry
      * @param entry_type The type of the entry
      * @param path The display path used for tree storage
      * @returns true if the entry exists
      */
-    node_exist(entry_type: DatastoreEntryType, path: string): boolean {
+    entry_exist(entry_type: DatastoreEntryType, path: string): boolean {
         try {
             this.trees[entry_type].get_obj(path)
             return true
         } catch (err) {
             return false
         }
+    }
+
+    /**
+     * Tells if the given path exists in the datastore, being a folder or an entry.
+     * @param entry_type The type of the entry
+     * @param path The display path used for tree storage
+     * @returns true if the path point to something that exist : folder or entry
+     */
+    path_valid(entry_type: DatastoreEntryType, path: string): boolean {
+        return this.trees[entry_type].path_valid(path)
     }
 
     /**
