@@ -248,17 +248,19 @@ export class UI {
             try {
                 supported_feature_map_content = $("<ul></ul>") as JQuery<HTMLUListElement>
                 supported_feature_map_content.append(
+                    $("<li>Memory Read : " + (this.device_info["supported_feature_map"]["memory_read"] ? "Yes" : "No") + " </li>")
+                )
+                supported_feature_map_content.append(
                     $("<li>Memory Write : " + (this.device_info["supported_feature_map"]["memory_write"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.append(
-                    $(
-                        "<li>Datalog acquisition: " +
-                            (this.device_info["supported_feature_map"]["datalog_acquire"] ? "Yes" : "No") +
-                            " </li>"
-                    )
+                    $("<li>Datalogging: " + (this.device_info["supported_feature_map"]["datalogging"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.append(
                     $("<li>User command: " + (this.device_info["supported_feature_map"]["user_command"] ? "Yes" : "No") + " </li>")
+                )
+                supported_feature_map_content.append(
+                    $("<li>64bits support: " + (this.device_info["supported_feature_map"]["_64bits"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.addClass("list-no-margin")
             } catch (err) {

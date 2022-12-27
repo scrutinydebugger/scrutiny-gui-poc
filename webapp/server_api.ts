@@ -117,9 +117,11 @@ export interface DeviceInformation {
     protocol_minor: string
 
     supported_feature_map: {
+        memory_read: boolean
         memory_write: boolean
-        datalog_acquire: boolean
+        datalogging: boolean
         user_command: boolean
+        _64bits: boolean
     }
 
     forbidden_memory_regions: MemoryBlock[]

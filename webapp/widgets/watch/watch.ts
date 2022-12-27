@@ -334,7 +334,7 @@ export class WatchWidget extends BaseWidget {
                 const entry = that.get_entry_from_row(tr)
                 if (entry != null) {
                     that.start_watching(entry, tr)
-                }
+                }   
             }
         })
     }
