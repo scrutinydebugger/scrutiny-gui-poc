@@ -1,0 +1,81 @@
+<div class='form-pane'>
+    <table>
+        <tbody>
+            <tr class="line-sample-rate">
+                <td><label for="sample_rate">Sampling Rate</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><select name="xaxis_type" disabled="disabled"></select></td>
+            </tr>
+
+            <tr class="line-decimation">
+                <td><label for="decimation">Decimation</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><input type="number" name="decimation" value="0" disabled="disabled"/></td>
+            </tr>
+
+            <tr class="line-probe-location">
+                <td><label for="probe_location">Trigger Position (%)</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><input type="text" name="probe_location" value="50" disabled="disabled"/></td>
+            </tr>
+
+            <tr class="line-xaxis-type">
+                <td><label for="xaxis_type">X-Axis Type</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><select name="xaxis_type" disabled="disabled"></select></td>
+            </tr>
+
+            <tr class="line-timeout">
+                <td><label for="timeout">Acquisition Timeout (s)</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><input type="text" name="timeout" value="0" disabled="disabled"/></td>
+            </tr>
+            
+            <tr colspan="3">
+                <td>Trigger</td>
+            </tr>
+
+            <tr class="line-trigger-type">
+                <td><span class="spacer"></span><label for="trigger_type">Trigger Type</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td>
+                    <select name="trigger_type" disabled="disabled">
+                        <option value="true">Always True (1)</option>
+                        <option value="eq">Equal (x1=x2)</option>
+                        <option value="neq">Not Equal (x1!=x2)</option>
+                        <option value="gt">Greater Than (x1>x2)</option>
+                        <option value="get">Greater or Equal Than (x1>=x2)</option>
+                        <option value="lt">Less Than (x1<x2)</option>
+                        <option value="let">Less or Equal Than (x1<=x2)</option>
+                        <option value="cmt">Change More Than (&plusmn;|dx1|>&plusmn;|x2|)</option>
+                        <option value="within">Is Within (|x1-x2|<|x3|) </option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr class="line-operand1" style="display:none;">
+                <td><span class="spacer"></span><label for="operand1">Operand 1 (x<sub>1</sub>)</label></td>
+                <td></td>
+                <td><input type="text" name="operand1" value="0" disabled="disabled"/></td>
+            </tr>
+
+            <tr class="line-operand2" style="display:none;">
+                <td><span class="spacer"></span><label for="operand2">Operand 2 (x<sub>2</sub>)</label></td>
+                <td></td>
+                <td><input type="text" name="operand2" value="0" disabled="disabled"/></td>
+            </tr>
+
+            <tr class="line-operand3" style="display:none;">
+                <td><span class="spacer"></span><label for="operand3">Operand 3 (x<sub>3</sub>)</label></td>
+                <td></td>
+                <td><input type="text" name="operand3" value="0" disabled="disabled"/></td>
+            </tr>
+
+            <tr class="line-trigger-hold-time">
+                <td><span class="spacer"></span><label for="trigger_hold_time">Hold Time (ms)</label></td>
+                <td><img src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'></td>
+                <td><input type="text" name="trigger_hold_time" value="0" disabled="disabled"/></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
