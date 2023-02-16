@@ -12,6 +12,7 @@ import { UI } from "./ui"
 import { Logger } from "./logging"
 import { Datastore, DatastoreEntryType, AllDatastoreEntryTypes } from "./datastore"
 import * as API from "./server_api"
+import * as assert from "assert"
 
 enum WatchableDownloadType {
     RPV = "rpv",
@@ -145,6 +146,8 @@ export class ServerConnection {
     server_status: ServerStatus
     /** The status of the device communication (Connected/connecting/disconnected) */
     device_status: DeviceStatus
+    /** The device datalogging capabilities (buffer size, sampling rates, etc). Null if datalogging is not supported */
+    datalogging_capabilities: API.DataloggingCapabilities | null
     /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
     loaded_sfd: API.ScrutinyFirmwareDescription | null
     /** List of information broadcasted by the device upon connection */
@@ -196,6 +199,7 @@ export class ServerConnection {
         this.device_status = DeviceStatus.NA
         this.loaded_sfd = null
         this.device_info = null
+        this.datalogging_capabilities = null
 
         this.enable_reconnect = true
         this.connect_timeout_handle = null
@@ -219,6 +223,13 @@ export class ServerConnection {
         this.register_api_callback("watchable_update", function (data: API.Message.S2C.WatchableUpdate) {
             that.receive_watchable_update(data)
         })
+
+        this.register_api_callback(
+            "get_datalogging_capabilities_response",
+            function (data: API.Message.S2C.GetDataloggingCapabilitiesResponse) {
+                that.receive_datalogging_capabilities(data)
+            }
+        )
 
         this.app.on_event("scrutiny.sfd.loaded", function (data) {
             that.reload_datastore_from_server(WatchableDownloadType.Var_Alias)
@@ -292,6 +303,7 @@ export class ServerConnection {
         this.device_status = DeviceStatus.NA
         this.loaded_sfd = null
         this.device_info = null
+        this.datalogging_capabilities = null
         this.update_ui()
     }
 
@@ -520,7 +532,7 @@ export class ServerConnection {
      */
     update_ui(): void {
         this.ui.set_server_status(this.server_status)
-        this.ui.set_device_status(this.device_status, this.device_info)
+        this.ui.set_device_status(this.device_status, this.device_info, this.datalogging_capabilities)
         this.ui.set_loaded_sfd(this.loaded_sfd)
     }
 
@@ -720,8 +732,8 @@ export class ServerConnection {
                             this.datastore.set_ready(DatastoreEntryType.Var)
                             this.datastore.set_ready(DatastoreEntryType.Alias)
                         } else if (
-                            this.datastore.get_count(DatastoreEntryType.Var) > required_size_var ||
-                            this.datastore.get_count(DatastoreEntryType.Alias) > required_size_alias
+                            (this.datastore.get_count(DatastoreEntryType.Var) as number) > required_size_var ||
+                            (this.datastore.get_count(DatastoreEntryType.Alias) as number) > required_size_alias
                         ) {
                             download_session.cancel()
                             this.logger.error("Server gave more data than expected. Download type = " + download_type)
@@ -740,7 +752,7 @@ export class ServerConnection {
 
                         if (this.datastore.get_count(DatastoreEntryType.RPV) == required_size_rpv) {
                             this.datastore.set_ready(DatastoreEntryType.RPV)
-                        } else if (this.datastore.get_count(DatastoreEntryType.RPV) > required_size_rpv) {
+                        } else if ((this.datastore.get_count(DatastoreEntryType.RPV) as number) > required_size_rpv) {
                             download_session.cancel()
                             this.logger.error("Server gave more data than expected. Download type = " + download_type)
                         }
@@ -816,6 +828,12 @@ export class ServerConnection {
 
             try {
                 this.device_info = data["device_info"]
+
+                if (this.device_info.supported_feature_map.datalogging) {
+                    if (this.datalogging_capabilities == null) {
+                        this.send_request("get_datalogging_capabilities")
+                    }
+                }
             } catch (e) {
                 this.device_info = null
                 this.logger.error("[inform_server_status] Cannot read device info. ", e)
@@ -847,6 +865,21 @@ export class ServerConnection {
             }
         } catch (e) {
             this.logger.error("[receive_watchable_update] Received a bad update list.", e)
+        }
+    }
+
+    receive_datalogging_capabilities(data: API.Message.S2C.GetDataloggingCapabilitiesResponse) {
+        try {
+            this.datalogging_capabilities = null
+            if (data["available"]) {
+                if (data["capabilities"] !== null) {
+                    this.datalogging_capabilities = data["capabilities"]
+                }
+            }
+
+            this.app.trigger_event("scrutiny.datalogging_capabilities_changed", this.datalogging_capabilities)
+        } catch (e) {
+            this.logger.error("[get_datalogging_capabilities_response] Received a bad datalogging capabilities.", e)
         }
     }
 }

@@ -9,7 +9,7 @@
 
 import { ServerStatus, DeviceStatus } from "./global_definitions"
 import { default as $ } from "@jquery"
-import { DeviceInformation, ScrutinyFirmwareDescription } from "./server_api"
+import { DeviceInformation, ScrutinyFirmwareDescription, DataloggingCapabilities } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
 
@@ -22,6 +22,7 @@ export class UI {
     loaded_sfd: ScrutinyFirmwareDescription | null
     loaded_sfd_id: string | null
     device_info: DeviceInformation | null
+    datalogging_capabilities: DataloggingCapabilities | null
 
     constructor(container: JQuery<HTMLDivElement>) {
         let config = {
@@ -47,6 +48,7 @@ export class UI {
         this.loaded_sfd = null
         this.loaded_sfd_id = null
         this.device_info = null
+        this.datalogging_capabilities = null
     }
 
     /**
@@ -206,6 +208,7 @@ export class UI {
             let supported_feature_map_content: JQuery | string = "-"
             let readonly_memory_regions_content: JQuery | string = "-"
             let forbidden_memory_regions_content: JQuery | string = "-"
+            let datalogging_capabilities_content: JQuery | string = "-"
 
             try {
                 device_id = this.device_info["device_id"]
@@ -311,6 +314,38 @@ export class UI {
                 forbidden_memory_regions_content = "-"
             }
 
+            try {
+                if (this.datalogging_capabilities == null) {
+                    datalogging_capabilities_content = "-"
+                } else {
+                    datalogging_capabilities_content = $("<ul></ul>") as JQuery<HTMLUListElement>
+                    datalogging_capabilities_content.append(
+                        $("<li>Buffer Size : " + this.datalogging_capabilities["buffer_size"] + " bytes </li>")
+                    )
+                    datalogging_capabilities_content.append($("<li>Encoding : " + this.datalogging_capabilities["encoding"] + " </li>"))
+                    datalogging_capabilities_content.append(
+                        $("<li>Max signal : " + this.datalogging_capabilities["max_nb_signal"] + " </li>")
+                    )
+
+                    let ff_sampling_rates_count = 0
+                    let vf_sampling_rates_count = 0
+                    for (let i = 0; i < this.datalogging_capabilities["sampling_rates"].length; i++) {
+                        if (this.datalogging_capabilities["sampling_rates"][i]["type"] == "fixed_freq") {
+                            ff_sampling_rates_count++
+                        } else if (this.datalogging_capabilities["sampling_rates"][i]["type"] == "variable_freq") {
+                            vf_sampling_rates_count++
+                        }
+                    }
+                    datalogging_capabilities_content.append($("<li>Fixed frequency sampling rates : " + ff_sampling_rates_count + " </li>"))
+                    datalogging_capabilities_content.append(
+                        $("<li>Variable frequency sampling rates : " + vf_sampling_rates_count + " </li>")
+                    )
+                    datalogging_capabilities_content.addClass("list-no-margin")
+                }
+            } catch (e) {
+                datalogging_capabilities_content = "-"
+            }
+
             this.show_modal("Device Information", $($("#template-device-info-table").html()))
             $("#modal-content [label-name='device_id']").text(device_id)
             $("#modal-content [label-name='display_name']").text(display_name)
@@ -334,6 +369,12 @@ export class UI {
                     : forbidden_memory_regions_content[0]
             )
 
+            $("#modal-content td[label-name='datalogging']").html(
+                typeof datalogging_capabilities_content === "string"
+                    ? datalogging_capabilities_content
+                    : datalogging_capabilities_content[0]
+            )
+
             $("#modal-content [show-tooltip]").on("mouseover", function (ev: JQuery.MouseOverEvent) {
                 const tooltip_id = $(ev.target).attr("show-tooltip") as string
                 $(tooltip_id).show()
@@ -347,7 +388,7 @@ export class UI {
     }
 
     /**
-     * Register a widget to the UI. Its icon will be show in the widget menu
+     * Register a widget to the UI. Its icon will be shown in the widget menu
      * @param widget_class Widget class to add
      * @param app The Scrutiny application instance
      */
@@ -422,8 +463,13 @@ export class UI {
      * @param status Status of the device communication
      * @param device_info Device information gathered by the server
      */
-    set_device_status(status: DeviceStatus, device_info: DeviceInformation | null) {
+    set_device_status(
+        status: DeviceStatus,
+        device_info: DeviceInformation | null,
+        datalogging_capabilities: DataloggingCapabilities | null
+    ) {
         this.device_info = device_info
+        this.datalogging_capabilities = datalogging_capabilities
 
         let status_label_text = ""
         let indicator_img = ""

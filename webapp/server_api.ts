@@ -15,6 +15,9 @@ export type ValueDataType = sintType | uintType | floatType | cfloatType
 export type ServerDeviceStatus = "unknown" | "disconnected" | "connecting" | "connected" | "connected_ready"
 export type WatchableType = "rpv" | "var" | "alias"
 
+export type DataloggingEncoding = "raw"
+export type DataloggingSamplingRateType = "fixed_freq" | "variable_freq"
+
 export namespace Message {
     export interface BaseC2SMessage {
         cmd: string
@@ -53,6 +56,11 @@ export namespace Message {
                 id: string
                 value: number
             }[]
+        }
+
+        export interface GetDataloggingCapabilitiesResponse {
+            available: boolean
+            capabilities: DataloggingCapabilities | null
         }
     }
 }
@@ -126,4 +134,18 @@ export interface DeviceInformation {
 
     forbidden_memory_regions: MemoryBlock[]
     readonly_memory_regions: MemoryBlock[]
+}
+
+export interface DataloggingSamplingRate {
+    identifier: number
+    name: string
+    frequency: number | null
+    type: DataloggingSamplingRateType
+}
+
+export interface DataloggingCapabilities {
+    buffer_size: number
+    encoding: DataloggingEncoding
+    max_nb_signal: number
+    sampling_rates: DataloggingSamplingRate[]
 }

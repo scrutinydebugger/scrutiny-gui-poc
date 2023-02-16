@@ -276,8 +276,11 @@ template{
     cursor: help;
 }
 
+.help-cell{
+    position:relative
+}
 .tooltip{
-    position: fixed;
+    position: absolute;
     background: #234;
     color: #fff;
     padding-left: 15px;
@@ -287,10 +290,8 @@ template{
     min-width: 250px;
     font-size: 0.8em;
     max-width: 400px;
-}
-
-.device-info-table .tooltip{
-    float: right;
+    z-index:1;
+    right:0;
 }
 
 .no-style-list{
