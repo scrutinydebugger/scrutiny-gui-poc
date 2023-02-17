@@ -33,3 +33,14 @@
     width: 20px;
     display:inline-block;
 }
+
+.graph-config button.graph_form_btn{
+    padding:4px;
+    width:80px;
+    margin-top:10px;
+}
+
+.graph-config input[name="effective_sampling_rate"],
+.graph-config input[name="effective_sampling_rate"]:active{
+    border:none;
+}

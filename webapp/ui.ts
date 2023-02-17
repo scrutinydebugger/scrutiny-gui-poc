@@ -336,10 +336,8 @@ export class UI {
                             vf_sampling_rates_count++
                         }
                     }
-                    datalogging_capabilities_content.append($("<li>Fixed frequency sampling rates : " + ff_sampling_rates_count + " </li>"))
-                    datalogging_capabilities_content.append(
-                        $("<li>Variable frequency sampling rates : " + vf_sampling_rates_count + " </li>")
-                    )
+                    datalogging_capabilities_content.append($("<li>Fixed sampling rates : " + ff_sampling_rates_count + " </li>"))
+                    datalogging_capabilities_content.append($("<li>Variable sampling rate : " + vf_sampling_rates_count + " </li>"))
                     datalogging_capabilities_content.addClass("list-no-margin")
                 }
             } catch (e) {

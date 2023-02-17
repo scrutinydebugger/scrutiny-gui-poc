@@ -149,3 +149,6 @@ export interface DataloggingCapabilities {
     max_nb_signal: number
     sampling_rates: DataloggingSamplingRate[]
 }
+
+export type XAxisType = "ideal_time" | "measured_time" | "signal"
+export type TriggerType = "true" | "eq" | "neq" | "gt" | "get" | "lt" | "let" | "cmt" | "within"

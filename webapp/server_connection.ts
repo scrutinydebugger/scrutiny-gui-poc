@@ -828,10 +828,11 @@ export class ServerConnection {
 
             try {
                 this.device_info = data["device_info"]
-
-                if (this.device_info.supported_feature_map.datalogging) {
-                    if (this.datalogging_capabilities == null) {
-                        this.send_request("get_datalogging_capabilities")
+                if (this.device_info !== null) {
+                    if (this.device_info.supported_feature_map.datalogging) {
+                        if (this.datalogging_capabilities == null) {
+                            this.send_request("get_datalogging_capabilities")
+                        }
                     }
                 }
             } catch (e) {

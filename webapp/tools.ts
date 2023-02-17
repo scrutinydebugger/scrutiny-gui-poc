@@ -81,3 +81,7 @@ export function get_url_param(name: string): string {
     var results = regex.exec(location.search)
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "))
 }
+
+export function number2str(x: number, max_digits: number = 13): string {
+    return x.toFixed(max_digits).replace(/\.?0*$/, "")
+}
