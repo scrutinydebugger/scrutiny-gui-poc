@@ -266,20 +266,20 @@ template{
     text-decoration: underline;
 }
 
-.help-content{
-    display: none;
-}
-
-.device-info-table .help-icon{
-    margin: auto;
-    vertical-align: middle;
+.help-cursor {
     cursor: help;
 }
 
-.help-cell{
+.device-info-table .scrutiny-tooptip-hover{
+    margin: auto;
+    vertical-align: middle;
+}
+
+.scrutiny-tooltip-container{
     position:relative
 }
-.tooltip{
+
+.scrutiny-tooltip-content{
     position: absolute;
     background: #234;
     color: #fff;
@@ -292,6 +292,7 @@ template{
     max-width: 400px;
     z-index:1;
     right:0;
+    display:none;
 }
 
 .no-style-list{

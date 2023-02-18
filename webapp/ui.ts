@@ -15,6 +15,20 @@ import { App } from "./app"
 
 type GoldenLayout = any // Stub for external lib
 
+export function configure_all_tooltips(jObj: JQuery) {
+    configure_tooltip(jObj.find("div.scrutiny-tooltip-container") as JQuery<HTMLDivElement>)
+}
+
+export function configure_tooltip(containers: JQuery<HTMLDivElement>) {
+    containers.find(".scrutiny-tooltip-hover").on("mouseover", function (ev: JQuery.MouseOverEvent) {
+        $(this).parent().find(".scrutiny-tooltip-content").show()
+    })
+
+    containers.find(".scrutiny-tooltip-hover").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
+        $(this).parent().find(".scrutiny-tooltip-content").hide()
+    })
+}
+
 export class UI {
     container: JQuery<HTMLDivElement>
     widget_layout: GoldenLayout
@@ -69,7 +83,7 @@ export class UI {
         $(document).on("keyup", function (e: JQuery.KeyUpEvent) {
             if (e.key == "Escape") {
                 $("#modal-container").hide()
-                $(".tooltip").hide()
+                $(".scrutiny-tooltip-content").hide()
             }
         })
 
@@ -373,15 +387,7 @@ export class UI {
                     : datalogging_capabilities_content[0]
             )
 
-            $("#modal-content [show-tooltip]").on("mouseover", function (ev: JQuery.MouseOverEvent) {
-                const tooltip_id = $(ev.target).attr("show-tooltip") as string
-                $(tooltip_id).show()
-            })
-
-            $("#modal-content [show-tooltip]").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
-                const tooltip_id = $(ev.target).attr("show-tooltip") as string
-                $(tooltip_id).hide()
-            })
+            configure_all_tooltips($("#modal-content"))
         }
     }
 

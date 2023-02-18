@@ -4,6 +4,7 @@ import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
 import { number2str } from "@src/tools"
 import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
+import { configure_all_tooltips } from "@src/ui"
 
 export class GraphWidget extends BaseWidget {
     container: JQuery
@@ -48,11 +49,72 @@ export class GraphWidget extends BaseWidget {
             that.update_config_capabilities()
         })
 
-        this.get_config_table()
-            .find("select")
-            .on("change", function () {
-                that.update_config_form()
-            })
+        const config_table = this.get_config_table()
+
+        config_table.find("select").on("change", function () {
+            that.update_config_form()
+        })
+
+        config_table.find("input").on("change", function () {
+            that.update_config_form()
+        })
+
+        config_table.find("input").on("blur", function () {
+            that.update_config_form()
+        })
+
+        config_table.find('input[name="decimation"]').on("change", function () {
+            that.force_input_int($(this), 1, 0xffff)
+            that.update_config_form()
+        })
+
+        config_table.find('input[name="probe_location"]').on("change", function () {
+            that.force_input_int($(this), 0, 100)
+            that.update_config_form()
+        })
+
+        config_table.find('input[name="timeout"]').on("change", function () {
+            that.force_input_float($(this), 0, 360)
+            that.update_config_form()
+        })
+
+        config_table.find('input[name="trigger_hold_time"]').on("change", function () {
+            that.force_input_float($(this), 0, 360000)
+            that.update_config_form()
+        })
+
+        configure_all_tooltips(config_table)
+    }
+
+    force_input_int(input: JQuery, min: number, max: number) {
+        let val = parseInt(input.val() as string)
+        val = this.clamp_val(val, min, max)
+        if (val != input.val()) {
+            // string and integer can be compared legally
+            input.val(val)
+        }
+    }
+
+    force_input_float(input: JQuery, min: number, max: number) {
+        let val = parseFloat(input.val() as string)
+        val = this.clamp_val(val, min, max)
+        if (val != input.val()) {
+            // string and integer can be compared legally
+            input.val(val)
+        }
+    }
+
+    clamp_val(val: number, min: number, max: number): number {
+        if (isNaN(val)) {
+            val = min
+        }
+        if (val < min) {
+            val = min
+        }
+        if (val > max) {
+            val = max
+        }
+        return val
     }
 
     set_config_no_datalogging() {
@@ -66,6 +128,9 @@ export class GraphWidget extends BaseWidget {
     }
 
     set_effective_sampling_rate(val: string | number) {
+        if (typeof val === "number") {
+            val = number2str(val, 3) + " Hz"
+        }
         this.get_config_table().find('input[name="effective_sampling_rate"]').val(val)
     }
 
@@ -180,8 +245,6 @@ export class GraphWidget extends BaseWidget {
             if (sampling_rate.type == "variable_freq") {
                 if (selected_xaxis_type == "ideal_time") {
                     this.get_xaxis_type_select().find("option[value='measured_time']").prop("selected", "selected")
-                } else {
-                    console.log("No " + selected_xaxis_type)
                 }
                 ideal_time_option.attr("disabled", "disabled")
             } else {
