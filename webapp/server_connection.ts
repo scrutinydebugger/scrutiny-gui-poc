@@ -6,7 +6,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DeviceStatus, ServerStatus } from "./global_definitions"
+import { DeviceStatus, ServerStatus, DataloggingStatus } from "./global_definitions"
 import { App } from "./app"
 import { UI } from "./ui"
 import { Logger } from "./logging"
@@ -146,6 +146,8 @@ export class ServerConnection {
     server_status: ServerStatus
     /** The status of the device communication (Connected/connecting/disconnected) */
     device_status: DeviceStatus
+    /** The status of the datalogger in the device */
+    datalogging_status: DataloggingStatus
     /** The device datalogging capabilities (buffer size, sampling rates, etc). Null if datalogging is not supported */
     datalogging_capabilities: API.DataloggingCapabilities | null
     /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
@@ -197,6 +199,7 @@ export class ServerConnection {
         this.socket = null
         this.server_status = ServerStatus.Disconnected
         this.device_status = DeviceStatus.NA
+        this.datalogging_status = DataloggingStatus.NA
         this.loaded_sfd = null
         this.device_info = null
         this.datalogging_capabilities = null
@@ -532,6 +535,7 @@ export class ServerConnection {
      */
     update_ui(): void {
         this.ui.set_server_status(this.server_status)
+        this.ui.set_datalogging_status(this.datalogging_status)
         this.ui.set_device_status(this.device_status, this.device_info, this.datalogging_capabilities)
         this.ui.set_loaded_sfd(this.loaded_sfd)
     }
@@ -782,6 +786,15 @@ export class ServerConnection {
             connected_ready: DeviceStatus.Connected,
         }
 
+        const datalogging_status_str_to_enum: Record<API.DataloggingStatus, DataloggingStatus> = {
+            unavailable: DataloggingStatus.NA,
+            standby: DataloggingStatus.Standby,
+            acquiring: DataloggingStatus.Acquiring,
+            data_ready: DataloggingStatus.DataReady,
+            waiting_for_trigger: DataloggingStatus.WaitForTrigger,
+            error: DataloggingStatus.Error,
+        }
+
         try {
             try {
                 const new_device_status = device_status_str_to_enum[data.device_status]
@@ -824,6 +837,26 @@ export class ServerConnection {
             } catch (e) {
                 this.loaded_sfd = null
                 this.logger.error("[inform_server_status] Cannot read loaded firmware. ", e)
+            }
+
+            try {
+                const new_datalogging_status = datalogging_status_str_to_enum[data.device_datalogging_status]
+                if (new_datalogging_status != this.datalogging_status) {
+                    this.app.trigger_event("scrutiny.datalogging.status_changed", new_datalogging_status)
+
+                    if (new_datalogging_status == DataloggingStatus.DataReady) {
+                        this.app.trigger_event("scrutiny.datalogging.data_ready")
+                    } else if (this.datalogging_status == DataloggingStatus.Acquiring) {
+                        this.app.trigger_event("scrutiny.datalogging.acquisition_started")
+                    } else if (this.datalogging_status == DataloggingStatus.Error) {
+                        this.app.trigger_event("scrutiny.datalogging.error")
+                    }
+                }
+
+                this.datalogging_status = new_datalogging_status
+            } catch (e) {
+                this.datalogging_status = DataloggingStatus.NA
+                this.logger.error("[inform_server_status] Received a bad datalogging status", e)
             }
 
             try {

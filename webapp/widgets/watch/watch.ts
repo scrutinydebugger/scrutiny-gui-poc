@@ -125,7 +125,16 @@ export class WatchWidget extends BaseWidget {
             droppable: true,
             allow_delete: true,
             scrollable_element: this.container.parent(),
-            transfer_policy_fn: function () {
+            transfer_policy_fn: function (
+                source_table: JQueryTable,
+                dest_table: JQueryTable,
+                tr: JQuery,
+                new_parent_id: string | null,
+                after_node_id: string | null
+            ) {
+                if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
+                    return { scope: TransferScope.NONE }
+                }
                 // Anything else than ALL is hard to manage when the datastore content changes.
                 // More computation, but will avoid weird glitches such as empty folders that should not or mixing data if the user change
                 // Loads another firmware and the treepath intersects.
@@ -334,7 +343,7 @@ export class WatchWidget extends BaseWidget {
                 const entry = that.get_entry_from_row(tr)
                 if (entry != null) {
                     that.start_watching(entry, tr)
-                }   
+                }
             }
         })
     }

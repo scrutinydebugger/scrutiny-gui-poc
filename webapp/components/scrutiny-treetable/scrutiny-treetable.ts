@@ -11,7 +11,13 @@
 import { default as $ } from "@jquery"
 
 export interface LoadFunctionInterface {
-    (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
+    (node_id: string, tr: JQueryRow, user_data?: any): Array<{
+        id?: string
+        tr: JQueryRow
+        no_children?: boolean
+        no_drag?: boolean
+        user_data?: any
+    }>
 }
 
 export interface TransferFunctionMetadata {
@@ -151,6 +157,8 @@ const CLASS_HEADER = "stt-cell-header"
 const CLASS_DISABLED = "stt-disabled"
 /**  Applied on a row that does not accept children */
 const CLASS_NO_CHILDREN = "stt-no-children"
+/**  Applied on a row that cannot be dragged */
+const CLASS_NO_DRAG = "stt-no-drag"
 /**  Applied on the cell that contains the tree element */
 const CLASS_TREE_CELL = "stt-tree-cell"
 /** Applied on rows that are loaded but hidden */
@@ -242,9 +250,11 @@ export function get_node_id(tr: JQueryRow): string {
  * @param $table The JQuery table
  * @param node_id Node ID to assign to the row
  * @param tr The row to add
+ * @param no_children Prevent the node from having children
+ * @param no_drag Prevent this node from being draggable
  */
-function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
-    add_node($table, node_id, tr, null)
+function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow, no_children: boolean = false, no_drag: boolean = false): void {
+    add_node($table, node_id, tr, null, no_children, no_drag)
 }
 
 /**
@@ -253,8 +263,17 @@ function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): voi
  * @param node_id Node ID to assign to the row
  * @param tr The row to add
  * @param new_parent_id The node id of the parent. Set to null to make a root node
+ * @param no_children Prevent the node from having children
+ * @param no_drag Prevent this node from being draggable
  */
-function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_parent_id: string | null): void {
+function add_node(
+    $table: JQueryTable,
+    node_id: string,
+    tr: JQueryRow,
+    new_parent_id: string | null,
+    no_children: boolean = false,
+    no_drag: boolean = false
+): void {
     if (typeof node_id !== "string") {
         throw "node_id is not a string"
     }
@@ -263,7 +282,7 @@ function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_paren
         throw "new_parent_id is not a string or null"
     }
 
-    _add_node($table, new_parent_id, node_id, tr)
+    _add_node($table, new_parent_id, node_id, tr, no_children, no_drag)
     _load_children($table, tr)
 }
 
@@ -1043,6 +1062,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
         let child_node_id = loaded_children[i]["id"]
         const child_node_tr = $(loaded_children[i]["tr"]) as JQueryRow
         const no_children = loaded_children[i]["no_children"]
+        const no_drag = loaded_children[i]["no_drag"]
         const user_data = loaded_children[i]["user_data"]
 
         if (typeof child_node_id == "undefined") {
@@ -1057,7 +1077,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
             child_node_tr.data(DATAKEY_USER_DATA, user_data)
         }
 
-        _add_node($table, node_id, child_node_id, child_node_tr, no_children)
+        _add_node($table, node_id, child_node_id, child_node_tr, no_children, no_drag)
         children_output.push(child_node_tr)
     }
 
@@ -1108,11 +1128,29 @@ function _is_children_allowed(tr: JQueryRow): boolean {
 }
 
 /**
+ * Tells if a given rows has the right to be dragged. Defined by the user `load_fn`.
+ * Can be used to fix a row so that it never moves, but the children can be dragged.
+ * @param tr The JQuery row
+ * @returns True if the row can have children
+ */
+function _is_drag_allowed(tr: JQueryRow): boolean {
+    return !tr.hasClass(CLASS_NO_DRAG)
+}
+
+/**
  * Prevent a row from having children. Move, transfer, drag-n-drop will be denied if disallowed
  * @param tr The JQuery row
  */
 function _disallow_children(tr: JQueryRow): void {
     tr.addClass(CLASS_NO_CHILDREN)
+}
+
+/**
+ * Prevent a row from being draggable
+ * @param tr The JQuery row
+ */
+function _disallow_drag(tr: JQueryRow): void {
+    tr.addClass(CLASS_NO_DRAG)
 }
 
 /**
@@ -1340,9 +1378,19 @@ function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: num
  * @param tr The JQuery row to add
  * @param no_children true to prevent this row from having children
  */
-function _add_node($table: JQueryTable, parent_id: string | null, node_id: string | null, tr: JQueryRow, no_children?: boolean): void {
+function _add_node(
+    $table: JQueryTable,
+    parent_id: string | null,
+    node_id: string | null,
+    tr: JQueryRow,
+    no_children?: boolean,
+    no_drag?: boolean
+): void {
     if (typeof no_children === "undefined") {
         no_children = false
+    }
+    if (typeof no_drag === "undefined") {
+        no_drag = false
     }
 
     if (node_id == null) {
@@ -1354,6 +1402,10 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
     if (no_children) {
         _disallow_children(tr)
+    }
+
+    if (no_drag) {
+        _disallow_drag(tr)
     }
 
     let actual_level = 0 // Start at 0 for root node
@@ -1430,7 +1482,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     })
 
     // Drag and drop logic
-    if (options.draggable) {
+    if (options.draggable && !no_drag) {
         let dragger = DRAGGER_TEMPLATE.clone() as JQuery<HTMLDivElement>
         header_block.prepend(dragger)
         dragger.attr("draggable", "true")
@@ -1574,7 +1626,7 @@ function _handle_drop(
             return
         }
 
-        let force_new_parent_id: string | null
+        let force_new_parent_id: string | null = null
         if (typeof force_new_parent === "undefined" || force_new_parent == null) {
             force_new_parent_id = null
         } else if (typeof force_new_parent === "string") {
@@ -1585,7 +1637,7 @@ function _handle_drop(
             throw "Invalid force_new_parent parameter"
         }
 
-        let force_insert_after_id: string | null
+        let force_insert_after_id: string | null = null
         if (typeof force_insert_after === "undefined" || force_insert_after == null) {
             force_insert_after_id = null
         } else if (typeof force_insert_after === "string") {
@@ -2077,7 +2129,7 @@ function _transfer_row(
         throw "Node transfer from another table is not supported"
     }
 
-    let new_parent_id: string | null
+    let new_parent_id: string | null = null
     if (typeof new_parent === "undefined" || new_parent == null) {
         new_parent_id = null
     } else if (typeof new_parent == "string") {
@@ -2088,7 +2140,7 @@ function _transfer_row(
         throw "Invalid new_parent parameter"
     }
 
-    let after_node_id: string | null
+    let after_node_id: string | null = null
     if (typeof after_node === "undefined" || after_node == null) {
         after_node_id = null
     } else if (typeof after_node === "string") {
@@ -2171,6 +2223,7 @@ function _transfer_row(
         const original_line = $(lines_to_moves[i]) as JQueryRow
         const original_parent_id = _get_parent_id(original_line)
         const no_children = !_is_children_allowed(original_line)
+        const no_drag = !_is_drag_allowed(original_line)
         const original_id = _get_node_id(original_line)
         const new_id = old_id_to_new_id_map[original_id]
         const new_tr = new_tr_by_new_id[new_id]
@@ -2190,7 +2243,7 @@ function _transfer_row(
             already_loaded_nodes_id_set.add(old_id_to_new_id_map[original_parent_id])
         }
 
-        _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children)
+        _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children, no_drag)
     }
 
     // Mark loaded rows for which we saw children
@@ -2351,6 +2404,10 @@ function init($table: JQueryTable, config: PluginOptions): void {
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
         throw "TreeTable requires an id attribute work properly"
+    }
+
+    if (options.col_index <= 0) {
+        throw "Column index must be an integer starting at 1"
     }
     $table.addClass(CLASS_TABLE)
 

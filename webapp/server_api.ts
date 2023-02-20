@@ -48,6 +48,7 @@ export namespace Message {
             device_status: ServerDeviceStatus
             loaded_sfd: ScrutinyFirmwareDescription | null
             device_comm_link: DeviceCommLink | null
+            device_datalogging_status: DataloggingStatus
             device_info: DeviceInformation
         }
 
@@ -93,6 +94,8 @@ export interface DeviceCommLink {
     type: "udp" | "serial" // | "canBus" | "spi" | "dummy" | "tcp"
     config: DeviceCommUdpConfig | DeviceCommSerialConfig
 }
+
+export type DataloggingStatus = "unavailable" | "standby" | "waiting_for_trigger" | "acquiring" | "data_ready" | "error"
 
 export interface DeviceCommUdpConfig {
     host: string

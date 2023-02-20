@@ -2,7 +2,7 @@
     <table>
         <tbody>
             <tr class="line-sample-rate">
-                <td><label for="sample_rate">Sampling Rate</label></td>
+                <td class="text-label"><label for="sample_rate">Sampling Rate</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -15,7 +15,7 @@
             </tr>
 
             <tr class="line-decimation">
-                <td><label for="decimation">Decimation</label></td>
+                <td class="text-label"><label for="decimation">Decimation</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -28,7 +28,7 @@
             </tr>
 
             <tr>
-                <td>Effective Sampling Rate</td>
+                <td class="text-label">Effective Sampling Rate</td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -41,7 +41,7 @@
             </tr>
 
             <tr class="line-probe-location">
-                <td><label for="probe_location">Trigger Position (%)</label></td>
+                <td class="text-label"><label for="probe_location">Trigger Position (%)</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -57,7 +57,7 @@
             </tr>
 
             <tr class="line-timeout">
-                <td><label for="timeout">Acquisition Timeout (s)</label></td>
+                <td class="text-label"><label for="timeout">Acquisition Timeout (s)</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -70,15 +70,15 @@
             </tr>
 
             <tr class="line-xaxis-type">
-                <td><label for="xaxis_type">X-Axis Type</label></td>
+                <td class="text-label"><label for="xaxis_type">X-Axis Type</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
                         <div class="scrutiny-tooltip-content">
                             <p>Select what the X-Axis is.</p>
                             <ul>
-                                <li><strong>Ideal time:</strong> Time deduced from the sampling frequency. Uniform sampling is assumed. Uses no space in the datalogging buffer</li>
-                                <li><strong>Measured time:</strong> Time measured by the device. Sampling may or may not be uniform, depending on the device configuration. Takes space in the datalogging buffer</li>
+                                <li><strong>Ideal time:</strong> Time deduced from the sampling frequency. Uniform sampling is assumed and uses no space in the datalogging buffer. Not available for variable frequency rates.</li>
+                                <li><strong>Measured time:</strong> Time measured by the device. Depending on the device configuration, sampling may or may not be uniform. Requires a 32bits slot in the datalogging buffer.</li>
                                 <li><strong>Watchable:</strong> Any watchable object given by the server. Drag &amp; drop any Variable/Alias/RPV from a watch or list widget</li>
                             </ul>
                         </div>
@@ -94,37 +94,20 @@
             </tr>
 
             <tr class="line-xaxis-signal">
-                <td><label for="xaxis_signal">X-Axis Signal</label></td>
+                <td class="text-label"><label for="xaxis_signal">X-Axis Signal</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
                         <div class="scrutiny-tooltip-content">
-                            <p>The watchable object to use as the X-Axis. Any variable, alias or "runtime published value" (RPV) can be dropped in this field</p>
+                            <p>The watchable object to use as the X-Axis. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
                         </div>
                     </div>
                 </td>
                 <td><input type="text" name="xaxis_signal" value=""/></td>
             </tr>
-            
-            <tr>
-                <td colspan="3">Trigger</td>
-            </tr>
-
-            <tr class="line-trigger-hold-time">
-                <td><span class="spacer"></span><label for="trigger_hold_time">Hold Time (ms)</label></td>
-                <td>
-                    <div class="scrutiny-tooltip-container">
-                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
-                        <div class="scrutiny-tooltip-content">
-                            <p>The amount of time that the trigger condition must be true without interruption before launching the trigger event that will cause the acquisition to finish eventually.</p>
-                        </div>
-                    </div>
-                </td>
-                <td><input type="text" name="trigger_hold_time" value="0" size="7"/></td>
-            </tr>
 
             <tr class="line-trigger-type">
-                <td><span class="spacer"></span><label for="trigger_type">Condition</label></td>
+                <td class="text-label"></span><label for="trigger_type">Trigger Condition</label></td>
                 <td>
                     <div class="scrutiny-tooltip-container">
                         <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
@@ -161,27 +144,55 @@
             </tr>
 
             <tr class="line-operand1" style="display:none;">
-                <td><span class="spacer"></span><label for="operand1">Operand 1 (x<sub>1</sub>)</label></td>
-                <td></td>
+                <td class="text-label indented"></span><label for="operand1">Operand 1 (x<sub>1</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>1</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
                 <td><input type="text" name="operand1" value="0"/></td>
             </tr>
 
             <tr class="line-operand2" style="display:none;">
-                <td><span class="spacer"></span><label for="operand2">Operand 2 (x<sub>2</sub>)</label></td>
-                <td></td>
+                <td class="text-label indented"></span><label for="operand2">Operand 2 (x<sub>2</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>2</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
                 <td><input type="text" name="operand2" value="0"/></td>
             </tr>
 
             <tr class="line-operand3" style="display:none;">
-                <td><span class="spacer"></span><label for="operand3">Operand 3 (x<sub>3</sub>)</label></td>
-                <td></td>
+                <td class="text-label indented"></span><label for="operand3">Operand 3 (x<sub>3</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>3</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
                 <td><input type="text" name="operand3" value="0"/></td>
             </tr>
 
-            <tr >
-                <td>&nbsp;</td>
-                <td>&nbsp;</td>
-                <td><button class="graph_form_btn">Close</button></td>
+            <tr class="line-trigger-hold-time">
+                <td class="text-label"></span><label for="trigger_hold_time">Hold Time (ms)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The amount of time, in milliseconds (fractional value possible), that the trigger condition must be true without interruption before launching the trigger event that will cause the acquisition to finish eventually.</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="text" name="trigger_hold_time" value="0" size="7"/></td>
             </tr>
         </tbody>
     </table>

@@ -19,7 +19,6 @@ table.stt-table div.stt-cell-header{
     display:inline-block;       /* Avoid useless line break in cell*/
     margin:0;
     padding:0;
-    display:relative;           /* Required for insert line absolute position*/
 }
 
 table.stt-table td.stt-tree-cell{

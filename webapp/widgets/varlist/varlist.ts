@@ -7,7 +7,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, AllDatastoreEntryTypes } from "@src/datastore"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
@@ -15,7 +15,6 @@ import { default as $ } from "@jquery"
 
 import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
-import { AllDatastoreEntryTypes, Datastore } from "../../datastore"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })

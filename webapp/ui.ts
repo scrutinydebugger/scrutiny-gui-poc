@@ -7,7 +7,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { ServerStatus, DeviceStatus } from "./global_definitions"
+import { ServerStatus, DeviceStatus, DataloggingStatus } from "./global_definitions"
 import { default as $ } from "@jquery"
 import { DeviceInformation, ScrutinyFirmwareDescription, DataloggingCapabilities } from "./server_api"
 import { BaseWidget } from "./base_widget"
@@ -447,18 +447,42 @@ export class UI {
      * @param status The server status
      */
     set_server_status(status: ServerStatus) {
+        let new_text = ""
         if (status == ServerStatus.Disconnected) {
-            $("#server_status_label").text("Disconnected")
+            new_text = "Disconnected"
             $("#server_status .indicator").attr("src", this.indicator_lights["red"])
         } else if (status == ServerStatus.Connecting) {
-            $("#server_status_label").text("Connecting")
+            new_text = "Connecting"
             $("#server_status .indicator").attr("src", this.indicator_lights["yellow"])
         } else if (status == ServerStatus.Connected) {
-            $("#server_status_label").text("Connected")
+            new_text = "Connected"
             $("#server_status .indicator").attr("src", this.indicator_lights["green"])
         } else {
-            $("#server_status_label").text("Unknown")
+            new_text = "Unknown"
             $("#server_status .indicator").attr("src", this.indicator_lights["grey"])
+        }
+        const label = $("#server_status_label")
+        if (label.text() !== new_text) {
+            label.text(new_text)
+        }
+    }
+
+    set_datalogging_status(status: DataloggingStatus) {
+        let new_text = "Unknown state"
+        if (status == DataloggingStatus.Standby) {
+            new_text = "Standby"
+        } else if (status == DataloggingStatus.Acquiring) {
+            new_text = "Acquiring"
+        } else if (status == DataloggingStatus.WaitForTrigger) {
+            new_text = "Wait For Tigger"
+        } else if (status == DataloggingStatus.DataReady) {
+            new_text = "Ready"
+        } else if (status == DataloggingStatus.Error) {
+            new_text = "Error"
+        }
+        const label = $("#datalogger_state_label")
+        if (label.text() !== new_text) {
+            label.text(new_text)
         }
     }
 
@@ -491,8 +515,9 @@ export class UI {
             indicator_img = this.indicator_lights["grey"]
         }
 
-        if (status_label_text != $("#device_status_label").text()) {
-            $("#device_status_label").text(status_label_text)
+        const label = $("#device_status_label")
+        if (status_label_text != label.text()) {
+            label.text(status_label_text)
         }
 
         const img_elem = $("#device_status .indicator").first()
@@ -502,9 +527,9 @@ export class UI {
         }
 
         if (this.device_info != null) {
-            $("#device_status_label").addClass("clickable_label")
+            label.addClass("clickable_label")
         } else {
-            $("#device_status_label").removeClass("clickable_label")
+            label.removeClass("clickable_label")
         }
     }
 

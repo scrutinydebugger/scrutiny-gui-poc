@@ -6,6 +6,28 @@ import { number2str } from "@src/tools"
 import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 
+import {
+    scrutiny_treetable,
+    PluginOptions as TreeTableOptions,
+    LoadFunctionInterface as TreeTableLoadFunction,
+    TransferScope,
+    TransferPolicy,
+    TransferFunctionMetadata,
+    TransferFunctionOutput,
+} from "@scrutiny-treetable"
+import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+
+$.extend($.fn, { scrutiny_treetable })
+$.extend($.fn, { scrutiny_resizable_table })
+
+type JQueryTable = JQuery<HTMLTableElement>
+type JQueryRow = JQuery<HTMLTableRowElement>
+
+interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
+    scrutiny_treetable: Function
+    scrutiny_resizable_table: Function
+}
+
 export class GraphWidget extends BaseWidget {
     container: JQuery
     /** The Scrutiny App instance */
@@ -14,6 +36,8 @@ export class GraphWidget extends BaseWidget {
     instance_id: number
     /** Logger element */
     logger: logging.Logger
+
+    next_axis_number: number
 
     /**
      *
@@ -28,6 +52,7 @@ export class GraphWidget extends BaseWidget {
         this.instance_id = instance_id
 
         this.logger = logging.getLogger(this.constructor.name)
+        this.next_axis_number = 1
     }
 
     /**
@@ -35,10 +60,12 @@ export class GraphWidget extends BaseWidget {
      */
     initialize() {
         const that = this
-        const config_overlay = this.app.get_template(this, "config_overlay") as JQuery<HTMLDivElement>
-        const form_pane = this.app.get_template(this, "config_form_pane") as JQuery<HTMLDivElement>
-        config_overlay.find(".pane-right").append(form_pane)
-        this.container.append(config_overlay)
+        const layout = this.app.get_template(this, "layout") as JQuery<HTMLDivElement>
+        const config_form_pane = this.app.get_template(this, "config_form_pane") as JQuery<HTMLDivElement>
+        const signal_list_pane = this.app.get_template(this, "signal_list_pane") as JQuery<HTMLDivElement>
+        layout.find(".graph-config .pane-right").append(config_form_pane)
+        layout.find(".graph-config .pane-left").append(signal_list_pane)
+        this.container.append(layout)
         this.update_config_capabilities()
 
         this.app.on_event("scrutiny.datalogging_capabilities_changed", function () {
@@ -84,6 +111,85 @@ export class GraphWidget extends BaseWidget {
         })
 
         configure_all_tooltips(config_table)
+
+        const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
+        split_table.scrutiny_resizable_table({
+            table_width_constrained: true,
+        })
+
+        const signal_list_table = signal_list_pane.find("table.signal-list") as ScrutinyTreeTable
+        signal_list_table.attr("id", "graph-signal-list-" + this.instance_id)
+
+        const tree_table_config: TreeTableOptions = {
+            draggable: true,
+            droppable: true,
+            allow_delete: true,
+            move_allowed: true,
+            col_index: 1,
+            transfer_policy_fn: function (
+                source_table: JQueryTable,
+                dest_table: JQueryTable,
+                tr: JQuery,
+                new_parent_id: string | null,
+                after_node_id: string | null
+            ): TransferPolicy {
+                if (new_parent_id == null) {
+                    // Root node are reserved to axis
+                    return { scope: TransferScope.NONE }
+                }
+
+                if (tr.hasClass("entry_node")) {
+                    return { scope: TransferScope.ROW_ONLY }
+                }
+
+                return { scope: TransferScope.NONE }
+            },
+            load_fn: function (node_id, tr) {
+                return []
+            },
+            transfer_fn: function (
+                source_table: JQueryTable,
+                bare_line: JQueryRow,
+                meta: TransferFunctionMetadata
+            ): TransferFunctionOutput {
+                if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
+                    that.logger.error("Don't know how to convert table row coming from this table")
+                    return null
+                }
+
+                const name_cell = bare_line.find("td.name_col")
+                if (name_cell.length == 0) {
+                    return null
+                }
+                const new_tr = $("<tr></tr>").append(name_cell.clone())
+                return { tr: new_tr }
+            },
+        }
+
+        signal_list_table.scrutiny_treetable(tree_table_config)
+
+        signal_list_pane.find(".btn-add-axis").on("click", function () {
+            that.add_axis()
+        })
+
+        that.add_axis()
+    }
+
+    add_axis() {
+        const signal_list_table = this.container.find("table.signal-list") as ScrutinyTreeTable
+        const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
+
+        signal_list_table.scrutiny_treetable(
+            "add_root_node",
+            `axis-${this.next_axis_number}`,
+            $(`<tr class="axis"><td>Axis ${this.next_axis_number}</td></tr>`),
+            false, // Children allowed
+            true // No drag
+        )
+
+        this.next_axis_number++
+
+        split_table.scrutiny_resizable_table("refresh")
     }
 
     force_input_int(input: JQuery, min: number, max: number) {
@@ -279,13 +385,14 @@ export class GraphWidget extends BaseWidget {
     }
 
     static css_list() {
-        return ["graph.css"]
+        return ["graph.css", "treetable-theme.css"]
     }
 
     static templates() {
         return {
-            config_overlay: "templates/config_overlay.html",
+            layout: "templates/layout.html",
             config_form_pane: "templates/config_form_pane.html",
+            signal_list_pane: "templates/signal_list_pane.html",
         }
     }
 }

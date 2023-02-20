@@ -18,3 +18,12 @@ export enum DeviceStatus {
     Connecting = "connecting",
     Connected = "connected",
 }
+
+export enum DataloggingStatus {
+    NA = "unknown",
+    Standby = "standby",
+    WaitForTrigger = "waiting_for_trigger",
+    Acquiring = "acquiring",
+    DataReady = "data_ready",
+    Error = "error",
+}
