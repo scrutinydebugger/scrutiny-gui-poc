@@ -2468,18 +2468,18 @@ function _global_init_body() {
         }
     })
 
-    body.on("keydown", function (e) {
-        const focused_table = _get_focused_table()
-        if (focused_table.length == 0) {
-            return
-        }
-        const options = _get_options(focused_table)
+        body.on("keydown", function (e) {
+            const focused_table = _get_focused_table()
+            if (focused_table.length == 0) {
+                return
+            }
+            const options = _get_options(focused_table)
 
-        const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
-        const first_selected_row = selected_rows.first()
-        const not_first_selected_row = selected_rows.not(first_selected_row)
-        const last_selected_row = selected_rows.last()
-        if (first_selected_row.length > 0) {
+            const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
+            const first_selected_row = selected_rows.first()
+            const not_first_selected_row = selected_rows.not(first_selected_row)
+            const last_selected_row = selected_rows.last()
+            if (first_selected_row.length > 0) {
             if (e.key == "ArrowRight") {
                 not_first_selected_row.removeClass(CLASS_SELECTED)
                 _expand_row(focused_table, first_selected_row)

@@ -2,7 +2,7 @@ import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
-import { number2str } from "@src/tools"
+import { number2str, trim } from "@src/tools"
 import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 
@@ -37,7 +37,7 @@ export class GraphWidget extends BaseWidget {
     /** Logger element */
     logger: logging.Logger
 
-    next_axis_number: number
+    next_axis_id: number
 
     /**
      *
@@ -52,7 +52,7 @@ export class GraphWidget extends BaseWidget {
         this.instance_id = instance_id
 
         this.logger = logging.getLogger(this.constructor.name)
-        this.next_axis_number = 1
+        this.next_axis_id = 1
     }
 
     /**
@@ -115,7 +115,8 @@ export class GraphWidget extends BaseWidget {
         const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
         split_table.scrutiny_resizable_table({
             table_width_constrained: true,
-        })
+            nowrap: false,
+        } as ResizableTableOptions)
 
         const signal_list_table = signal_list_pane.find("table.signal-list") as ScrutinyTreeTable
         signal_list_table.attr("id", "graph-signal-list-" + this.instance_id)
@@ -179,15 +180,36 @@ export class GraphWidget extends BaseWidget {
         const signal_list_table = this.container.find("table.signal-list") as ScrutinyTreeTable
         const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
 
+        const axis_rows = signal_list_table.scrutiny_treetable("get_root_nodes")
+        let axis_name: string[] = []
+        for (let i = 0; i < axis_rows.length; i++) {
+            axis_name.push(trim($(axis_rows[i]).text(), " "))
+        }
+
+        let axis_number = 1
+        let already_exist = false
+        let axis_name_candidate = ""
+        do {
+            already_exist = false
+            axis_name_candidate = "Axis " + axis_number
+            for (let i = 0; i < axis_name.length; i++) {
+                if (axis_name[i] == axis_name_candidate) {
+                    already_exist = true
+                    break
+                }
+            }
+            axis_number++
+        } while (already_exist)
+
         signal_list_table.scrutiny_treetable(
             "add_root_node",
-            `axis-${this.next_axis_number}`,
-            $(`<tr class="axis"><td>Axis ${this.next_axis_number}</td></tr>`),
+            `axisid-${this.next_axis_id}`,
+            $(`<tr class="axis"><td>${axis_name_candidate}</td></tr>`),
             false, // Children allowed
             true // No drag
         )
 
-        this.next_axis_number++
+        this.next_axis_id++
 
         split_table.scrutiny_resizable_table("refresh")
     }

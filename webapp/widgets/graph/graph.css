@@ -70,13 +70,11 @@
 
 .graph-config .btn-add-axis{
     display:block;
-    float:right;
-    margin-right:10px;
+    margin-left:10px;
 }
 
 .graph-config table.signal-list{
     width:100%;
-    border:1px solid gray;
 }
 
 

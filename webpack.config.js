@@ -64,6 +64,7 @@ export default {
             "@tests": resolve("tests"),
             "@scrutiny-treetable": resolve("webapp/components/scrutiny-treetable/scrutiny-treetable"),
             "@scrutiny-resizable-table": resolve("webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"),
+            "@scrutiny-live-edit": resolve("webapp/components/scrutiny-live-edit/scrutiny-live-edit")
         },
     },
     externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, nodeExternals()],
