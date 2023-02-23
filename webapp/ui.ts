@@ -12,6 +12,7 @@ import { default as $ } from "@jquery"
 import { DeviceInformation, ScrutinyFirmwareDescription, DataloggingCapabilities } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
+import { cancel_all_live_edit } from "@scrutiny-live-edit"
 
 type GoldenLayout = any // Stub for external lib
 
@@ -84,6 +85,7 @@ export class UI {
             if (e.key == "Escape") {
                 $("#modal-container").hide()
                 $(".scrutiny-tooltip-content").hide()
+                cancel_all_live_edit()
             }
         })
 

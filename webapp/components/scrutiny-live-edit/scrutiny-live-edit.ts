@@ -6,6 +6,9 @@ export const CLASS_LIVE_EDIT_CONTENT = "live-edit-content"
 const EVENT_COMMIT = "live-edit.commit"
 const EVENT_CANCEL = "live-edit.cancel"
 
+/**
+ * Put all live edit element back to label mode and restore their previous label value
+ */
 export function cancel_all_live_edit(): void {
     const live_edited_element = $(`.${CLASS_LIVE_EDIT}`) as JQuery
     live_edited_element.each(function () {
@@ -24,14 +27,29 @@ function edit_mode($element: JQuery, val?: string): void {
     _edit_mode($element, val)
 }
 
+/**
+ * Tells if the live-editable element is in edit mode
+ * @param $element The live-editable element
+ * @returns true if the element is in edit mode
+ */
 function is_edit_mode($element: JQuery): boolean {
     return $element.hasClass(CLASS_LIVE_EDIT)
 }
 
-function is_label_mode($element: JQuery, val?: string): boolean {
+/**
+ * Tells if the live-editable element is in label mode
+ * @param $element The live-editable element
+ * @returns true if the element is in label-mode
+ */
+function is_label_mode($element: JQuery): boolean {
     return !$element.hasClass(CLASS_LIVE_EDIT)
 }
 
+/**
+ * Get the subelement that will switched between textbox and element
+ * @param $element The live-editable element
+ * @returns The sub-element that can be replaced by a textbox/label
+ */
 function _get_content($element: JQuery): JQuery {
     const content = $element.find(`.${CLASS_LIVE_EDIT_CONTENT}`)
     if (content.length == 0) {
@@ -40,6 +58,11 @@ function _get_content($element: JQuery): JQuery {
     return content
 }
 
+/**
+ * Turn an element into label mode, changing the content for a span element displaying the value
+ * @param $element The live-editable element
+ * @param val The value to put in the span element. The span will be empty if undefined
+ */
 function _label_mode($element: JQuery, val?: string): void {
     const content = _get_content($element)
     const span = $(`<span></span>`) as JQuery<HTMLSpanElement>
@@ -52,9 +75,9 @@ function _label_mode($element: JQuery, val?: string): void {
 }
 
 /**
- * Switch the cell into a textbox for live edition
- * @param td The cell to be edited
- * @param complete_callback The function to call when edition is finished (pressed enter of blur)
+ * Turn an element into edit mode, changing the content for an input box
+ * @param $element The live-editable element
+ * @param val The value to put in the textbox. The label value will be used if undefined
  */
 function _edit_mode($element: JQuery, val?: string): void {
     const content = _get_content($element)
@@ -105,6 +128,11 @@ function _edit_mode($element: JQuery, val?: string): void {
     }, 0)
 }
 
+/**
+ * Initialize a component to be live-editable. Install an event handler on double-click to trigger it
+ * @param $element The live-editable element
+ * @param val Optional value to set on the label after init
+ */
 function init($element: JQuery, val?: string): void {
     const content = _get_content($element)
     $element.on("dblclick", function () {

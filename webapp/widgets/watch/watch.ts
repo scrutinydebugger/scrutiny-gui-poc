@@ -33,7 +33,6 @@ $.extend($.fn, { live_edit })
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
-type LiveEditCompleteCallback = (val: string) => void
 
 interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_treetable: Function
@@ -60,7 +59,6 @@ const CLASS_VALUE_COL = "value_col" // Shared with varlist widget
 const CLASS_ENTRY_NODE = "entry_node"
 const CLASS_WATCHED = "watched"
 const CLASS_UNAVAILABLE = "unavailable"
-const CLASS_INLINE_BLOCK = "inline-block"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -456,13 +454,13 @@ export class WatchWidget extends BaseWidget {
     make_basic_row(): TableRowDetails {
         const tr = $("<tr></tr>") as JQueryRow
         const td_name = $(
-            `<td class="${CLASS_NAME_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+            `<td class="${CLASS_NAME_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
         ) as JQueryLiveEdit<HTMLTableCellElement>
         const td_value = $(
-            `<td class="${CLASS_VALUE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+            `<td class="${CLASS_VALUE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
         ) as JQueryLiveEdit<HTMLTableCellElement>
         const td_type = $(
-            `<td class="${CLASS_TYPE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+            `<td class="${CLASS_TYPE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
         ) as JQueryLiveEdit<HTMLTableCellElement>
         tr.append(td_name).append(td_value).append(td_type)
 
