@@ -24,9 +24,11 @@ import {
     TransferCompleteEventData,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT } from "@scrutiny-live-edit"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
+$.extend($.fn, { live_edit })
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
@@ -38,25 +40,27 @@ interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_resizable_table: Function
 }
 
+interface JQueryLiveEdit<T> extends JQuery<T> {
+    live_edit: Function
+}
+
 interface TableRowDetails {
     tr: JQueryRow
-    td_name: JQueryCell
-    td_value: JQueryCell
-    td_type: JQueryCell
+    td_name: JQueryLiveEdit<HTMLTableCellElement>
+    td_value: JQueryLiveEdit<HTMLTableCellElement>
+    td_type: JQueryLiveEdit<HTMLTableCellElement>
 }
 
 const ATTR_DISPLAY_PATH = "display_path" // Shared with varlist widget
 const ATTR_ENTRY_TYPE = "entry_type" // Shared with varlist widget
-const ATTR_LIVE_EDIT_CANCEL_VAL = "live-edit-last-val"
 
 const CLASS_TYPE_COL = "type_col" // Shared with varlist widget
 const CLASS_NAME_COL = "name_col" // Shared with varlist widget
 const CLASS_VALUE_COL = "value_col" // Shared with varlist widget
 const CLASS_ENTRY_NODE = "entry_node"
-const CLASS_LIVE_EDIT = "live_edit"
-const CLASS_CELL_CONTENT = "cell_content"
 const CLASS_WATCHED = "watched"
 const CLASS_UNAVAILABLE = "unavailable"
+const CLASS_INLINE_BLOCK = "inline-block"
 
 export class WatchWidget extends BaseWidget {
     /* TODO :
@@ -150,22 +154,18 @@ export class WatchWidget extends BaseWidget {
                         that.display_table.scrutiny_treetable("select_node", first_row)
                     }
 
-                    const td = first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryCell
-                    if (!td.hasClass(CLASS_LIVE_EDIT)) {
-                        that.start_live_edit(td, function (val: string) {
-                            that.live_edit_value_cell_changed(td, val)
-                        })
+                    const td = first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryLiveEdit<HTMLTableCellElement>
+                    if (td.live_edit("is_label_mode")) {
+                        td.live_edit("edit_mode")
                     }
                 } else if (e.key == "F2") {
                     if (selected_rows.length > 1) {
                         that.display_table.scrutiny_treetable("select_node", first_row)
                     }
 
-                    const td = first_row.find(`td.${CLASS_NAME_COL}`) as JQueryCell
-                    if (!td.hasClass(CLASS_LIVE_EDIT)) {
-                        that.start_live_edit(td, function (val: string) {
-                            that.live_edit_name_cell_changed(td, val)
-                        })
+                    const td = first_row.find(`td.${CLASS_NAME_COL}`) as JQueryLiveEdit<HTMLTableCellElement>
+                    if (td.live_edit("is_label_mode")) {
+                        td.live_edit("edit_mode")
                     }
                 }
             },
@@ -409,85 +409,6 @@ export class WatchWidget extends BaseWidget {
     }
 
     /**
-     * Stops all live edit being active in the watch table
-     */
-    cancel_all_live_edit() {
-        const live_edited_cells = $(`.${CLASS_LIVE_EDIT}`) as JQueryCell
-        live_edited_cells.each(function () {
-            const cell = $(this)
-            cell.removeClass(CLASS_LIVE_EDIT)
-            const content = cell.find(`.${CLASS_CELL_CONTENT}`)
-            const last_val = cell.attr(ATTR_LIVE_EDIT_CANCEL_VAL)
-            content.html(`<span>${last_val}</span>`)
-        })
-    }
-
-    /**
-     * Configure a cell to be editable in place by double-clicking the cell.
-     * @param td The cell to be edited
-     * @param complete_callback The function to call when edition is finished (pressed enter of blur)
-     * @param val An optional value to apply on the cell before starting
-     */
-    init_entry_live_editable_cell(td: JQueryCell, complete_callback: LiveEditCompleteCallback, val?: string) {
-        const that = this
-        const span = $(`<span></span>`) as JQuery<HTMLSpanElement>
-        if (typeof val !== "undefined") {
-            span.text(val)
-        }
-        const cell_content = td.find(`div.${CLASS_CELL_CONTENT}`)
-        cell_content.html(span[0])
-        td.removeClass(CLASS_LIVE_EDIT)
-        td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
-
-        td.on("dblclick", function () {
-            that.start_live_edit(td, complete_callback)
-        })
-    }
-
-    /**
-     * Switch the cell into a textbox for live edition
-     * @param td The cell to be edited
-     * @param complete_callback The function to call when edition is finished (pressed enter of blur)
-     */
-    start_live_edit(td: JQueryCell, complete_callback: LiveEditCompleteCallback): void {
-        const that = this
-        this.cancel_all_live_edit()
-        td.addClass(CLASS_LIVE_EDIT)
-        td.off("dblclick") // Remove handler so they don't stack
-        const span = td.find("span")
-        if (span.length == 0) {
-            return
-        }
-        const value = span.text()
-        td.attr(ATTR_LIVE_EDIT_CANCEL_VAL, value)
-        const input = $("<input type='text' />") as JQuery<HTMLInputElement>
-
-        input.on("blur", function () {
-            complete_callback($(this).val())
-            that.init_entry_live_editable_cell(td, complete_callback, $(this).val())
-        })
-
-        input.on("keydown", function (e) {
-            if (e.key == "Enter") {
-                complete_callback($(this).val())
-                that.init_entry_live_editable_cell(td, complete_callback, $(this).val())
-                e.stopPropagation()
-            }
-
-            if (e.key == "Escape") {
-                that.init_entry_live_editable_cell(td, complete_callback, value)
-                e.stopPropagation()
-            }
-        })
-        input.val(value)
-        td.find(`div.${CLASS_CELL_CONTENT}`).html(input[0])
-
-        setTimeout(function () {
-            td.find("input").trigger("focus").trigger("select")
-        }, 0)
-    }
-
-    /**
      * Writes a value to an entry so that it reaches the server
      * @param td The cell that was written. Used to find the row that points to the datastore entry
      * @param val The value to write
@@ -534,9 +455,15 @@ export class WatchWidget extends BaseWidget {
      */
     make_basic_row(): TableRowDetails {
         const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
-        const td_value = $(`<td class="${CLASS_VALUE_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
-        const td_type = $(`<td class="${CLASS_TYPE_COL}"><div class="${CLASS_CELL_CONTENT}"></div></td>`) as JQueryCell
+        const td_name = $(
+            `<td class="${CLASS_NAME_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+        ) as JQueryLiveEdit<HTMLTableCellElement>
+        const td_value = $(
+            `<td class="${CLASS_VALUE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+        ) as JQueryLiveEdit<HTMLTableCellElement>
+        const td_type = $(
+            `<td class="${CLASS_TYPE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT} ${CLASS_INLINE_BLOCK}"></div></td>`
+        ) as JQueryLiveEdit<HTMLTableCellElement>
         tr.append(td_name).append(td_value).append(td_type)
 
         return {
@@ -546,12 +473,6 @@ export class WatchWidget extends BaseWidget {
             td_type: td_type,
         }
     }
-
-    live_edit_value_cell_changed(td: JQueryCell, val: string) {
-        this.write_value(td, val)
-    }
-
-    live_edit_name_cell_changed(td: JQueryCell, val: string) {}
 
     /**
      * Creates an entry row (Var, alias, RPV) to be displayed in the watch table
@@ -564,25 +485,19 @@ export class WatchWidget extends BaseWidget {
         const that = this
         const row_data = this.make_basic_row()
 
-        row_data.td_type.find(`div.${CLASS_CELL_CONTENT}`).text(datatype)
+        row_data.td_type.find(`div.${CLASS_LIVE_EDIT_CONTENT}`).text(datatype)
         row_data.tr.attr(ATTR_DISPLAY_PATH, display_path)
         row_data.tr.attr(ATTR_ENTRY_TYPE, entry_type)
         row_data.tr.addClass(CLASS_ENTRY_NODE)
 
-        this.init_entry_live_editable_cell(
-            row_data.td_value,
-            function (val: string) {
-                that.live_edit_value_cell_changed(row_data.td_value, val)
-            },
-            "N/A"
-        )
-        this.init_entry_live_editable_cell(
-            row_data.td_name,
-            function (val: string) {
-                that.live_edit_name_cell_changed(row_data.td_name, val)
-            },
-            entry_name
-        )
+        const live_editable_td_value = row_data.td_value as JQueryLiveEdit<HTMLTableCellElement>
+        live_editable_td_value.live_edit("init", "N/A")
+        live_editable_td_value.on("live-edit.commit", function (e, val: string) {
+            that.write_value(row_data.td_value, val)
+        })
+
+        const live_editable_td_name = row_data.td_name as JQueryLiveEdit<HTMLTableCellElement>
+        live_editable_td_name.live_edit("init", entry_name)
 
         const img = $("<div class='treeicon'/>")
 
@@ -593,7 +508,7 @@ export class WatchWidget extends BaseWidget {
         } else if (entry_type == DatastoreEntryType.RPV) {
             img.addClass("icon-rpv")
         } else {
-            throw "Unknon entry type"
+            throw "Unknown entry type"
         }
 
         row_data.td_name.prepend(img)
@@ -613,13 +528,7 @@ export class WatchWidget extends BaseWidget {
         row_data.tr.attr(ATTR_DISPLAY_PATH, display_path)
         row_data.tr.attr(ATTR_ENTRY_TYPE, entry_type)
 
-        this.init_entry_live_editable_cell(
-            row_data.td_name,
-            function (val: string) {
-                that.live_edit_name_cell_changed(row_data.td_name, val)
-            },
-            text
-        )
+        row_data.td_name.live_edit("init", text)
 
         const img = $("<div class='treeicon icon-folder' />")
         row_data.td_name.prepend(img)

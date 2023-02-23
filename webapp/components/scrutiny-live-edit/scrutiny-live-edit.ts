@@ -1,7 +1,7 @@
 const ATTR_LIVE_EDIT_CANCEL_VAL = "live-edit-last-val"
 
 const CLASS_LIVE_EDIT = "live-edit"
-const CLASS_LIVE_EDIT_CONTENT = "live-edit-content"
+export const CLASS_LIVE_EDIT_CONTENT = "live-edit-content"
 
 const EVENT_COMMIT = "live-edit.commit"
 const EVENT_CANCEL = "live-edit.cancel"
@@ -22,6 +22,14 @@ function label_mode($element: JQuery, val?: string): void {
 
 function edit_mode($element: JQuery, val?: string): void {
     _edit_mode($element, val)
+}
+
+function is_edit_mode($element: JQuery): boolean {
+    return $element.hasClass(CLASS_LIVE_EDIT)
+}
+
+function is_label_mode($element: JQuery, val?: string): boolean {
+    return !$element.hasClass(CLASS_LIVE_EDIT)
 }
 
 function _get_content($element: JQuery): JQuery {
@@ -97,18 +105,24 @@ function _edit_mode($element: JQuery, val?: string): void {
     }, 0)
 }
 
-function init($element: JQuery): void {
+function init($element: JQuery, val?: string): void {
     const content = _get_content($element)
     $element.on("dblclick", function () {
         _edit_mode($element)
     })
-    _label_mode($element, content.text())
+    if (typeof val === "undefined") {
+        val = content.text()
+    }
+    _label_mode($element, val)
 }
 
 // public functions
 const public_funcs = {
+    init: init,
     label_mode: label_mode,
     edit_mode: edit_mode,
+    is_edit_mode: is_edit_mode,
+    is_label_mode: is_label_mode,
 }
 
 export function scrutiny_live_edit(...args: any[]) {

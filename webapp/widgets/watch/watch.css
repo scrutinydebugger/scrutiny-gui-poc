@@ -72,7 +72,7 @@
     background-image: url("assets/rpv-16x16.png");
 }
 
-.watch-table td>div.cell_content {
+.watch-table td>div {
     margin:0;
     padding:0;
     display:inline-block;
@@ -82,4 +82,5 @@
     margin:0;
     padding:0;
     border:0;
+    width:min-content;
 }
