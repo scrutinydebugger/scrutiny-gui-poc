@@ -10,9 +10,10 @@
 import { default as $ } from "@jquery"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
-import { DatastoreEntryType, DatastoreEntryWithName, DatastoreEntry, AllDatastoreEntryTypes } from "@src/datastore"
+import { DatastoreEntryType, DatastoreEntry, AllDatastoreEntryTypes } from "@src/datastore"
 import * as logging from "@src/logging"
 import { trim } from "@src/tools"
+import { WatchableInterface, CLASS_ENTRY_ROW } from "@src/widgets/common"
 
 import {
     scrutiny_treetable,
@@ -24,7 +25,7 @@ import {
     TransferCompleteEventData,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
-import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT } from "@scrutiny-live-edit"
+import { scrutiny_live_edit as live_edit, JQueryLiveEdit } from "@scrutiny-live-edit"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -39,10 +40,6 @@ interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_resizable_table: Function
 }
 
-interface JQueryLiveEdit<T> extends JQuery<T> {
-    live_edit: Function
-}
-
 interface TableRowDetails {
     tr: JQueryRow
     td_name: JQueryLiveEdit<HTMLTableCellElement>
@@ -50,13 +47,6 @@ interface TableRowDetails {
     td_type: JQueryLiveEdit<HTMLTableCellElement>
 }
 
-const ATTR_DISPLAY_PATH = "display_path" // Shared with varlist widget
-const ATTR_ENTRY_TYPE = "entry_type" // Shared with varlist widget
-
-const CLASS_TYPE_COL = "type_col" // Shared with varlist widget
-const CLASS_NAME_COL = "name_col" // Shared with varlist widget
-const CLASS_VALUE_COL = "value_col" // Shared with varlist widget
-const CLASS_ENTRY_NODE = "entry_node"
 const CLASS_WATCHED = "watched"
 const CLASS_UNAVAILABLE = "unavailable"
 
@@ -152,7 +142,7 @@ export class WatchWidget extends BaseWidget {
                         that.display_table.scrutiny_treetable("select_node", first_row)
                     }
 
-                    const td = first_row.find(`td.${CLASS_VALUE_COL}`) as JQueryLiveEdit<HTMLTableCellElement>
+                    const td = WatchableInterface.get_value_cell(first_row) as JQueryLiveEdit<HTMLTableCellElement>
                     if (td.live_edit("is_label_mode")) {
                         td.live_edit("edit_mode")
                     }
@@ -161,7 +151,7 @@ export class WatchWidget extends BaseWidget {
                         that.display_table.scrutiny_treetable("select_node", first_row)
                     }
 
-                    const td = first_row.find(`td.${CLASS_NAME_COL}`) as JQueryLiveEdit<HTMLTableCellElement>
+                    const td = WatchableInterface.get_name_cell(first_row) as JQueryLiveEdit<HTMLTableCellElement>
                     if (td.live_edit("is_label_mode")) {
                         td.live_edit("edit_mode")
                     }
@@ -231,28 +221,6 @@ export class WatchWidget extends BaseWidget {
     }
 
     /**
-     * Fetch the datastore entry that the given table line points to.
-     * @param tr The table line
-     * @returns The datastore entry pointed by the line
-     */
-    get_entry_from_row(tr: JQueryRow): DatastoreEntry | null {
-        const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
-        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
-        if (typeof display_path !== "undefined" && typeof entry_type !== "undefined") {
-            try {
-                const entry = this.app.datastore.get_entry(entry_type, display_path)
-                return entry
-            } catch {
-                tr.addClass(CLASS_UNAVAILABLE)
-            }
-        } else {
-            throw "Missing proeprty on row"
-        }
-
-        return null
-    }
-
-    /**
      * Makes a unique HTML ID for the given row. Return the existing row if it exists
      * @param line The table row
      * @returns A HTML ID
@@ -269,7 +237,7 @@ export class WatchWidget extends BaseWidget {
 
     /**
      * Mark the table rows as available or unavailable. They are unavailable if the entry they point to is not in the
-     * datasatore (if the server is disconnected or a different firmware is loaded)
+     * datastore (if the server is disconnected or a different firmware is loaded)
      * @param optional_parent The starting point of the recursive search. Will update only the descendant of this node if specified. All rows if not given
      * @param entry_type The entry type of the rows to update
      */
@@ -281,22 +249,23 @@ export class WatchWidget extends BaseWidget {
         }
 
         for (let i = 0; i < entry_types.length; i++) {
-            entry_type = entry_types[i]
+            const actual_entry_type = entry_types[i]
 
-            const filter = `tr[${ATTR_ENTRY_TYPE}="${entry_type}"]`
+            const filter = WatchableInterface.get_row_filter_by_entry_type(actual_entry_type)
             const to_update = this.display_table.scrutiny_treetable("get_visible_nodes", optional_parent, filter) as JQueryRow
             to_update.each(function () {
                 const tr = $(this)
-                const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
-                if (typeof entry_type === "undefined" || typeof display_path === "undefined") {
-                    that.make_row_available(tr, false)
-                } else {
-                    const exists = that.app.datastore.path_valid(entry_type, display_path)
+                try {
+                    const display_path = WatchableInterface.get_display_path(tr)
+                    const exists = that.app.datastore.path_valid(actual_entry_type, display_path)
                     if (exists) {
                         that.make_row_available(tr, true)
                     } else {
                         that.make_row_available(tr, false)
                     }
+                } catch (e) {
+                    that.logger.error("Error", e)
+                    that.make_row_available(tr, false)
                 }
             })
         }
@@ -333,12 +302,12 @@ export class WatchWidget extends BaseWidget {
      */
     watch_all_visible(optional_parent?: JQueryRow | string | null) {
         const that = this
-        const filter = `.${CLASS_ENTRY_NODE}:not(.${CLASS_WATCHED})`
+        const filter = `.${CLASS_ENTRY_ROW}:not(.${CLASS_WATCHED})`
         const to_watch = this.display_table.scrutiny_treetable("get_visible_nodes", optional_parent, filter) as JQueryRow
         to_watch.each(function () {
             const tr = $(this)
             if (that.is_row_available(tr)) {
-                const entry = that.get_entry_from_row(tr)
+                const entry = WatchableInterface.get_entry_from_row(that.app.datastore, tr)
                 if (entry != null) {
                     that.start_watching(entry, tr)
                 }
@@ -353,7 +322,7 @@ export class WatchWidget extends BaseWidget {
      */
     unwatch_all_hidden(optional_parent?: JQueryRow | string | null) {
         const that = this
-        const filter = `.${CLASS_ENTRY_NODE}.${CLASS_WATCHED}`
+        const filter = `.${CLASS_ENTRY_ROW}.${CLASS_WATCHED}`
         const to_unwatch = this.display_table.scrutiny_treetable("get_hidden_nodes", optional_parent, filter) as JQueryRow
         to_unwatch.each(function () {
             const tr = $(this)
@@ -367,18 +336,20 @@ export class WatchWidget extends BaseWidget {
      * @param line The line that will become the watcher
      * @param value_cell The cell that needs to be updated by the callback
      */
-    start_watching(entry: DatastoreEntry, line: JQueryRow, value_cell?: JQueryCell) {
+    start_watching(entry: DatastoreEntry, line: JQueryRow, value_cell?: JQueryLiveEdit<HTMLTableCellElement>) {
         let line_id = this.get_or_make_line_id(line)
 
         if (typeof value_cell === "undefined") {
-            value_cell = line.find(`td.${CLASS_VALUE_COL}`) as JQueryCell
+            value_cell = WatchableInterface.get_value_cell(line)
         }
         const value_cell2 = value_cell
         let update_callback = function (val: number | null) {
-            const newval = val === null ? "N/A" : "" + val
-            const span = value_cell2.find(`span`).first()
-            span.text(newval) // If user is editing, span will not exist
+            const newval = val === null ? "N/A" : val.toString()
+            if (value_cell2.live_edit("is_label_mode")) {
+                value_cell2.live_edit("label_mode", newval)
+            }
         }
+
         update_callback(this.app.datastore.get_value(entry.entry_type, entry.display_path))
         this.app.datastore.watch(entry.entry_type, entry.display_path, line_id, update_callback)
         line.addClass(CLASS_WATCHED)
@@ -394,16 +365,7 @@ export class WatchWidget extends BaseWidget {
             this.app.datastore.unwatch_all(line_id)
         }
         line.removeClass(CLASS_WATCHED)
-        this.set_display_value(line, "N/A")
-    }
-
-    /**
-     * Sets the value displayed by the row
-     * @param tr The row
-     * @param val The value to set
-     */
-    set_display_value(tr: JQueryRow, val: string | number) {
-        tr.find(`td.${CLASS_VALUE_COL} span`).text(val)
+        WatchableInterface.set_entry_row_display_value(line, "N/A")
     }
 
     /**
@@ -414,13 +376,17 @@ export class WatchWidget extends BaseWidget {
      */
     write_value(td: JQueryCell, val: string): number | null {
         const tr = td.parent("tr") as unknown as JQueryRow
-        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
-        const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
+        let entry: DatastoreEntry
 
-        if (typeof entry_type === "undefined" || typeof display_path === "undefined") {
+        try {
+            const entry_type = WatchableInterface.get_entry_type(tr)
+            const display_path = WatchableInterface.get_display_path(tr)
+            entry = this.app.datastore.get_entry(entry_type, display_path)
+        } catch (e) {
+            this.logger.error("Cannot write value", e)
             return null
         }
-        const entry = this.app.datastore.get_entry(entry_type, display_path)
+
         let value_valid = true
         let valnum = 0
 
@@ -448,92 +414,6 @@ export class WatchWidget extends BaseWidget {
     }
 
     /**
-     * Creates a row to be displayed in this widget. Common to entry and folder.
-     * @returns An object with all the HTML element created
-     */
-    make_basic_row(): TableRowDetails {
-        const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(
-            `<td class="${CLASS_NAME_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
-        ) as JQueryLiveEdit<HTMLTableCellElement>
-        const td_value = $(
-            `<td class="${CLASS_VALUE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
-        ) as JQueryLiveEdit<HTMLTableCellElement>
-        const td_type = $(
-            `<td class="${CLASS_TYPE_COL}"><div class="${CLASS_LIVE_EDIT_CONTENT}"></div></td>`
-        ) as JQueryLiveEdit<HTMLTableCellElement>
-        tr.append(td_name).append(td_value).append(td_type)
-
-        return {
-            tr: tr,
-            td_name: td_name,
-            td_value: td_value,
-            td_type: td_type,
-        }
-    }
-
-    /**
-     * Creates an entry row (Var, alias, RPV) to be displayed in the watch table
-     * @param text Name of the folder
-     * @param display_path The datastore entry display path
-     * @param entry_type The datastore entry type
-     * @returns An object containings every HTML element in the row
-     */
-    make_entry_row(entry_type: DatastoreEntryType, display_path: string, entry_name: string, datatype: string): TableRowDetails {
-        const that = this
-        const row_data = this.make_basic_row()
-
-        row_data.td_type.find(`div.${CLASS_LIVE_EDIT_CONTENT}`).text(datatype)
-        row_data.tr.attr(ATTR_DISPLAY_PATH, display_path)
-        row_data.tr.attr(ATTR_ENTRY_TYPE, entry_type)
-        row_data.tr.addClass(CLASS_ENTRY_NODE)
-
-        const live_editable_td_value = row_data.td_value as JQueryLiveEdit<HTMLTableCellElement>
-        live_editable_td_value.live_edit("init", "N/A")
-        live_editable_td_value.on("live-edit.commit", function (e, val: string) {
-            that.write_value(row_data.td_value, val)
-        })
-
-        const live_editable_td_name = row_data.td_name as JQueryLiveEdit<HTMLTableCellElement>
-        live_editable_td_name.live_edit("init", entry_name)
-
-        const img = $("<div class='treeicon'/>")
-
-        if (entry_type == DatastoreEntryType.Var) {
-            img.addClass("icon-var")
-        } else if (entry_type == DatastoreEntryType.Alias) {
-            img.addClass("icon-alias")
-        } else if (entry_type == DatastoreEntryType.RPV) {
-            img.addClass("icon-rpv")
-        } else {
-            throw "Unknown entry type"
-        }
-
-        row_data.td_name.prepend(img)
-        return row_data
-    }
-
-    /**
-     * Creates a folder row to be displayed in the watch table
-     * @param text Name of the folder
-     * @param display_path The datastore entry display path
-     * @param entry_type The datastore entry type
-     * @returns An object containings every HTML element in the row
-     */
-    make_folder_row(text: string, display_path: string, entry_type: DatastoreEntryType): TableRowDetails {
-        const that = this
-        const row_data = this.make_basic_row()
-        row_data.tr.attr(ATTR_DISPLAY_PATH, display_path)
-        row_data.tr.attr(ATTR_ENTRY_TYPE, entry_type)
-
-        row_data.td_name.live_edit("init", text)
-
-        const img = $("<div class='treeicon icon-folder' />")
-        row_data.td_name.prepend(img)
-        return row_data
-    }
-
-    /**
      * The tree table load function.  This will be called only for unloaded nodes.
      * The watch window will contain a mix of user-defined nodes and nodes coming from the varlist widget.
      * For optimization purpose, we do not load everything coming from the valist because the user could
@@ -545,9 +425,13 @@ export class WatchWidget extends BaseWidget {
      * @returns
      */
     table_load_fn(node_id: string, tr: JQueryRow, user_data?: any): ReturnType<TreeTableLoadFunction> {
-        const display_path = tr.attr(ATTR_DISPLAY_PATH) as string | undefined
-        const entry_type = tr.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
-        if (typeof display_path === "undefined" || typeof entry_type === "undefined") {
+        let display_path: string
+        let entry_type: DatastoreEntryType
+
+        try {
+            display_path = WatchableInterface.get_display_path(tr)
+            entry_type = WatchableInterface.get_entry_type(tr)
+        } catch {
             return []
         }
 
@@ -555,14 +439,25 @@ export class WatchWidget extends BaseWidget {
         const that = this
         const children = this.app.datastore.get_children(entry_type, display_path)
         children["subfolders"].forEach(function (subfolder, i) {
+            const row_desc = WatchableInterface.make_folder_row_from_datastore_folder(subfolder, entry_type)
+            row_desc.td_name.live_edit()
             output.push({
-                tr: that.make_folder_row(subfolder.name, subfolder.display_path, entry_type).tr,
+                tr: row_desc.tr,
             })
         })
 
         children["entries"][entry_type].forEach(function (entry, i) {
+            const row_desc = WatchableInterface.make_entry_row(entry, entry.default_name ?? "", true, true)
+            row_desc.td_name.live_edit()
+
+            const td_val = row_desc.td_val as JQueryLiveEdit<HTMLTableCellElement> // Not null
+            td_val.live_edit()
+            td_val.on("live-edit.commit", function (e, val) {
+                that.write_value(td_val, val)
+            })
+
             output.push({
-                tr: that.make_entry_row(entry.entry_type, entry.display_path, entry.default_name ?? "", entry.datatype).tr,
+                tr: row_desc.tr,
                 no_children: true,
             })
         })
@@ -571,53 +466,40 @@ export class WatchWidget extends BaseWidget {
     }
 
     element_transfer_fn(source_table: JQueryTable, bare_line: JQueryRow, meta: TransferFunctionMetadata): TransferFunctionOutput {
-        if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
-            this.logger.error("Don't know how to convert table row coming from this table")
-            return null
-        }
+        const that = this
+        let new_line: JQueryRow | null = null
+        try {
+            const text_name = WatchableInterface.get_name_cell(bare_line).text()
 
-        const display_path = bare_line.attr(ATTR_DISPLAY_PATH) as string | undefined
-        const entry_type = bare_line.attr(ATTR_ENTRY_TYPE) as DatastoreEntryType | undefined
+            if (WatchableInterface.is_entry_row(bare_line)) {
+                const entry = WatchableInterface.get_entry_from_row(this.app.datastore, bare_line)
+                if (entry == null) {
+                    this.logger.error("Failed to transfer row. Entry not found in " + bare_line)
+                    return null
+                }
 
-        if (typeof display_path === "undefined") {
-            this.logger.error("Missing display path on node")
-            return null
-        }
+                const row_desc = WatchableInterface.make_entry_row(entry, text_name, true, true)
+                row_desc.td_name.live_edit()
 
-        if (typeof entry_type === "undefined") {
-            this.logger.error("Missing entry type on node")
-            return null
-        }
-
-        const is_node = bare_line.hasClass(CLASS_ENTRY_NODE)
-
-        let new_line: JQueryRow
-        if (is_node) {
-            let entry_name: string
-            let datatype: string
-
-            // Reads data from the source watch window if we can. Will allow to transfer watch items
-            // even if the server or the device is disconnected (datastore empty)
-            if (source_table.hasClass("watch-table")) {
-                datatype = bare_line.find(`td.${CLASS_TYPE_COL}`).text()
-                entry_name = bare_line.find(`td.${CLASS_NAME_COL} span`).text()
-            } else if (source_table.hasClass("varlist-table")) {
-                const entry = this.app.datastore.get_entry(entry_type, display_path) as DatastoreEntryWithName
-                datatype = entry.datatype
-                entry_name = entry.default_name ?? "N/A"
+                const td_val = row_desc.td_val as JQueryLiveEdit<HTMLTableCellElement>
+                td_val.live_edit()
+                td_val.on("live-edit.commit", function (e, val) {
+                    that.write_value(td_val, val)
+                })
+                new_line = row_desc.tr
             } else {
-                return null
-            }
+                const display_path = WatchableInterface.get_display_path(bare_line)
+                const entry_type = WatchableInterface.get_entry_type(bare_line)
 
-            const new_row_data = this.make_entry_row(entry_type, display_path, entry_name, datatype)
-            new_line = new_row_data.tr
-        } else {
-            const text_name = bare_line.find(`td.${CLASS_NAME_COL}`).text()
-            const new_row_data = this.make_folder_row(text_name, display_path, entry_type)
-            new_line = new_row_data.tr
+                const folder_desc = WatchableInterface.make_folder_row(text_name, display_path, entry_type, 2)
+                new_line = folder_desc.tr
+            }
+        } catch (e) {
+            this.logger.error("Cannot transfer row", e)
+            return null
         }
 
-        return { tr: new_line }
+        return { tr: new_line as JQueryRow }
     }
 
     static widget_name() {

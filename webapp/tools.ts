@@ -85,3 +85,41 @@ export function get_url_param(name: string): string {
 export function number2str(x: number, max_digits: number = 13): string {
     return x.toFixed(max_digits).replace(/\.?0*$/, "")
 }
+
+/**
+ * Clamps a value between min and max inclusively.
+ * @param val The value to clamp
+ * @param min The lower limit
+ * @param max The high limit
+ * @returns Clamped value
+ */
+export function clamp_val(val: number, min: number, max: number): number {
+    if (isNaN(val)) {
+        val = min
+    }
+    if (val < min) {
+        val = min
+    }
+    if (val > max) {
+        val = max
+    }
+    return val
+}
+
+export function force_input_int(input: JQuery<HTMLInputElement>, min: number, max: number) {
+    let val = parseInt(input.val() as string)
+    val = clamp_val(val, min, max)
+    if (val != input.val()) {
+        // string and integer can be compared legally
+        input.val(val)
+    }
+}
+
+export function force_input_float(input: JQuery<HTMLInputElement>, min: number, max: number) {
+    let val = parseFloat(input.val() as string)
+    val = clamp_val(val, min, max)
+    if (val != input.val()) {
+        // string and integer can be compared legally
+        input.val(val)
+    }
+}

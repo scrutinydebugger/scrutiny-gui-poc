@@ -1,5 +1,6 @@
 const ATTR_LIVE_EDIT_CANCEL_VAL = "live-edit-last-val"
 
+const CLASS_LIVE_EDIT_ACTIVE = "live-edit-active"
 const CLASS_LIVE_EDIT = "live-edit"
 export const CLASS_LIVE_EDIT_CONTENT = "live-edit-content"
 
@@ -10,13 +11,17 @@ const EVENT_CANCEL = "live-edit.cancel"
  * Put all live edit element back to label mode and restore their previous label value
  */
 export function cancel_all_live_edit(): void {
-    const live_edited_element = $(`.${CLASS_LIVE_EDIT}`) as JQuery
+    const live_edited_element = $(`.${CLASS_LIVE_EDIT_ACTIVE}`) as JQuery
     live_edited_element.each(function () {
         const element = $(this)
         const last_val = element.attr(ATTR_LIVE_EDIT_CANCEL_VAL)
         _label_mode(element, last_val)
         element.trigger(EVENT_CANCEL)
     })
+}
+
+export interface JQueryLiveEdit<T> extends JQuery<T> {
+    live_edit: Function
 }
 
 function label_mode($element: JQuery, val?: string): void {
@@ -27,13 +32,17 @@ function edit_mode($element: JQuery, val?: string): void {
     _edit_mode($element, val)
 }
 
+function has_live_edit($element: JQuery): boolean {
+    return $element.hasClass(CLASS_LIVE_EDIT)
+}
+
 /**
  * Tells if the live-editable element is in edit mode
  * @param $element The live-editable element
  * @returns true if the element is in edit mode
  */
 function is_edit_mode($element: JQuery): boolean {
-    return $element.hasClass(CLASS_LIVE_EDIT)
+    return $element.hasClass(CLASS_LIVE_EDIT_ACTIVE)
 }
 
 /**
@@ -42,7 +51,7 @@ function is_edit_mode($element: JQuery): boolean {
  * @returns true if the element is in label-mode
  */
 function is_label_mode($element: JQuery): boolean {
-    return !$element.hasClass(CLASS_LIVE_EDIT)
+    return !$element.hasClass(CLASS_LIVE_EDIT_ACTIVE)
 }
 
 /**
@@ -59,18 +68,17 @@ function _get_content($element: JQuery): JQuery {
 }
 
 /**
- * Turn an element into label mode, changing the content for a span element displaying the value
+ * Turn an element into label mode, changing the content for a text element displaying the value
  * @param $element The live-editable element
- * @param val The value to put in the span element. The span will be empty if undefined
+ * @param val The value to put in the element. The content will be empty if undefined
  */
 function _label_mode($element: JQuery, val?: string): void {
     const content = _get_content($element)
-    const span = $(`<span></span>`) as JQuery<HTMLSpanElement>
-    if (typeof val !== "undefined") {
-        span.text(val)
+    if (typeof val === "undefined") {
+        val = ""
     }
-    content.html(span[0])
-    $element.removeClass(CLASS_LIVE_EDIT)
+    content.html(val)
+    $element.removeClass(CLASS_LIVE_EDIT_ACTIVE)
     $element.attr(ATTR_LIVE_EDIT_CANCEL_VAL, "")
 }
 
@@ -83,7 +91,7 @@ function _edit_mode($element: JQuery, val?: string): void {
     const content = _get_content($element)
 
     let previous_value = ""
-    if ($element.hasClass(CLASS_LIVE_EDIT)) {
+    if ($element.hasClass(CLASS_LIVE_EDIT_ACTIVE)) {
         const attr = $element.attr(ATTR_LIVE_EDIT_CANCEL_VAL)
         if (typeof attr !== "undefined") {
             previous_value = attr
@@ -92,7 +100,7 @@ function _edit_mode($element: JQuery, val?: string): void {
         previous_value = content.text()
         $element.attr(ATTR_LIVE_EDIT_CANCEL_VAL, previous_value)
     }
-    $element.addClass(CLASS_LIVE_EDIT)
+    $element.addClass(CLASS_LIVE_EDIT_ACTIVE)
 
     const input = $("<input type='text' />") as JQuery<HTMLInputElement>
 
@@ -134,6 +142,7 @@ function _edit_mode($element: JQuery, val?: string): void {
  * @param val Optional value to set on the label after init
  */
 function init($element: JQuery, val?: string): void {
+    $element.addClass(CLASS_LIVE_EDIT)
     const content = _get_content($element)
     $element.on("dblclick", function () {
         _edit_mode($element)
@@ -151,6 +160,7 @@ const public_funcs = {
     edit_mode: edit_mode,
     is_edit_mode: is_edit_mode,
     is_label_mode: is_label_mode,
+    has_live_edit: has_live_edit,
 }
 
 export function scrutiny_live_edit(...args: any[]) {

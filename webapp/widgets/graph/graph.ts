@@ -2,9 +2,10 @@ import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
-import { number2str, trim } from "@src/tools"
+import { number2str, trim, force_input_int, force_input_float } from "@src/tools"
 import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
+import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 
 import {
     scrutiny_treetable,
@@ -91,22 +92,22 @@ export class GraphWidget extends BaseWidget {
         })
 
         config_table.find('input[name="decimation"]').on("change", function () {
-            that.force_input_int($(this), 1, 0xffff)
+            force_input_int($(this), 1, 0xffff)
             that.update_config_form()
         })
 
         config_table.find('input[name="probe_location"]').on("change", function () {
-            that.force_input_int($(this), 0, 100)
+            force_input_int($(this), 0, 100)
             that.update_config_form()
         })
 
         config_table.find('input[name="timeout"]').on("change", function () {
-            that.force_input_float($(this), 0, 360)
+            force_input_float($(this), 0, 360)
             that.update_config_form()
         })
 
         config_table.find('input[name="trigger_hold_time"]').on("change", function () {
-            that.force_input_float($(this), 0, 360000)
+            force_input_float($(this), 0, 360000)
             that.update_config_form()
         })
 
@@ -162,7 +163,8 @@ export class GraphWidget extends BaseWidget {
                 if (name_cell.length == 0) {
                     return null
                 }
-                const new_tr = $("<tr></tr>").append(name_cell.clone())
+                const new_tr = $("<tr></tr>").append(name_cell.clone()) as JQueryLiveEdit<HTMLTableRowElement>
+                new_tr.live_edit("init")
                 return { tr: new_tr }
             },
         }
@@ -201,10 +203,15 @@ export class GraphWidget extends BaseWidget {
             axis_number++
         } while (already_exist)
 
+        const tr = $(
+            `<tr class="axis"><td><div class="${CLASS_LIVE_EDIT_CONTENT}">${axis_name_candidate}</div></td></tr>`
+        ) as JQueryLiveEdit<HTMLTableRowElement>
+        tr.live_edit("init")
+
         signal_list_table.scrutiny_treetable(
             "add_root_node",
             `axisid-${this.next_axis_id}`,
-            $(`<tr class="axis"><td>${axis_name_candidate}</td></tr>`),
+            tr,
             false, // Children allowed
             true // No drag
         )
@@ -214,37 +221,9 @@ export class GraphWidget extends BaseWidget {
         split_table.scrutiny_resizable_table("refresh")
     }
 
-    force_input_int(input: JQuery, min: number, max: number) {
-        let val = parseInt(input.val() as string)
-        val = this.clamp_val(val, min, max)
-        if (val != input.val()) {
-            // string and integer can be compared legally
-            input.val(val)
-        }
-    }
-
-    force_input_float(input: JQuery, min: number, max: number) {
-        let val = parseFloat(input.val() as string)
-        val = this.clamp_val(val, min, max)
-        if (val != input.val()) {
-            // string and integer can be compared legally
-            input.val(val)
-        }
-    }
-
-    clamp_val(val: number, min: number, max: number): number {
-        if (isNaN(val)) {
-            val = min
-        }
-        if (val < min) {
-            val = min
-        }
-        if (val > max) {
-            val = max
-        }
-        return val
-    }
-
+    /**
+     * Sets the configuration form in it's "unavailable". USed when no device or device does not support datalogging
+     */
     set_config_no_datalogging() {
         this.get_sampling_rate_select().html("<option>N/A</option>")
         this.get_xaxis_type_select().find('option[value="ideal_time"]').attr("disabled", "disabled")
@@ -418,3 +397,4 @@ export class GraphWidget extends BaseWidget {
         }
     }
 }
+
