@@ -6,6 +6,7 @@ import { number2str, trim, force_input_int, force_input_float } from "@src/tools
 import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
+import { WatchableInterface } from "@src/widgets/common"
 
 import {
     scrutiny_treetable,
@@ -17,6 +18,8 @@ import {
     TransferFunctionOutput,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+
+const CLASS_AXIS_ROW = "axis"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -140,7 +143,7 @@ export class GraphWidget extends BaseWidget {
                     return { scope: TransferScope.NONE }
                 }
 
-                if (tr.hasClass("entry_node")) {
+                if (WatchableInterface.is_entry_row(tr as JQueryRow)) {
                     return { scope: TransferScope.ROW_ONLY }
                 }
 
@@ -154,18 +157,42 @@ export class GraphWidget extends BaseWidget {
                 bare_line: JQueryRow,
                 meta: TransferFunctionMetadata
             ): TransferFunctionOutput {
-                if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
-                    that.logger.error("Don't know how to convert table row coming from this table")
-                    return null
-                }
+                try {
+                    const text_name = WatchableInterface.get_name_cell(bare_line).text()
+                    const entry = WatchableInterface.get_entry_from_row(that.app.datastore, bare_line)
+                    if (entry === null) {
+                        that.logger.error("Failed to transfer row. Entry not found in " + bare_line)
+                        return null
+                    }
 
-                const name_cell = bare_line.find("td.name_col")
-                if (name_cell.length == 0) {
+                    const row_desc = WatchableInterface.make_entry_row(entry, text_name, false, false)
+                    row_desc.td_name.live_edit()
+                    return { tr: row_desc.tr }
+                } catch (e) {
+                    that.logger.error("Failed to transfer row. Entry not found in " + bare_line)
                     return null
                 }
-                const new_tr = $("<tr></tr>").append(name_cell.clone()) as JQueryLiveEdit<HTMLTableRowElement>
-                new_tr.live_edit("init")
-                return { tr: new_tr }
+            },
+            keydown_callback: function (e: JQuery.KeyDownEvent, selected_rows: JQueryRow) {
+                const first_row = selected_rows.first()
+                if (e.key == "F2") {
+                    if (selected_rows.length > 1) {
+                        signal_list_table.scrutiny_treetable("select_node", first_row)
+                    }
+
+                    let td: JQueryLiveEdit<HTMLTableCellElement> | null = null
+
+                    if (WatchableInterface.is_entry_row(selected_rows)) {
+                        td = WatchableInterface.get_name_cell(first_row)
+                    } else if (first_row.hasClass(CLASS_AXIS_ROW)) {
+                        td = first_row.children("td:first") as JQueryLiveEdit<HTMLTableCellElement>
+                    }
+                    if (td !== null) {
+                        if (td.live_edit("is_label_mode")) {
+                            td.live_edit("edit_mode")
+                        }
+                    }
+                }
             },
         }
 
@@ -204,7 +231,7 @@ export class GraphWidget extends BaseWidget {
         } while (already_exist)
 
         const tr = $(
-            `<tr class="axis"><td><div class="${CLASS_LIVE_EDIT_CONTENT}">${axis_name_candidate}</div></td></tr>`
+            `<tr class="${CLASS_AXIS_ROW}"><td><div class="${CLASS_LIVE_EDIT_CONTENT}">${axis_name_candidate}</div></td></tr>`
         ) as JQueryLiveEdit<HTMLTableRowElement>
         tr.live_edit("init")
 
@@ -397,4 +424,3 @@ export class GraphWidget extends BaseWidget {
         }
     }
 }
-
