@@ -124,9 +124,6 @@ export class WatchWidget extends BaseWidget {
                 new_parent_id: string | null,
                 after_node_id: string | null
             ) {
-                if (!source_table.hasClass("varlist-table") && !source_table.hasClass("watch-table")) {
-                    return { scope: TransferScope.NONE }
-                }
                 // Anything else than ALL is hard to manage when the datastore content changes.
                 // More computation, but will avoid weird glitches such as empty folders that should not or mixing data if the user change
                 // Loads another firmware and the treepath intersects.
@@ -488,6 +485,7 @@ export class WatchWidget extends BaseWidget {
                 })
                 new_line = row_desc.tr
             } else {
+                // Folder row
                 const display_path = WatchableInterface.get_display_path(bare_line)
                 const entry_type = WatchableInterface.get_entry_type(bare_line)
 
