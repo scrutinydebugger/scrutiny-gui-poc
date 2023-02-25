@@ -529,7 +529,9 @@ describe("scrutiny-treetable", function () {
 
         it("Never allowed", function () {
             init_table_with_options({
-                move_allowed: false,
+                move_allowed_fn: function () {
+                    return false
+                },
             })
 
             table.tt("load_all")

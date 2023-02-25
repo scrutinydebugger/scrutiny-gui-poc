@@ -129,7 +129,13 @@ export class GraphWidget extends BaseWidget {
             draggable: true,
             droppable: true,
             allow_delete: true,
-            move_allowed: true,
+            move_allowed_fn: function (tr: JQueryRow, node_id: string, new_parent_id: string | null, after_node_id: string | null) {
+                if (new_parent_id == null) {
+                    // Do not allow to move to a root node (axis are root nodes.)
+                    return false
+                }
+                return true
+            },
             col_index: 1,
             transfer_policy_fn: function (
                 source_table: JQueryTable,
@@ -405,7 +411,7 @@ export class GraphWidget extends BaseWidget {
         return "graph"
     }
     static display_name() {
-        return "Graph Viewer"
+        return "Embedded Graph"
     }
 
     static icon_path() {

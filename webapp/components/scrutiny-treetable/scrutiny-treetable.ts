@@ -10,6 +10,10 @@
 
 import { default as $ } from "@jquery"
 
+type JQueryRow = JQuery<HTMLTableRowElement>
+type JQueryTable = JQuery<HTMLTableElement>
+type JQueryCell = JQuery<HTMLTableCellElement>
+
 export interface LoadFunctionInterface {
     (node_id: string, tr: JQueryRow, user_data?: any): Array<{
         id?: string
@@ -54,6 +58,10 @@ export interface TransferPolicyFunctionInterface {
         new_parent_id: string | null,
         after_node_id: string | null
     ): TransferPolicy
+}
+
+export interface MoveAllowedFunctionInterface {
+    (row: JQueryRow, row_id: string, new_parent_id: string | null, after_node_id: string | null): boolean
 }
 
 export interface TransferResult {
@@ -111,10 +119,6 @@ export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, u
         return null
     }
 }
-
-type JQueryRow = JQuery<HTMLTableRowElement>
-type JQueryTable = JQuery<HTMLTableElement>
-type JQueryCell = JQuery<HTMLTableCellElement>
 
 interface JQueryResizableTable extends JQueryTable {
     scrutiny_resizable_table?: any
@@ -203,7 +207,9 @@ const DEFAULT_OPTIONS = {
     /**  Indicate that we can drag rows from this table */
     draggable: false,
     /**  Allow rows to be moved within a table */
-    move_allowed: true,
+    move_allowed_fn: function () {
+        return true
+    } as MoveAllowedFunctionInterface,
     /**  The size in pixel of the expander. */
     expander_size: 12,
     /**  When a row is dropped, length of the temporary highlight */
@@ -414,11 +420,6 @@ function get_root_nodes($table: JQueryTable): JQueryRow {
  * the moved row will be set in last position
  */
 function move_node($table: JQueryTable, row_id: string, new_parent?: JQueryRow | string | null, after_node?: JQueryRow | string | null) {
-    let options = _get_options($table)
-    if (!options.move_allowed) {
-        throw "Moving node is not allowed"
-    }
-
     let new_parent_id: string | null = null
     if (typeof new_parent !== "undefined" && new_parent !== null) {
         new_parent_id = _get_node_id(_get_row_from_node_or_row($table, new_parent))
@@ -1544,6 +1545,7 @@ function _add_node(
             }
             const dest_options = _get_options(dest_table)
             if (!dest_table.is(source_table)) {
+                // Transfer
                 if (dest_options.transfer_policy_fn == null) {
                     return
                 }
@@ -1558,6 +1560,17 @@ function _add_node(
                     return
                 }
                 if (transfer_policy.scope == TransferScope.NONE) {
+                    return
+                }
+            } else {
+                // Move
+                const move_allowed = dest_options.move_allowed_fn(
+                    dragged_tr,
+                    gbl_drag_data.dragged_row_id,
+                    dnd_result.new_parent_id,
+                    dnd_result.after_tr_id
+                )
+                if (!move_allowed) {
                     return
                 }
             }
@@ -2016,7 +2029,13 @@ function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
  * @returns The rows moved
  */
 function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | null, after_node_id: string | null): JQueryRow {
-    let tr_id = _get_node_id(tr)
+    const tr_id = _get_node_id(tr)
+    const options = _get_options($table)
+    const move_allowed = options.move_allowed_fn(tr, tr_id, new_parent_id, after_node_id)
+    if (!move_allowed) {
+        throw "Moving this node is not allowed"
+    }
+
     //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
     const tree_to_move = _get_all_loaded_descendant($table, tr)
     const tr_original_parent = _get_parent($table, tr)
@@ -2033,7 +2052,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                let after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
+                const after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -2088,8 +2107,8 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
         _increase_children_count($table, tr_original_parent, -1)
     }
 
-    let previous_nesting_level = _get_nesting_level(tr)
-    let delta_nesting_level = new_nesting_level - previous_nesting_level
+    const previous_nesting_level = _get_nesting_level(tr)
+    const delta_nesting_level = new_nesting_level - previous_nesting_level
     tree_to_move.each(function () {
         _set_nesting_level($table, $(this), _get_nesting_level($(this)) + delta_nesting_level)
     })
@@ -2468,18 +2487,18 @@ function _global_init_body() {
         }
     })
 
-        body.on("keydown", function (e) {
-            const focused_table = _get_focused_table()
-            if (focused_table.length == 0) {
-                return
-            }
-            const options = _get_options(focused_table)
+    body.on("keydown", function (e) {
+        const focused_table = _get_focused_table()
+        if (focused_table.length == 0) {
+            return
+        }
+        const options = _get_options(focused_table)
 
-            const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
-            const first_selected_row = selected_rows.first()
-            const not_first_selected_row = selected_rows.not(first_selected_row)
-            const last_selected_row = selected_rows.last()
-            if (first_selected_row.length > 0) {
+        const selected_rows = focused_table.find(`tr.${CLASS_SELECTED}`) as JQueryRow
+        const first_selected_row = selected_rows.first()
+        const not_first_selected_row = selected_rows.not(first_selected_row)
+        const last_selected_row = selected_rows.last()
+        if (first_selected_row.length > 0) {
             if (e.key == "ArrowRight") {
                 not_first_selected_row.removeClass(CLASS_SELECTED)
                 _expand_row(focused_table, first_selected_row)
