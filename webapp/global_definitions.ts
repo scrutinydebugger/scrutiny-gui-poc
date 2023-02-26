@@ -19,7 +19,7 @@ export enum DeviceStatus {
     Connected = "connected",
 }
 
-export enum DataloggingStatus {
+export enum DataloggerState {
     NA = "unknown",
     Standby = "standby",
     WaitForTrigger = "waiting_for_trigger",

@@ -120,3 +120,15 @@
     border-left: 1px solid #ddd;
     padding:1px 10px 1px 5px;
 }
+
+
+.graph-config .error-msg{
+    font-size: small;
+    color:#f00;
+    font-style:italic;
+    padding-left:10px;
+}
+
+.graph-config .input-error{
+    border:1px solid red;
+}

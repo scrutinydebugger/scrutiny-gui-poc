@@ -8,7 +8,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { trim, trim_end } from "./tools"
+import { trim, trim_end } from "@src/tools"
 
 type ObjDict<ObjType> = Record<string, ObjType>
 interface ShallowSubtreeDict {

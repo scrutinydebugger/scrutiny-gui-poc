@@ -7,7 +7,7 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { ServerStatus, DeviceStatus, DataloggingStatus } from "./global_definitions"
+import { ServerStatus, DeviceStatus, DataloggerState } from "./global_definitions"
 import { default as $ } from "@jquery"
 import { DeviceInformation, ScrutinyFirmwareDescription, DataloggingCapabilities } from "./server_api"
 import { BaseWidget } from "./base_widget"
@@ -469,19 +469,26 @@ export class UI {
         }
     }
 
-    set_datalogging_status(status: DataloggingStatus) {
+    set_datalogging_status(status: DataloggerState, completion_ratio: number | null) {
         let new_text = "Unknown state"
-        if (status == DataloggingStatus.Standby) {
+        if (status == DataloggerState.Standby) {
             new_text = "Standby"
-        } else if (status == DataloggingStatus.Acquiring) {
+        } else if (status == DataloggerState.Acquiring) {
             new_text = "Acquiring"
-        } else if (status == DataloggingStatus.WaitForTrigger) {
+        } else if (status == DataloggerState.WaitForTrigger) {
             new_text = "Wait For Tigger"
-        } else if (status == DataloggingStatus.DataReady) {
+        } else if (status == DataloggerState.DataReady) {
             new_text = "Ready"
-        } else if (status == DataloggingStatus.Error) {
+        } else if (status == DataloggerState.Error) {
             new_text = "Error"
         }
+
+        if (completion_ratio !== null) {
+            completion_ratio = Math.round(Math.min(Math.max(completion_ratio, 0), 1) * 100)
+            const completion_ratio_str = completion_ratio.toFixed(0)
+            new_text += ` (${completion_ratio_str})`
+        }
+
         const label = $("#datalogger_state_label")
         if (label.text() !== new_text) {
             label.text(new_text)

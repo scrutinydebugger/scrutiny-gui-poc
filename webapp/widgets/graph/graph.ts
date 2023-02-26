@@ -20,6 +20,29 @@ import {
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 
 const CLASS_AXIS_ROW = "axis"
+const CLASS_INPUT_ERROR = "input-error"
+const CLASS_ERROR_MSG = "error-msg"
+
+const MIN_DECIMATION = 1
+const MAX_DECIMATION = 0xffff
+const MIN_PROBE_LOCATION = 0
+const MAX_PROBE_LOCATION = 100
+const MIN_TIMEOUT_SEC = 0
+const MAX_TIMEOUT_SEC = 360
+const MIN_HOLD_TIME_MS = 0
+const MAX_HOLD_TIME_MS = 360 * 1000
+
+const NB_OPERANDS_MAP: Record<TriggerType, number> = {
+    true: 0,
+    eq: 2,
+    neq: 2,
+    lt: 2,
+    let: 2,
+    gt: 2,
+    get: 2,
+    cmt: 2,
+    within: 3,
+}
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -95,26 +118,39 @@ export class GraphWidget extends BaseWidget {
         })
 
         config_table.find('input[name="decimation"]').on("change", function () {
-            force_input_int($(this), 1, 0xffff)
+            force_input_int($(this), MIN_DECIMATION, MAX_DECIMATION)
             that.update_config_form()
         })
 
         config_table.find('input[name="probe_location"]').on("change", function () {
-            force_input_int($(this), 0, 100)
+            force_input_int($(this), MIN_PROBE_LOCATION, MAX_PROBE_LOCATION)
             that.update_config_form()
         })
 
         config_table.find('input[name="timeout"]').on("change", function () {
-            force_input_float($(this), 0, 360)
+            force_input_float($(this), MIN_TIMEOUT_SEC, MAX_TIMEOUT_SEC)
             that.update_config_form()
         })
 
         config_table.find('input[name="trigger_hold_time"]').on("change", function () {
-            force_input_float($(this), 0, 360000)
+            force_input_float($(this), MIN_HOLD_TIME_MS, MAX_HOLD_TIME_MS)
             that.update_config_form()
         })
 
         configure_all_tooltips(config_table)
+
+        const btn1 = $("<button>")
+            .text("Validate")
+            .on("click", function () {
+                that.make_config_and_validate()
+            })
+        const btn2 = $("<button>")
+            .text("Clear")
+            .on("click", function () {
+                that.clear_config_error()
+            })
+        config_table.after(btn1)
+        config_table.after(btn2)
 
         const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
         split_table.scrutiny_resizable_table({
@@ -264,22 +300,39 @@ export class GraphWidget extends BaseWidget {
     }
 
     get_config_table(): JQuery<HTMLTableElement> {
-        return this.container.find(".form-pane table") as JQuery<HTMLTableElement>
+        return this.container.find("table.config-table:first") as JQuery<HTMLTableElement>
     }
 
-    set_effective_sampling_rate(val: string | number) {
-        if (typeof val === "number") {
-            val = number2str(val, 3) + " Hz"
-        }
-        this.get_config_table().find('input[name="effective_sampling_rate"]').val(val)
+    get_(): JQuery<HTMLTableElement> {
+        return this.container.find("table.signal-list:first") as JQuery<HTMLTableElement>
+    }
+
+    get_sampling_rate_select(): JQuery<HTMLSelectElement> {
+        return this.get_config_table().find('select[name="sampling_rate"]') as JQuery<HTMLSelectElement>
+    }
+
+    get_decimation_input(): JQuery<HTMLInputElement> {
+        return this.get_config_table().find('input[name="decimation"]') as JQuery<HTMLInputElement>
+    }
+
+    get_probe_location_input(): JQuery<HTMLInputElement> {
+        return this.get_config_table().find('input[name="probe_location"]') as JQuery<HTMLInputElement>
+    }
+
+    get_timeout_input(): JQuery<HTMLInputElement> {
+        return this.get_config_table().find('input[name="timeout"]') as JQuery<HTMLInputElement>
     }
 
     get_xaxis_type_select(): JQuery<HTMLSelectElement> {
         return this.get_config_table().find('select[name="xaxis_type"]') as JQuery<HTMLSelectElement>
     }
 
-    get_sampling_rate_select(): JQuery<HTMLSelectElement> {
-        return this.get_config_table().find('select[name="sampling_rate"]') as JQuery<HTMLSelectElement>
+    get_trigger_type_select(): JQuery<HTMLSelectElement> {
+        return this.get_config_table().find('select[name="trigger_type"]') as JQuery<HTMLSelectElement>
+    }
+
+    get_hold_time_input(): JQuery<HTMLInputElement> {
+        return this.get_config_table().find('input[name="hold_time"]') as JQuery<HTMLInputElement>
     }
 
     get_selected_sampling_rate(): DataloggingSamplingRate | null {
@@ -297,6 +350,95 @@ export class GraphWidget extends BaseWidget {
         }
 
         return this.app.server_conn.datalogging_capabilities.sampling_rates[val]
+    }
+
+    /**
+     * Gets the selected decimation
+     * @returns The decimation or null if invalid
+     */
+    get_selected_decimation(): number | null {
+        const input = this.get_decimation_input()
+        const val = parseInt(input.val() as string)
+        if (isNaN(val)) {
+            return null
+        }
+
+        if (val < MIN_DECIMATION || val > MAX_DECIMATION) {
+            return null
+        }
+        return val
+    }
+
+    set_effective_sampling_rate(val: string | number) {
+        if (typeof val === "number") {
+            val = number2str(val, 3) + " Hz"
+        }
+        this.get_config_table().find('input[name="effective_sampling_rate"]').val(val)
+    }
+
+    /**
+     * Gets the selected probe location
+     * @returns The probe location or null if invalid
+     */
+    get_selected_probe_location(): number | null {
+        const input = this.get_probe_location_input()
+        const val = parseInt(input.val() as string)
+        if (isNaN(val)) {
+            return null
+        }
+
+        if (val < MIN_PROBE_LOCATION || val > MAX_PROBE_LOCATION) {
+            return null
+        }
+        return val
+    }
+
+    /**
+     * Gets the selected timeout
+     * @returns The timeout or null if invalid
+     */
+    get_selected_timeout_sec(): number | null {
+        const input = this.get_timeout_input()
+        const val = parseFloat(input.val() as string)
+        if (isNaN(val)) {
+            return null
+        }
+
+        if (val < MIN_TIMEOUT_SEC || val > MAX_TIMEOUT_SEC) {
+            return null
+        }
+        return val
+    }
+
+    get_selected_xaxis_type(): XAxisType {
+        return this.get_xaxis_type_select().val() as XAxisType
+    }
+
+    get_selected_trigger_type(): TriggerType {
+        const trigger_type = this.get_trigger_type_select().val() as TriggerType
+        if (!NB_OPERANDS_MAP.hasOwnProperty(trigger_type)) {
+            if (trigger_type == null) {
+                throw "Unsupported trigger type"
+            }
+        }
+        return trigger_type
+    }
+
+    /**
+     * Gets the selected hold time
+     * @returns The hold time or null if invalid
+     */
+    get_selected_hold_time_millisec(): number | null {
+        const input = this.get_hold_time_input()
+        const val = parseFloat(input.val() as string)
+        if (isNaN(val)) {
+            return null
+        }
+
+        if (val < MIN_HOLD_TIME_MS || val > MAX_HOLD_TIME_MS) {
+            return null
+        }
+        return val
     }
 
     update_config_capabilities() {
@@ -327,14 +469,6 @@ export class GraphWidget extends BaseWidget {
         this.update_config_form()
     }
 
-    get_selected_xaxis_type(): XAxisType {
-        return this.get_xaxis_type_select().val() as XAxisType
-    }
-
-    get_selected_trigger_type(): TriggerType {
-        return this.get_config_table().find("select[name='trigger_type']").val() as TriggerType
-    }
-
     update_config_form() {
         const selected_xaxis_type = this.get_selected_xaxis_type()
         const trigger_type = this.get_selected_trigger_type()
@@ -344,19 +478,7 @@ export class GraphWidget extends BaseWidget {
             this.get_config_table().find(".line-xaxis-signal").hide()
         }
 
-        const nb_operands_map: Record<TriggerType, number> = {
-            true: 0,
-            eq: 2,
-            neq: 2,
-            lt: 2,
-            let: 2,
-            gt: 2,
-            get: 2,
-            cmt: 2,
-            within: 3,
-        }
-
-        const nb_operands = nb_operands_map[trigger_type]
+        const nb_operands = NB_OPERANDS_MAP[trigger_type]
         const operand1 = this.get_config_table().find(".line-operand1") as JQuery<HTMLTableRowElement>
         const operand2 = this.get_config_table().find(".line-operand2") as JQuery<HTMLTableRowElement>
         const operand3 = this.get_config_table().find(".line-operand3") as JQuery<HTMLTableRowElement>
@@ -403,6 +525,73 @@ export class GraphWidget extends BaseWidget {
                 this.set_effective_sampling_rate("N/A")
             }
         }
+    }
+
+    make_config_and_validate(): boolean {
+        let valid = true
+        const err_msg = $("<span></span>").addClass(CLASS_ERROR_MSG)
+        const sampling_rate = this.get_selected_sampling_rate()
+        if (sampling_rate) {
+            valid = false
+            const sr_select = this.get_sampling_rate_select()
+            sr_select.addClass(CLASS_INPUT_ERROR)
+            sr_select.after(err_msg.clone().text("Invalid value"))
+        }
+
+        const decimation = this.get_selected_decimation()
+        if (decimation == null) {
+            const input = this.get_decimation_input()
+            input.addClass(CLASS_INPUT_ERROR)
+            input.after(err_msg.clone().text("Invalid value"))
+            valid = false
+        }
+
+        const probe_location = this.get_selected_probe_location()
+        if (probe_location == null) {
+            const input = this.get_probe_location_input()
+            input.addClass(CLASS_INPUT_ERROR)
+            input.after(err_msg.clone().text("Invalid value"))
+            valid = false
+        }
+
+        const timeout = this.get_selected_timeout_sec()
+        if (timeout == null) {
+            const input = this.get_timeout_input()
+            input.addClass(CLASS_INPUT_ERROR)
+            input.after(err_msg.clone().text("Invalid value"))
+            valid = false
+        }
+
+        const xaxis_type = this.get_selected_xaxis_type()
+        if (xaxis_type == "ideal_time" && sampling_rate !== null) {
+            if (sampling_rate.type == "variable_freq") {
+                const select = this.get_xaxis_type_select()
+                select.addClass(CLASS_INPUT_ERROR)
+                select.after(err_msg.clone().text("Unavailable with variable frequency"))
+                valid = false
+            }
+        }
+
+        const trigger_type = this.get_selected_trigger_type()
+        const nb_operands = NB_OPERANDS_MAP[trigger_type]
+
+        // Todo
+
+        const hold_time_millisec = this.get_selected_hold_time_millisec()
+        if (hold_time_millisec == null) {
+            const input = this.get_hold_time_input()
+            input.addClass(CLASS_INPUT_ERROR)
+            input.after(err_msg.clone().text("Invalid value"))
+            valid = false
+        }
+
+        return valid
+    }
+
+    clear_config_error() {
+        const config_table = this.get_config_table()
+        config_table.find(`.${CLASS_INPUT_ERROR}`).removeClass(CLASS_INPUT_ERROR)
+        config_table.find(`.${CLASS_ERROR_MSG}`).remove()
     }
 
     destroy() {}

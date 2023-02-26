@@ -6,13 +6,12 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DeviceStatus, ServerStatus, DataloggingStatus } from "./global_definitions"
-import { App } from "./app"
-import { UI } from "./ui"
-import { Logger } from "./logging"
-import { Datastore, DatastoreEntryType, AllDatastoreEntryTypes } from "./datastore"
-import * as API from "./server_api"
-import * as assert from "assert"
+import { DeviceStatus, ServerStatus, DataloggerState } from "@src/global_definitions"
+import { App } from "@src/app"
+import { UI } from "@src/ui"
+import { Logger } from "@src/logging"
+import { Datastore, DatastoreEntryType, AllDatastoreEntryTypes } from "@src/datastore"
+import * as API from "@src/server_api"
 
 enum WatchableDownloadType {
     RPV = "rpv",
@@ -146,8 +145,10 @@ export class ServerConnection {
     server_status: ServerStatus
     /** The status of the device communication (Connected/connecting/disconnected) */
     device_status: DeviceStatus
-    /** The status of the datalogger in the device */
-    datalogging_status: DataloggingStatus
+    /** The state of the datalogger in the device */
+    datalogger_state: DataloggerState
+    /** Completion ratio of the active acquisition after trigger*/
+    datalogging_completion_ratio: number | null
     /** The device datalogging capabilities (buffer size, sampling rates, etc). Null if datalogging is not supported */
     datalogging_capabilities: API.DataloggingCapabilities | null
     /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
@@ -199,7 +200,8 @@ export class ServerConnection {
         this.socket = null
         this.server_status = ServerStatus.Disconnected
         this.device_status = DeviceStatus.NA
-        this.datalogging_status = DataloggingStatus.NA
+        this.datalogger_state = DataloggerState.NA
+        this.datalogging_completion_ratio = null
         this.loaded_sfd = null
         this.device_info = null
         this.datalogging_capabilities = null
@@ -535,7 +537,7 @@ export class ServerConnection {
      */
     update_ui(): void {
         this.ui.set_server_status(this.server_status)
-        this.ui.set_datalogging_status(this.datalogging_status)
+        this.ui.set_datalogging_status(this.datalogger_state, this.datalogging_completion_ratio)
         this.ui.set_device_status(this.device_status, this.device_info, this.datalogging_capabilities)
         this.ui.set_loaded_sfd(this.loaded_sfd)
     }
@@ -786,13 +788,13 @@ export class ServerConnection {
             connected_ready: DeviceStatus.Connected,
         }
 
-        const datalogging_status_str_to_enum: Record<API.DataloggingStatus, DataloggingStatus> = {
-            unavailable: DataloggingStatus.NA,
-            standby: DataloggingStatus.Standby,
-            acquiring: DataloggingStatus.Acquiring,
-            data_ready: DataloggingStatus.DataReady,
-            waiting_for_trigger: DataloggingStatus.WaitForTrigger,
-            error: DataloggingStatus.Error,
+        const datalogging_state_str_to_enum: Record<API.DataloggerState, DataloggerState> = {
+            unavailable: DataloggerState.NA,
+            standby: DataloggerState.Standby,
+            acquiring: DataloggerState.Acquiring,
+            data_ready: DataloggerState.DataReady,
+            waiting_for_trigger: DataloggerState.WaitForTrigger,
+            error: DataloggerState.Error,
         }
 
         try {
@@ -840,22 +842,22 @@ export class ServerConnection {
             }
 
             try {
-                const new_datalogging_status = datalogging_status_str_to_enum[data.device_datalogging_status]
-                if (new_datalogging_status != this.datalogging_status) {
-                    this.app.trigger_event("scrutiny.datalogging.status_changed", new_datalogging_status)
+                const new_datalogger_state = datalogging_state_str_to_enum[data.device_datalogging_status.datalogger_state]
+                if (new_datalogger_state != this.datalogger_state) {
+                    this.app.trigger_event("scrutiny.datalogging.status_changed", new_datalogger_state)
 
-                    if (new_datalogging_status == DataloggingStatus.DataReady) {
+                    if (new_datalogger_state == DataloggerState.DataReady) {
                         this.app.trigger_event("scrutiny.datalogging.data_ready")
-                    } else if (this.datalogging_status == DataloggingStatus.Acquiring) {
+                    } else if (this.datalogger_state == DataloggerState.Acquiring) {
                         this.app.trigger_event("scrutiny.datalogging.acquisition_started")
-                    } else if (this.datalogging_status == DataloggingStatus.Error) {
+                    } else if (this.datalogger_state == DataloggerState.Error) {
                         this.app.trigger_event("scrutiny.datalogging.error")
                     }
                 }
 
-                this.datalogging_status = new_datalogging_status
+                this.datalogger_state = new_datalogger_state
             } catch (e) {
-                this.datalogging_status = DataloggingStatus.NA
+                this.datalogger_state = DataloggerState.NA
                 this.logger.error("[inform_server_status] Received a bad datalogging status", e)
             }
 

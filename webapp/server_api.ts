@@ -95,7 +95,11 @@ export interface DeviceCommLink {
     config: DeviceCommUdpConfig | DeviceCommSerialConfig
 }
 
-export type DataloggingStatus = "unavailable" | "standby" | "waiting_for_trigger" | "acquiring" | "data_ready" | "error"
+export type DataloggerState = "unavailable" | "standby" | "waiting_for_trigger" | "acquiring" | "data_ready" | "error"
+export interface DataloggingStatus {
+    datalogger_state: DataloggerState
+    completion_ratio: number | null
+}
 
 export interface DeviceCommUdpConfig {
     host: string
