@@ -9,7 +9,7 @@
 
 import { ServerStatus, DeviceStatus, DataloggerState } from "./global_definitions"
 import { default as $ } from "@jquery"
-import { DeviceInformation, ScrutinyFirmwareDescription, DataloggingCapabilities } from "./server_api"
+import { DeviceInformation, ScrutinyFirmwareDescription, Datalogging } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
 import { cancel_all_live_edit } from "@scrutiny-live-edit"
@@ -37,7 +37,7 @@ export class UI {
     loaded_sfd: ScrutinyFirmwareDescription | null
     loaded_sfd_id: string | null
     device_info: DeviceInformation | null
-    datalogging_capabilities: DataloggingCapabilities | null
+    datalogging_capabilities: Datalogging.Capabilities | null
 
     constructor(container: JQuery<HTMLDivElement>) {
         let config = {
@@ -503,7 +503,7 @@ export class UI {
     set_device_status(
         status: DeviceStatus,
         device_info: DeviceInformation | null,
-        datalogging_capabilities: DataloggingCapabilities | null
+        datalogging_capabilities: Datalogging.Capabilities | null
     ) {
         this.device_info = device_info
         this.datalogging_capabilities = datalogging_capabilities

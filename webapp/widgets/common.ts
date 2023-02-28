@@ -173,9 +173,10 @@ export class WatchableInterface {
         if (typeof display_path !== "undefined" && typeof entry_type !== "undefined") {
             try {
                 const entry = datastore.get_entry(entry_type, display_path)
+                this.mark_available(tr)
                 return entry
             } catch {
-                tr.addClass(CLASS_UNAVAILABLE)
+                this.mark_unavailable(tr)
             }
         } else {
             throw "Missing property on row"
@@ -191,5 +192,13 @@ export class WatchableInterface {
      */
     static set_entry_row_display_value(tr: JQueryRow, val: string | number) {
         tr.find(`td.${CLASS_VAL_COL} ${CLASS_LIVE_EDIT_CONTENT}`).html(val.toString())
+    }
+
+    static mark_unavailable(tr: JQueryRow) {
+        tr.addClass(CLASS_UNAVAILABLE)
+    }
+
+    static mark_available(tr: JQueryRow) {
+        tr.removeClass(CLASS_UNAVAILABLE)
     }
 }

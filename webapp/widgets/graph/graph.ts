@@ -3,10 +3,11 @@ import { App } from "@src/app"
 import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
 import { number2str, trim, force_input_int, force_input_float } from "@src/tools"
-import { XAxisType, TriggerType, DataloggingSamplingRate } from "@src/server_api"
+import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableInterface } from "@src/widgets/common"
+import { DatastoreEntry } from "@src/datastore"
 
 import {
     scrutiny_treetable,
@@ -28,11 +29,11 @@ const MAX_DECIMATION = 0xffff
 const MIN_PROBE_LOCATION = 0
 const MAX_PROBE_LOCATION = 100
 const MIN_TIMEOUT_SEC = 0
-const MAX_TIMEOUT_SEC = 360
+const MAX_TIMEOUT_SEC = 420 // 2^32/1e7 = 429.49;  Make it round to 7 minutes
 const MIN_HOLD_TIME_MS = 0
-const MAX_HOLD_TIME_MS = 360 * 1000
+const MAX_HOLD_TIME_MS = 420 * 1000
 
-const NB_OPERANDS_MAP: Record<TriggerType, number> = {
+const NB_OPERANDS_MAP: Record<API.Datalogging.TriggerType, number> = {
     true: 0,
     eq: 2,
     neq: 2,
@@ -53,6 +54,14 @@ type JQueryRow = JQuery<HTMLTableRowElement>
 interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
     scrutiny_treetable: Function
     scrutiny_resizable_table: Function
+}
+
+interface SignalTableConfig {
+    yaxis: API.Datalogging.AxisDef[]
+    signals: {
+        row: JQueryRow
+        axis_id: number
+    }[]
 }
 
 export class GraphWidget extends BaseWidget {
@@ -142,7 +151,7 @@ export class GraphWidget extends BaseWidget {
         const btn1 = $("<button>")
             .text("Validate")
             .on("click", function () {
-                that.make_config_and_validate()
+                that.validate_config_and_make_request()
             })
         const btn2 = $("<button>")
             .text("Clear")
@@ -303,8 +312,12 @@ export class GraphWidget extends BaseWidget {
         return this.container.find("table.config-table:first") as JQuery<HTMLTableElement>
     }
 
-    get_(): JQuery<HTMLTableElement> {
-        return this.container.find("table.signal-list:first") as JQuery<HTMLTableElement>
+    get_signal_list_table(): ScrutinyTreeTable {
+        return this.container.find("table.signal-list:first") as ScrutinyTreeTable
+    }
+
+    get_config_name_input(): JQuery<HTMLInputElement> {
+        return this.get_config_table().find("input[name='config_name']") as JQuery<HTMLInputElement>
     }
 
     get_sampling_rate_select(): JQuery<HTMLSelectElement> {
@@ -332,10 +345,14 @@ export class GraphWidget extends BaseWidget {
     }
 
     get_hold_time_input(): JQuery<HTMLInputElement> {
-        return this.get_config_table().find('input[name="hold_time"]') as JQuery<HTMLInputElement>
+        return this.get_config_table().find('input[name="trigger_hold_time"]') as JQuery<HTMLInputElement>
     }
 
-    get_selected_sampling_rate(): DataloggingSamplingRate | null {
+    get_selected_config_name() {
+        return trim(this.get_config_name_input().val() as string, " ")
+    }
+
+    get_selected_sampling_rate(): API.Datalogging.SamplingRate | null {
         const val = parseInt(this.get_sampling_rate_select().val() as string)
         if (isNaN(val)) {
             return null
@@ -410,18 +427,38 @@ export class GraphWidget extends BaseWidget {
         return val
     }
 
-    get_selected_xaxis_type(): XAxisType {
-        return this.get_xaxis_type_select().val() as XAxisType
+    get_selected_xaxis_type(): API.Datalogging.XAxisType {
+        return this.get_xaxis_type_select().val() as API.Datalogging.XAxisType
     }
 
-    get_selected_trigger_type(): TriggerType {
-        const trigger_type = this.get_trigger_type_select().val() as TriggerType
+    get_selected_trigger_type(): API.Datalogging.TriggerType {
+        const trigger_type = this.get_trigger_type_select().val() as API.Datalogging.TriggerType
         if (!NB_OPERANDS_MAP.hasOwnProperty(trigger_type)) {
             if (trigger_type == null) {
                 throw "Unsupported trigger type"
             }
         }
         return trigger_type
+    }
+
+    get_configured_signal_config(): SignalTableConfig {
+        const signal_config = { signals: [], yaxis: [] } as SignalTableConfig
+
+        const treetable = this.get_signal_list_table()
+        const root_nodes = treetable.scrutiny_treetable("get_root_nodes") as JQueryRow
+        for (let i = 0; i < root_nodes.length; i++) {
+            signal_config.yaxis.push({
+                id: i,
+                name: root_nodes.eq(i).text(),
+            })
+
+            const children = treetable.scrutiny_treetable("get_children", root_nodes.eq(i)) as JQueryRow
+            for (let j = 0; j < children.length; j++) {
+                signal_config.signals.push({ axis_id: i, row: children.eq(j) })
+            }
+        }
+
+        return signal_config
     }
 
     /**
@@ -527,11 +564,20 @@ export class GraphWidget extends BaseWidget {
         }
     }
 
-    make_config_and_validate(): boolean {
+    validate_config_and_make_request(): Partial<API.Message.C2S.RequestDataloggingAcquisition> | null {
+        this.clear_config_error()
+
         let valid = true
         const err_msg = $("<span></span>").addClass(CLASS_ERROR_MSG)
+
+        let config_name = this.get_selected_config_name()
+        if (config_name === "null") {
+            this.get_config_name_input().val("Graph")
+            config_name = "Graph"
+        }
+
         const sampling_rate = this.get_selected_sampling_rate()
-        if (sampling_rate) {
+        if (sampling_rate == null) {
             valid = false
             const sr_select = this.get_sampling_rate_select()
             sr_select.addClass(CLASS_INPUT_ERROR)
@@ -575,23 +621,67 @@ export class GraphWidget extends BaseWidget {
         const trigger_type = this.get_selected_trigger_type()
         const nb_operands = NB_OPERANDS_MAP[trigger_type]
 
-        // Todo
-
         const hold_time_millisec = this.get_selected_hold_time_millisec()
-        if (hold_time_millisec == null) {
+        if (hold_time_millisec === null) {
             const input = this.get_hold_time_input()
             input.addClass(CLASS_INPUT_ERROR)
             input.after(err_msg.clone().text("Invalid value"))
             valid = false
         }
 
-        return valid
+        const signal_list_table = this.get_signal_list_table()
+        const signal_config = this.get_configured_signal_config()
+        if (signal_config.yaxis.length == 0) {
+            valid = false
+            signal_list_table.before(err_msg.clone().text("Missing Y-Axis"))
+        } else if (signal_config.signals.length == 0) {
+            valid = false
+            signal_list_table.before(err_msg.clone().text("Missing signals"))
+        }
+
+        const signals = [] as API.Datalogging.AcquisitionRequestSignalDef[]
+        for (let i = 0; i < signal_config.signals.length; i++) {
+            const row = signal_config.signals[i].row
+            const entry = WatchableInterface.get_entry_from_row(this.app.datastore, row)
+            if (entry == null) {
+                valid = false
+                console.log("bad entry")
+                row.addClass(CLASS_INPUT_ERROR)
+            } else {
+                signals.push({
+                    axis_id: signal_config.signals[i].axis_id,
+                    id: entry.server_id,
+                    name: WatchableInterface.get_name_cell(row).text(),
+                })
+            }
+        }
+
+        if (!valid) {
+            console.log("invalid")
+            return null
+        }
+
+        let request: Partial<API.Message.C2S.RequestDataloggingAcquisition> = {
+            name: config_name,
+            sampling_rate_id: (sampling_rate as API.Datalogging.SamplingRate).identifier,
+            decimation: decimation as number,
+            probe_location: probe_location as number,
+            timeout: timeout as number,
+            x_axis_type: xaxis_type,
+            x_axis_signal: null, // todo
+            condition: trigger_type,
+            operands: [], // todo
+            trigger_hold_time: hold_time_millisec as number,
+            signals: signals,
+            yaxis: signal_config.yaxis,
+        }
+        console.log(request)
+        return request
     }
 
     clear_config_error() {
-        const config_table = this.get_config_table()
-        config_table.find(`.${CLASS_INPUT_ERROR}`).removeClass(CLASS_INPUT_ERROR)
-        config_table.find(`.${CLASS_ERROR_MSG}`).remove()
+        this.container.find(`.${CLASS_INPUT_ERROR}`).removeClass(CLASS_INPUT_ERROR)
+        this.container.find(`.${CLASS_ERROR_MSG}`).remove()
     }
 
     destroy() {}

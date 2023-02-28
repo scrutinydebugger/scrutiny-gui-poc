@@ -150,7 +150,7 @@ export class ServerConnection {
     /** Completion ratio of the active acquisition after trigger*/
     datalogging_completion_ratio: number | null
     /** The device datalogging capabilities (buffer size, sampling rates, etc). Null if datalogging is not supported */
-    datalogging_capabilities: API.DataloggingCapabilities | null
+    datalogging_capabilities: API.Datalogging.Capabilities | null
     /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
     loaded_sfd: API.ScrutinyFirmwareDescription | null
     /** List of information broadcasted by the device upon connection */
@@ -788,7 +788,7 @@ export class ServerConnection {
             connected_ready: DeviceStatus.Connected,
         }
 
-        const datalogging_state_str_to_enum: Record<API.DataloggerState, DataloggerState> = {
+        const datalogging_state_str_to_enum: Record<API.Datalogging.DataloggerState, DataloggerState> = {
             unavailable: DataloggerState.NA,
             standby: DataloggerState.Standby,
             acquiring: DataloggerState.Acquiring,
