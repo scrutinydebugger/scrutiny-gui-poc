@@ -309,6 +309,8 @@ export class ServerConnection {
         this.loaded_sfd = null
         this.device_info = null
         this.datalogging_capabilities = null
+        this.datalogger_state = DataloggerState.NA
+        this.datalogging_completion_ratio = null
         this.update_ui()
     }
 

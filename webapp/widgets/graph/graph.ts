@@ -254,6 +254,23 @@ export class GraphWidget extends BaseWidget {
         })
 
         that.add_axis()
+
+        const btn_acquire = this.container.find("button.acquire-btn")
+        btn_acquire.on("click", function () {
+            const req = that.validate_config_and_make_request()
+            if (req !== null) {
+                that.app.server_conn.chain_request("request_datalogging_acquisition", req).then(
+                    function () {
+                        console.log("complete")
+                    },
+                    function () {
+                        console.log("reject")
+                    }
+                )
+            } else {
+                console.log("invalid")
+            }
+        })
     }
 
     add_axis() {
@@ -665,7 +682,7 @@ export class GraphWidget extends BaseWidget {
             name: config_name,
             sampling_rate_id: (sampling_rate as API.Datalogging.SamplingRate).identifier,
             decimation: decimation as number,
-            probe_location: probe_location as number,
+            probe_location: (probe_location as number) / 100.0,
             timeout: timeout as number,
             x_axis_type: xaxis_type,
             x_axis_signal: null, // todo
