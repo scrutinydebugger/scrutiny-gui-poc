@@ -443,7 +443,7 @@ export class ServerConnection {
      * @param params Data to attach with the request
      * @returns A Promise that will be resolved when the request completes.
      */
-    chain_request(cmd: string, params: any = {}): Promise<any> {
+    chain_request(cmd: string, params: any = {}, timeout = 2000): Promise<any> {
         const that = this
         const reqid = this.send_request(cmd, params)
 
@@ -460,7 +460,7 @@ export class ServerConnection {
                     if (that.pending_request_queue.hasOwnProperty(reqid)) {
                         delete that.pending_request_queue[reqid]
                     }
-                }, 2000)
+                }, timeout)
             } else {
                 reject() // Could not send the request
             }
@@ -858,6 +858,7 @@ export class ServerConnection {
                 }
 
                 this.datalogger_state = new_datalogger_state
+                this.datalogging_completion_ratio = data.device_datalogging_status.completion_ratio
             } catch (e) {
                 this.datalogger_state = DataloggerState.NA
                 this.logger.error("[inform_server_status] Received a bad datalogging status", e)

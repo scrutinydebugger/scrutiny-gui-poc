@@ -257,20 +257,38 @@ export class GraphWidget extends BaseWidget {
 
         const btn_acquire = this.container.find("button.acquire-btn")
         btn_acquire.on("click", function () {
-            const req = that.validate_config_and_make_request()
+            const req = that.validate_config_and_make_request() // Mark the bad configs on the UI
             if (req !== null) {
-                that.app.server_conn.chain_request("request_datalogging_acquisition", req).then(
-                    function () {
-                        console.log("complete")
-                    },
-                    function () {
-                        console.log("reject")
-                    }
-                )
-            } else {
-                console.log("invalid")
+                that.app.server_conn.send_request("request_datalogging_acquisition", req)
             }
         })
+
+        this.app.server_conn.register_api_callback(
+            "request_datalogging_acquisition_response",
+            function (data: API.Message.S2C.RequestDataloggingAcquisition) {
+                if (data.success && data.reference_id !== null) {
+                    that.request_load_acquisition_data(data.reference_id)
+                }
+            }
+        )
+
+        this.app.server_conn.register_api_callback(
+            "read_datalogging_acquisition_content_response",
+            function (data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
+                that.show_acquisition_data(data)
+            }
+        )
+    }
+
+    request_load_acquisition_data(reference_id: string) {
+        const req: Partial<API.Message.C2S.ReadDataloggingAcquisitionContent> = {
+            reference_id: reference_id,
+        }
+        this.app.server_conn.send_request("read_datalogging_acquisition_content", req)
+    }
+
+    show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
+        debugger
     }
 
     add_axis() {

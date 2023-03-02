@@ -478,7 +478,7 @@ export class UI {
         } else if (status == DataloggerState.WaitForTrigger) {
             new_text = "Wait For Tigger"
         } else if (status == DataloggerState.DataReady) {
-            new_text = "Ready"
+            new_text = "Data Ready"
         } else if (status == DataloggerState.Error) {
             new_text = "Error"
         }
@@ -486,7 +486,7 @@ export class UI {
         if (completion_ratio !== null) {
             completion_ratio = Math.round(Math.min(Math.max(completion_ratio, 0), 1) * 100)
             const completion_ratio_str = completion_ratio.toFixed(0)
-            new_text += ` (${completion_ratio_str})`
+            new_text += ` (${completion_ratio_str}%)`
         }
 
         const label = $("#datalogger_state_label")

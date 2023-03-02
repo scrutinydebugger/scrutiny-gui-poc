@@ -57,6 +57,16 @@ export namespace Datalogging {
         name: string
         axis_id: number
     }
+
+    export interface SignalData {
+        name: string
+        data: number[]
+        logged_element: string
+    }
+
+    export interface SignalDataWithAxis extends SignalData {
+        axis_id: number
+    }
 }
 
 export namespace Message {
@@ -95,6 +105,10 @@ export namespace Message {
         export interface ReadDataloggingAcquisitionContent extends BaseC2SMessage {
             reference_id: string
         }
+
+        export interface ReadDataloggingAcquisitionContent extends BaseC2SMessage {
+            reference_id: string
+        }
     }
 
     export namespace S2C {
@@ -118,9 +132,21 @@ export namespace Message {
             }[]
         }
 
-        export interface GetDataloggingCapabilitiesResponse {
+        export interface GetDataloggingCapabilitiesResponse extends BaseS2CMessage {
             available: boolean
             capabilities: Datalogging.Capabilities | null
+        }
+
+        export interface RequestDataloggingAcquisition extends BaseS2CMessage {
+            success: boolean
+            reference_id: string | null
+        }
+
+        export interface ReadDataloggingAcquisitionContent extends BaseS2CMessage {
+            reference_id: string
+            yaxis: Datalogging.AxisDef[]
+            signals: Datalogging.SignalDataWithAxis[]
+            xdata: Datalogging.SignalData
         }
     }
 }
