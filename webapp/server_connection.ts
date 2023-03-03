@@ -127,7 +127,6 @@ export class ServerConnection {
     /** The amount of time to wait for an answer from the server to a get_status request  before marking the server has disconnected */
     connect_timeout: number
     /** Interval at which we should request the server for its status (milliseconds) */
-    get_status_interval: number
 
     /** The Application instance */
     app: App
@@ -156,7 +155,7 @@ export class ServerConnection {
     /** List of information broadcasted by the device upon connection */
     device_info: API.DeviceInformation | null
     /** Handle to cancel the periodic calls that sends a get_server_status request */
-    get_status_interval_handle: number | null
+    get_status_timer_handle: number | null
     /** Allows server periodic reconnect if the server is disconnected. Stays passive otherwise */
     enable_reconnect: boolean
     /** List of all requests sent for which we are waiting a response. Use to keep track of request chaining */
@@ -188,7 +187,6 @@ export class ServerConnection {
         this.update_ui_interval = 500
         this.reconnect_interval = 500
         this.connect_timeout = 1500
-        this.get_status_interval = 2000
 
         this.app = app
         this.ui = ui
@@ -210,7 +208,7 @@ export class ServerConnection {
         this.connect_timeout_handle = null
         this.reconnect_timeout_handle = null
 
-        this.get_status_interval_handle = null
+        this.get_status_timer_handle = null
         this.actual_request_id = 0
         this.pending_request_queue = {}
         this.active_download_session = {} as typeof this.active_download_session
@@ -512,25 +510,36 @@ export class ServerConnection {
     /**
      * Starts a timer that will poll the server for its status
      */
-    start_get_status_periodic_call(): void {
+    request_server_status_and_keep_going(): void {
         const that = this
         this.stop_get_status_periodic_call()
-        this.send_request("get_server_status")
-        this.get_status_interval_handle = setInterval(
-            function () {
-                that.send_request("get_server_status")
-            } as Function,
-            this.get_status_interval
-        )
+        this.chain_request("get_server_status").finally(function () {
+            that.get_status_timer_handle = setTimeout(
+                function () {
+                    that.request_server_status_and_keep_going()
+                } as Function,
+                that.get_status_interval_ms()
+            )
+        })
+    }
+
+    get_status_interval_ms(): number {
+        if (this.datalogger_state !== null) {
+            if (this.datalogger_state == DataloggerState.Acquiring) {
+                return 500
+            }
+        }
+
+        return 1500
     }
 
     /**
      * Stops the server polling
      */
     stop_get_status_periodic_call(): void {
-        if (this.get_status_interval_handle !== null) {
-            clearInterval(this.get_status_interval_handle)
-            this.get_status_interval_handle = null
+        if (this.get_status_timer_handle !== null) {
+            clearTimeout(this.get_status_timer_handle)
+            this.get_status_timer_handle = null
         }
     }
 
@@ -587,8 +596,7 @@ export class ServerConnection {
         this.update_ui()
         this.clear_connect_timeout()
 
-        this.start_get_status_periodic_call()
-
+        this.request_server_status_and_keep_going()
         this.app.trigger_event("scrutiny.server.connected")
     }
 

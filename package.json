@@ -18,7 +18,8 @@
     "ts-loader": "^9.4.1",
     "typescript": "^4.8.4",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "webpack-cli": "^4.10.0",
+    "chart.js" : "^4.2.1"
   },
   "scripts": {
     "lint": "eslint .",
@@ -30,6 +31,7 @@
   },
   "dependencies": {
     "assert": "^2.0.0",
+    "chart.js": "^4.2.1",
     "glob": "^8.0.3",
     "mocha-loader": "^5.1.5",
     "module-alias": "^2.2.2",

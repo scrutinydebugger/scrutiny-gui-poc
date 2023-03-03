@@ -5,14 +5,13 @@ import { default as $ } from "@jquery"
 import { number2str, trim, force_input_int, force_input_float } from "@src/tools"
 import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
-import { scrutiny_live_edit as live_edit, CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
+import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableInterface } from "@src/widgets/common"
-import { DatastoreEntry } from "@src/datastore"
+import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
 
 import {
     scrutiny_treetable,
     PluginOptions as TreeTableOptions,
-    LoadFunctionInterface as TreeTableLoadFunction,
     TransferScope,
     TransferPolicy,
     TransferFunctionMetadata,
@@ -48,12 +47,28 @@ const NB_OPERANDS_MAP: Record<API.Datalogging.TriggerType, number> = {
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
 
+$.extend($.fn, {
+    enable: function () {
+        return this.removeAttr("disabled")
+    },
+    disable: function () {
+        return this.attr("disabled", "disabled")
+    },
+})
+
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
 
-interface ScrutinyTreeTable extends JQuery<HTMLTableElement> {
-    scrutiny_treetable: Function
+interface ScrutinyResizableTable extends JQuery<HTMLTableElement> {
     scrutiny_resizable_table: Function
+}
+interface ScrutinyTreeTable extends ScrutinyResizableTable {
+    scrutiny_treetable: Function
+}
+
+interface JQueryDisableable<T> extends JQuery<T> {
+    enable: Function
+    disable: Function
 }
 
 interface SignalTableConfig {
@@ -75,6 +90,16 @@ export class GraphWidget extends BaseWidget {
 
     next_axis_id: number
 
+    graph_config_div: JQuery<HTMLDivElement>
+    graph_display_div: JQuery<HTMLDivElement>
+    graph_broswer_div: JQuery<HTMLDivElement>
+    button_configure: JQueryDisableable<HTMLButtonElement>
+    button_acquire: JQueryDisableable<HTMLButtonElement>
+    button_browse: JQueryDisableable<HTMLButtonElement>
+    button_graph: JQueryDisableable<HTMLButtonElement>
+
+    chart: Chart | null
+
     /**
      *
      * @param container HTML container object in which to append the widget content
@@ -89,6 +114,14 @@ export class GraphWidget extends BaseWidget {
 
         this.logger = logging.getLogger(this.constructor.name)
         this.next_axis_id = 1
+        this.graph_config_div = null as unknown as JQuery<HTMLDivElement>
+        this.graph_display_div = null as unknown as JQuery<HTMLDivElement>
+        this.graph_broswer_div = null as unknown as JQuery<HTMLDivElement>
+        this.button_configure = null as unknown as JQueryDisableable<HTMLButtonElement>
+        this.button_acquire = null as unknown as JQueryDisableable<HTMLButtonElement>
+        this.button_browse = null as unknown as JQueryDisableable<HTMLButtonElement>
+        this.button_graph = null as unknown as JQueryDisableable<HTMLButtonElement>
+        this.chart = null
     }
 
     /**
@@ -97,10 +130,17 @@ export class GraphWidget extends BaseWidget {
     initialize() {
         const that = this
         const layout = this.app.get_template(this, "layout") as JQuery<HTMLDivElement>
+        this.button_configure = layout.find("button.btn-configure").first() as JQueryDisableable<HTMLButtonElement>
+        this.button_acquire = layout.find("button.btn-acquire").first() as JQueryDisableable<HTMLButtonElement>
+        this.button_browse = layout.find("button.btn-browse").first() as JQueryDisableable<HTMLButtonElement>
+        this.button_graph = layout.find("button.btn-graph").first() as JQueryDisableable<HTMLButtonElement>
+        this.graph_config_div = layout.find(".graph-config") as JQuery<HTMLDivElement>
+        this.graph_display_div = layout.find(".graph-display") as JQuery<HTMLDivElement>
+        this.graph_broswer_div = layout.find(".graph-browser") as JQuery<HTMLDivElement>
         const config_form_pane = this.app.get_template(this, "config_form_pane") as JQuery<HTMLDivElement>
         const signal_list_pane = this.app.get_template(this, "signal_list_pane") as JQuery<HTMLDivElement>
-        layout.find(".graph-config .pane-right").append(config_form_pane)
-        layout.find(".graph-config .pane-left").append(signal_list_pane)
+        this.graph_config_div.find(".pane-left").append(signal_list_pane)
+        this.graph_config_div.find(".pane-right").append(config_form_pane)
         this.container.append(layout)
         this.update_config_capabilities()
 
@@ -126,42 +166,29 @@ export class GraphWidget extends BaseWidget {
             that.update_config_form()
         })
 
-        config_table.find('input[name="decimation"]').on("change", function () {
+        this.get_decimation_input().on("change", function () {
             force_input_int($(this), MIN_DECIMATION, MAX_DECIMATION)
             that.update_config_form()
         })
 
-        config_table.find('input[name="probe_location"]').on("change", function () {
+        this.get_probe_location_input().on("change", function () {
             force_input_int($(this), MIN_PROBE_LOCATION, MAX_PROBE_LOCATION)
             that.update_config_form()
         })
 
-        config_table.find('input[name="timeout"]').on("change", function () {
+        this.get_timeout_input().on("change", function () {
             force_input_float($(this), MIN_TIMEOUT_SEC, MAX_TIMEOUT_SEC)
             that.update_config_form()
         })
 
-        config_table.find('input[name="trigger_hold_time"]').on("change", function () {
+        this.get_hold_time_input().on("change", function () {
             force_input_float($(this), MIN_HOLD_TIME_MS, MAX_HOLD_TIME_MS)
             that.update_config_form()
         })
 
         configure_all_tooltips(config_table)
 
-        const btn1 = $("<button>")
-            .text("Validate")
-            .on("click", function () {
-                that.validate_config_and_make_request()
-            })
-        const btn2 = $("<button>")
-            .text("Clear")
-            .on("click", function () {
-                that.clear_config_error()
-            })
-        config_table.after(btn1)
-        config_table.after(btn2)
-
-        const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
+        const split_table = this.container.find("table.split-pane") as ScrutinyResizableTable
         split_table.scrutiny_resizable_table({
             table_width_constrained: true,
             nowrap: false,
@@ -253,13 +280,28 @@ export class GraphWidget extends BaseWidget {
             that.add_axis()
         })
 
-        that.add_axis()
+        this.add_axis()
+        this.switch_to_config()
 
-        const btn_acquire = this.container.find("button.acquire-btn")
-        btn_acquire.on("click", function () {
+        this.button_configure.on("click", function () {
+            that.switch_to_config()
+        })
+
+        this.button_graph.on("click", function () {
+            that.switch_to_graph()
+        })
+
+        this.button_browse.on("click", function () {
+            that.switch_to_browser()
+        })
+
+        this.button_acquire.on("click", function () {
             const req = that.validate_config_and_make_request() // Mark the bad configs on the UI
             if (req !== null) {
                 that.app.server_conn.send_request("request_datalogging_acquisition", req)
+                that.switch_to_graph()
+            } else {
+                that.switch_to_config()
             }
         })
 
@@ -278,6 +320,59 @@ export class GraphWidget extends BaseWidget {
                 that.show_acquisition_data(data)
             }
         )
+
+        split_table.scrutiny_resizable_table("refresh")
+
+        const canvas = $("<canvas id='asasd'></canvas>")
+        this.graph_display_div.html("")
+        this.graph_display_div.append(canvas[0])
+        this.chart = new Chart(canvas[0], {
+            type: "line",
+            labels: ["aaa", "vvv", "xxx", "aaaw", "awe", "qqq", "www"],
+            data: {
+                datasets: [
+                    {
+                        label: "My First Dataset",
+                        data: [65, 59, 80, 81, 56, 55, 40],
+                        fill: false,
+                        borderColor: "rgb(75, 192, 192)",
+                        tension: 0.1,
+                    },
+                ],
+            },
+        } as ChartConfiguration<"line", number[]>)
+        this.chart.update()
+        this.chart.draw()
+    }
+
+    switch_to_graph() {
+        this.graph_config_div.hide()
+        this.graph_display_div.show()
+        this.graph_broswer_div.hide()
+
+        this.button_configure.enable()
+        this.button_browse.enable()
+        this.button_graph.disable()
+    }
+
+    switch_to_config() {
+        this.graph_config_div.show()
+        this.graph_display_div.hide()
+        this.graph_broswer_div.hide()
+
+        this.button_configure.disable()
+        this.button_browse.enable()
+        this.button_graph.enable()
+    }
+
+    switch_to_browser() {
+        this.graph_config_div.hide()
+        this.graph_display_div.hide()
+        this.graph_broswer_div.show()
+
+        this.button_configure.enable()
+        this.button_browse.disable()
+        this.button_graph.enable()
     }
 
     request_load_acquisition_data(reference_id: string) {
@@ -288,7 +383,54 @@ export class GraphWidget extends BaseWidget {
     }
 
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
-        debugger
+        this.switch_to_graph()
+        if (this.chart !== null) {
+            this.chart.clear()
+            this.chart = null
+        }
+        const canvas = $("<canvas id='asd'></canvas>")
+        this.graph_display_div.html("")
+        this.graph_display_div.append(canvas)
+
+        const config = {} as ChartConfiguration
+        config.type = "line"
+        config.options = {}
+        //config.options.scales = {}
+        config.data = { datasets: [] }
+        /*
+        for (let i = 0; i < data.yaxis.length; i++) {
+            const yaxis = data.yaxis[i]
+            config.options.scales[`yaxis_${yaxis.id}`] = {
+                type: "linear",
+                position: "left",
+                title: {
+                    display: true,
+                    text: yaxis.name,
+                },
+            }
+        }
+        config.options.scales[`x`] = {
+            type: "linear",
+            title: {
+                display: true,
+                text: data.xdata.name,
+            },
+        }
+        
+        */
+        for (let i = 0; i < data.signals.length; i++) {
+            const signal = data.signals[i]
+            const dataset = {
+                label: signal.name,
+                data: signal.data,
+                // yAxisID: `yaxis_${signal.axis_id}`,
+            } as ChartDataset<"line", number[]>
+            config.data.datasets.push(dataset)
+        }
+
+        console.log(config)
+        this.chart = new Chart(canvas[0], config)
+        this.chart.update()
     }
 
     add_axis() {
@@ -341,14 +483,15 @@ export class GraphWidget extends BaseWidget {
         this.get_sampling_rate_select().html("<option>N/A</option>")
         this.get_xaxis_type_select().find('option[value="ideal_time"]').attr("disabled", "disabled")
         this.set_effective_sampling_rate("N/A")
+        this.button_acquire.disable()
     }
 
     get_config_table(): JQuery<HTMLTableElement> {
-        return this.container.find("table.config-table:first") as JQuery<HTMLTableElement>
+        return this.graph_config_div.find("table.config-table:first") as JQuery<HTMLTableElement>
     }
 
     get_signal_list_table(): ScrutinyTreeTable {
-        return this.container.find("table.signal-list:first") as ScrutinyTreeTable
+        return this.graph_config_div.find("table.signal-list:first") as ScrutinyTreeTable
     }
 
     get_config_name_input(): JQuery<HTMLInputElement> {
@@ -680,7 +823,6 @@ export class GraphWidget extends BaseWidget {
             const entry = WatchableInterface.get_entry_from_row(this.app.datastore, row)
             if (entry == null) {
                 valid = false
-                console.log("bad entry")
                 row.addClass(CLASS_INPUT_ERROR)
             } else {
                 signals.push({
@@ -692,7 +834,6 @@ export class GraphWidget extends BaseWidget {
         }
 
         if (!valid) {
-            console.log("invalid")
             return null
         }
 
@@ -710,7 +851,7 @@ export class GraphWidget extends BaseWidget {
             signals: signals,
             yaxis: signal_config.yaxis,
         }
-        console.log(request)
+
         return request
     }
 

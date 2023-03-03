@@ -2,7 +2,6 @@ import { resolve } from "path"
 import CopyPlugin from "copy-webpack-plugin"
 import GitRevisionPlugin from "git-revision-webpack-plugin"
 import webpack from "webpack"
-import { default as nodeExternals } from "webpack-node-externals"
 
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
@@ -60,6 +59,7 @@ export default {
         extensions: [".ts", ".js"],
         alias: {
             "@jquery": resolve("externals/prod/jquery"),
+            "@chart.js": resolve("externals/prod/chartjs"),
             "@src": resolve("webapp"),
             "@tests": resolve("tests"),
             "@scrutiny-treetable": resolve("webapp/components/scrutiny-treetable/scrutiny-treetable"),
@@ -67,5 +67,5 @@ export default {
             "@scrutiny-live-edit": resolve("webapp/components/scrutiny-live-edit/scrutiny-live-edit")
         },
     },
-    externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, nodeExternals()],
+    externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, { jquery: "chart.js" }],
 }

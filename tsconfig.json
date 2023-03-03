@@ -9,8 +9,10 @@
         "downlevelIteration": true,
         "strict":true,
         "baseUrl": "./",
+        "moduleResolution": "node",
         "paths":{
             "@jquery" : ["externals/prod/jquery"],
+            "@chart.js" : ["externals/prod/chartjs"],
             "@src/*" : ["webapp/*"],
             "@tests/*" : ["tests/*"],
             "@scrutiny-treetable" : ["webapp/components/scrutiny-treetable/scrutiny-treetable"],

@@ -3,17 +3,21 @@
     height:100%;
 }
 
+
 .graph-layout .status-bar {
     width:100%;
     padding-top:2px;
-    position:absolute;
     bottom:0;
 }
 
 .graph-layout .status-bar .button-block {
-    float:right;
     padding-right:10px;
     padding-bottom:5px;
+}
+
+.graph-layout .status-bar .estimated-duration {
+    float:right;
+    margin-right:20px;
 }
 
 .graph-layout .status-bar .button-block button {
@@ -21,8 +25,11 @@
     margin-left:5px;
 }
 
+.graph-layout .status-bar .button-block button.btn-acquire {
+    margin-left:15px;
+}
+
 .graph-layout .status-bar .status-bar-field{
-    margin-left:20px;
     display:inline-block;
 }
 
@@ -34,7 +41,7 @@
 
 
 .graph-config {
-    width:100%;
+
 }
 
 .graph-config table.split-pane {
@@ -55,12 +62,6 @@
 
 .graph-config .form-pane table td{
     padding: 1px 0px 1px 5px
-}
-
-.graph-config button.graph_form_btn{
-    padding:4px;
-    width:80px;
-    margin-top:10px;
 }
 
 .graph-config input[name="effective_sampling_rate"],
