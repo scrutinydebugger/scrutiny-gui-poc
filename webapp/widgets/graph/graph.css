@@ -1,5 +1,4 @@
 .graph-layout {
-    position:relative;
     height:100%;
 }
 
@@ -33,16 +32,11 @@
     display:inline-block;
 }
 
-
-
-
-
-
-
-
-.graph-config {
-
+.graph-layout .layout-content-element{
+    height:100%; /* Container gets resized by javascript*/
 }
+
+
 
 .graph-config table.split-pane {
     width:100%;

@@ -138,8 +138,13 @@ export namespace Message {
         }
 
         export interface RequestDataloggingAcquisition extends BaseS2CMessage {
-            success: boolean
+            request_token: string
+        }
+
+        export interface InformDataloggingAcquisitionComplete extends BaseS2CMessage {
+            request_token: string
             reference_id: string | null
+            success: boolean
         }
 
         export interface ReadDataloggingAcquisitionContent extends BaseS2CMessage {

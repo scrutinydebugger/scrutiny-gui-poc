@@ -50,5 +50,5 @@ export default {
             "@scrutiny-live-edit": resolve("webapp/components/scrutiny-live-edit/scrutiny-live-edit")
         },
     },
-    externals: [],
+    externals: [nodeExternals()],
 }

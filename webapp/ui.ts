@@ -53,6 +53,13 @@ export class UI {
             }
         })
 
+        this.widget_layout.on("componentCreated", function (component: any) {
+            component.container.on("resize", function () {
+                let widget = component.instance
+                widget.resize()
+            })
+        })
+
         this.indicator_lights = {
             red: "assets/img/indicator-red.png",
             yellow: "assets/img/indicator-yellow.png",
@@ -407,8 +414,18 @@ export class UI {
             that.widget_layout.registerComponent(widget_class.widget_name(), function (container: any, state: any) {
                 instance_id++
                 const scrutiny_widget_container = $("<div>").addClass("scrutiny-widget-container") as JQuery<HTMLDivElement>
-                const golder_layout_container = $(container.getElement()).append(scrutiny_widget_container)
-                golder_layout_container.css("overflow", "auto")
+                const golden_layout_container = $(container.getElement()).append(scrutiny_widget_container)
+                golden_layout_container.css("overflow", "auto")
+                golden_layout_container.on("resize", function () {
+                    console.log("resize golden_layout_container")
+                })
+                golden_layout_container.on("stateChanged", function () {
+                    console.log("stateChanged golden_layout_container")
+                })
+
+                scrutiny_widget_container.on("resize", function () {
+                    console.log("resize scrutiny_widget_container")
+                })
                 const widget = new widget_class(scrutiny_widget_container, app, instance_id)
                 widget.initialize()
                 return widget

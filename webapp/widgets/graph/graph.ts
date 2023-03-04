@@ -90,6 +90,10 @@ export class GraphWidget extends BaseWidget {
 
     next_axis_id: number
 
+    waiting_on_acquisition: boolean
+    pending_acquisition_token: string | null = null
+
+    layout_content_div: JQuery<HTMLDivElement>
     graph_config_div: JQuery<HTMLDivElement>
     graph_display_div: JQuery<HTMLDivElement>
     graph_broswer_div: JQuery<HTMLDivElement>
@@ -114,6 +118,7 @@ export class GraphWidget extends BaseWidget {
 
         this.logger = logging.getLogger(this.constructor.name)
         this.next_axis_id = 1
+        this.layout_content_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_config_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_display_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_broswer_div = null as unknown as JQuery<HTMLDivElement>
@@ -122,6 +127,9 @@ export class GraphWidget extends BaseWidget {
         this.button_browse = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.button_graph = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.chart = null
+
+        this.waiting_on_acquisition = false
+        this.pending_acquisition_token = null
     }
 
     /**
@@ -130,6 +138,7 @@ export class GraphWidget extends BaseWidget {
     initialize() {
         const that = this
         const layout = this.app.get_template(this, "layout") as JQuery<HTMLDivElement>
+        this.layout_content_div = layout.find(".layout-content") as JQueryDisableable<HTMLDivElement>
         this.button_configure = layout.find("button.btn-configure").first() as JQueryDisableable<HTMLButtonElement>
         this.button_acquire = layout.find("button.btn-acquire").first() as JQueryDisableable<HTMLButtonElement>
         this.button_browse = layout.find("button.btn-browse").first() as JQueryDisableable<HTMLButtonElement>
@@ -298,6 +307,9 @@ export class GraphWidget extends BaseWidget {
         this.button_acquire.on("click", function () {
             const req = that.validate_config_and_make_request() // Mark the bad configs on the UI
             if (req !== null) {
+                that.waiting_on_acquisition = true
+                that.pending_acquisition_token = null
+                that.logger.debug("Requesting datalogging acquisition")
                 that.app.server_conn.send_request("request_datalogging_acquisition", req)
                 that.switch_to_graph()
             } else {
@@ -308,9 +320,51 @@ export class GraphWidget extends BaseWidget {
         this.app.server_conn.register_api_callback(
             "request_datalogging_acquisition_response",
             function (data: API.Message.S2C.RequestDataloggingAcquisition) {
-                if (data.success && data.reference_id !== null) {
-                    that.request_load_acquisition_data(data.reference_id)
+                if (that.waiting_on_acquisition) {
+                    that.logger.debug(`Received acquisition request aknowledgement with token ${data.request_token}`)
+                    that.pending_acquisition_token = data.request_token
+                } else {
+                    that.logger.error("Received a datalogging acquisition confirmation but none was expected")
                 }
+            }
+        )
+
+        this.app.server_conn.register_api_callback(
+            "inform_datalogging_acquisition_complete",
+            function (data: API.Message.S2C.InformDataloggingAcquisitionComplete) {
+                if (!that.waiting_on_acquisition) {
+                    that.logger.debug("Acquisition completed, but was not waiting for it")
+                    that.stop_waiting_for_acquisition()
+                    return
+                }
+
+                if (that.pending_acquisition_token == null) {
+                    that.logger.error("Received a confirmation of datalogging completion, but no request token was being waited for")
+                    that.stop_waiting_for_acquisition()
+                    return
+                }
+
+                if (that.pending_acquisition_token != data.request_token) {
+                    that.logger.debug("Acquisition completed, but was not mine")
+                    that.stop_waiting_for_acquisition()
+                    return
+                }
+
+                if (data.success) {
+                    if (data.reference_id !== null) {
+                        that.logger.debug(
+                            `Datalogging acquisition complete. Request token=${data.request_token}). Acquisition reference ID=${data.reference_id}`
+                        )
+                        that.request_load_acquisition_data(data.reference_id)
+                    } else {
+                        that.logger.error("Server did not provide a reference id for datalogging acquisition")
+                    }
+                } else {
+                    // todo : Add visual feedback
+                    that.logger.error("Datalogging acquisition failed to complete")
+                }
+
+                that.stop_waiting_for_acquisition()
             }
         )
 
@@ -323,26 +377,12 @@ export class GraphWidget extends BaseWidget {
 
         split_table.scrutiny_resizable_table("refresh")
 
-        const canvas = $("<canvas id='asasd'></canvas>")
-        this.graph_display_div.html("")
-        this.graph_display_div.append(canvas[0])
-        this.chart = new Chart(canvas[0], {
-            type: "line",
-            labels: ["aaa", "vvv", "xxx", "aaaw", "awe", "qqq", "www"],
-            data: {
-                datasets: [
-                    {
-                        label: "My First Dataset",
-                        data: [65, 59, 80, 81, 56, 55, 40],
-                        fill: false,
-                        borderColor: "rgb(75, 192, 192)",
-                        tension: 0.1,
-                    },
-                ],
-            },
-        } as ChartConfiguration<"line", number[]>)
-        this.chart.update()
-        this.chart.draw()
+        //this.show_acquisition_data(payload)
+    }
+
+    stop_waiting_for_acquisition(): void {
+        this.waiting_on_acquisition = false
+        this.pending_acquisition_token = null
     }
 
     switch_to_graph() {
@@ -388,47 +428,80 @@ export class GraphWidget extends BaseWidget {
             this.chart.clear()
             this.chart = null
         }
-        const canvas = $("<canvas id='asd'></canvas>")
+        const canvas = $("<canvas></canvas>")
         this.graph_display_div.html("")
         this.graph_display_div.append(canvas)
 
         const config = {} as ChartConfiguration
         config.type = "line"
         config.options = {}
-        //config.options.scales = {}
-        config.data = { datasets: [] }
-        /*
+        config.options.responsive = true
+        config.options.maintainAspectRatio = false
+        config.options.layout = {}
+        config.options.layout.padding = 0
+
+        config.options.interaction = {}
+        config.options.interaction.intersect = false
+        config.options.interaction.mode = "x"
+
+        config.options.scales = {}
+        config.data = { labels: [], datasets: [] }
+
+        config.options.elements = {}
+        config.options.elements.line = {
+            tension: 0,
+            borderWidth: 2,
+        }
+        config.options.elements.point = {
+            pointStyle: "circle",
+            radius: 0,
+            hoverRadius: 5,
+        }
+
+        // Y - Axis
+        const display_grid = data.yaxis.length <= 2 // Don't display grid if too many axis
         for (let i = 0; i < data.yaxis.length; i++) {
             const yaxis = data.yaxis[i]
             config.options.scales[`yaxis_${yaxis.id}`] = {
                 type: "linear",
                 position: "left",
+                grid: {
+                    display: display_grid,
+                },
                 title: {
                     display: true,
                     text: yaxis.name,
+                    align: "end",
+                    font: {
+                        size: 12,
+                    },
                 },
             }
         }
-        config.options.scales[`x`] = {
+
+        // X - Axis
+        config.options.scales["x"] = {
             type: "linear",
             title: {
                 display: true,
                 text: data.xdata.name,
             },
         }
-        
-        */
+
+        // Dataseries
         for (let i = 0; i < data.signals.length; i++) {
             const signal = data.signals[i]
             const dataset = {
                 label: signal.name,
                 data: signal.data,
-                // yAxisID: `yaxis_${signal.axis_id}`,
+                yAxisID: `yaxis_${signal.axis_id}`,
+                xAxisID: "x",
             } as ChartDataset<"line", number[]>
             config.data.datasets.push(dataset)
         }
 
-        console.log(config)
+        config.data.labels = data.xdata.data
+
         this.chart = new Chart(canvas[0], config)
         this.chart.update()
     }
@@ -858,6 +931,12 @@ export class GraphWidget extends BaseWidget {
     clear_config_error() {
         this.container.find(`.${CLASS_INPUT_ERROR}`).removeClass(CLASS_INPUT_ERROR)
         this.container.find(`.${CLASS_ERROR_MSG}`).remove()
+    }
+
+    resize() {
+        const parent = this.layout_content_div.parent() as JQuery<HTMLDivElement>
+        const top_delta = (this.layout_content_div.offset()?.top as number) - (parent.offset()?.top as number)
+        this.layout_content_div.outerHeight((parent.innerHeight() as number) - top_delta)
     }
 
     destroy() {}

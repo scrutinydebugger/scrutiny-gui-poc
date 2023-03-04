@@ -28,6 +28,10 @@ export class BaseWidget {
         throw "Not implemented"
     }
 
+    resize() {
+        // do nothing by default
+    }
+
     /**
      * Returns a unique name for the instance of this widget
      */
