@@ -243,9 +243,7 @@ export class ServerConnection {
         })
 
         this.app.on_event("scrutiny.device.disconnected", function (e) {
-            that.datastore.clear([DatastoreEntryType.RPV])
-            that.cancel_watchable_download_if_any(WatchableDownloadType.RPV)
-            that.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias)
+            that.set_device_disconnected()
         })
 
         this.app.on_event("scrutiny.sfd.unloaded", function () {
@@ -254,7 +252,7 @@ export class ServerConnection {
         })
 
         this.app.on_event("scrutiny.server.disconnected", function () {
-            that.set_disconnected()
+            that.set_server_disconnected()
             that.datastore.clear()
         })
 
@@ -276,7 +274,7 @@ export class ServerConnection {
             that.send_request("unsubscribe_watchable", params)
         })
 
-        this.set_disconnected()
+        this.set_server_disconnected()
         this.update_ui()
     }
 
@@ -296,19 +294,33 @@ export class ServerConnection {
         }
     }
 
-    /**
-     * Put the connection handler in a disconnected state.
-     */
-    set_disconnected(): void {
-        this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias)
+    set_device_disconnected() {
+        this.datastore.clear([DatastoreEntryType.RPV])
         this.cancel_watchable_download_if_any(WatchableDownloadType.RPV)
-        this.server_status = ServerStatus.Disconnected
+        this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias)
+
+        this.datalogger_state = DataloggerState.NA
+        this.datalogging_completion_ratio = null
+
+        if (this.datalogging_capabilities !== null) {
+            this.datalogging_capabilities = null
+            this.app.trigger_event("scrutiny.datalogging_capabilities_changed")
+        }
+
         this.device_status = DeviceStatus.NA
         this.loaded_sfd = null
         this.device_info = null
-        this.datalogging_capabilities = null
-        this.datalogger_state = DataloggerState.NA
-        this.datalogging_completion_ratio = null
+    }
+
+    /**
+     * Put the connection handler in a disconnected state.
+     */
+    set_server_disconnected(): void {
+        this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias)
+        this.cancel_watchable_download_if_any(WatchableDownloadType.RPV)
+        this.set_device_disconnected()
+        this.server_status = ServerStatus.Disconnected
+
         this.update_ui()
     }
 
@@ -568,13 +580,15 @@ export class ServerConnection {
      * @param e Close event
      */
     on_socket_close_callback(e: CloseEvent): void {
-        if (this.server_status == ServerStatus.Connected) {
-            this.app.trigger_event("scrutiny.server.disconnected")
-        }
+        const must_trigger_disconnected_event = this.server_status == ServerStatus.Connected
 
-        this.set_disconnected()
+        this.set_server_disconnected()
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
+
+        if (must_trigger_disconnected_event) {
+            this.app.trigger_event("scrutiny.server.disconnected")
+        }
 
         if (this.socket !== null) {
             this.socket = null
@@ -590,7 +604,6 @@ export class ServerConnection {
      * @param e Javascript event
      */
     on_socket_open_callback(e: Event): void {
-        //this.app.trigger_event('scrutiny.server.disconnected')
         this.server_status = ServerStatus.Connected
         this.device_status = DeviceStatus.NA
         this.update_ui()
@@ -605,13 +618,15 @@ export class ServerConnection {
      * @param e Javascript event
      */
     on_socket_error_callback(e: Event): void {
-        if (this.server_status == ServerStatus.Connected) {
-            this.app.trigger_event("scrutiny.server.disconnected")
-        }
+        const must_trigger_disconnected_event = this.server_status == ServerStatus.Connected
 
-        this.set_disconnected()
+        this.set_server_disconnected()
         this.clear_connect_timeout()
         this.stop_get_status_periodic_call()
+
+        if (must_trigger_disconnected_event) {
+            this.app.trigger_event("scrutiny.server.disconnected")
+        }
 
         this.close_socket()
 

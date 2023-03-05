@@ -11,7 +11,7 @@ type uintType = "uint8" | "uint16" | "uint32" | "uint64" | "uint128" | "uint256"
 type floatType = "float8" | "float16" | "float32" | "float64" | "float128" | "float256"
 type cfloatType = "cfloat8" | "cfloat16" | "cfloat32" | "cfloat64" | "cfloat128" | "cfloat256"
 
-export type ValueDataType = sintType | uintType | floatType | cfloatType
+export type ValueDataType = sintType | uintType | floatType | cfloatType | "boolean"
 export type ServerDeviceStatus = "unknown" | "disconnected" | "connecting" | "connected" | "connected_ready"
 export type WatchableType = "rpv" | "var" | "alias"
 
@@ -112,6 +112,17 @@ export namespace Message {
     }
 
     export namespace S2C {
+        export interface Empty extends BaseS2CMessage {}
+
+        export interface Echo extends BaseS2CMessage {
+            payload: string
+        }
+
+        export interface Error extends BaseS2CMessage {
+            request_cmd: string
+            msg: string
+        }
+
         export interface GetWatchableList extends BaseS2CMessage {
             qty: Record<WatchableType, number>
             content: Record<WatchableType, WatchableEntryServerDefinition[]>

@@ -191,6 +191,8 @@ const EVENT_EXPANDED = "stt.expanded"
 const EVENT_DROPPED = "stt.dropped"
 /** Triggered when the vertical size of the table has changed  */
 const EVENT_SIZE_CHANGED = "stt.size-changed"
+/**Triggered when a row is removed */
+const EVENT_NODE_DELETED = "stt.node-deleted"
 /** Triggered when a transfer completes */
 const EVENT_TRANSFER_COMPLETE = "stt.transfer-complete"
 
@@ -1981,6 +1983,7 @@ function _delete_node($table: JQueryTable, tr: JQueryRow): void {
     }
 
     $table.trigger(EVENT_SIZE_CHANGED)
+    $table.trigger(EVENT_NODE_DELETED)
 }
 
 function _delete_node_recursive($table: JQueryTable, tr: JQueryRow, recurse_level: number, arr?: string[]): void {
