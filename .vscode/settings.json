@@ -15,5 +15,6 @@
     "javascript.suggest.autoImports": false,
     "files.associations": {
         "atomic": "cpp"
-    }
+    },
+    "cSpell.enabled": true
 }

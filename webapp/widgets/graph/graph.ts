@@ -583,7 +583,7 @@ export class GraphWidget extends BaseWidget {
                 that.app.server_conn.chain_request("request_datalogging_acquisition", req).then(
                     function (data: API.Message.S2C.RequestDataloggingAcquisition) {
                         if (that.waiting_on_acquisition) {
-                            that.logger.debug(`Received acquisition request aknowledgement with token ${data.request_token}`)
+                            that.logger.debug(`Received acquisition request acknowledgement with token ${data.request_token}`)
                             that.pending_acquisition_token = data.request_token
                             that.clear_graph() // Remove any previous graph as we're waiting on a new one.
                         } else {
@@ -747,6 +747,17 @@ export class GraphWidget extends BaseWidget {
             config.options.scales[`yaxis_${yaxis.id}`] = {
                 type: "linear",
                 position: "left",
+                ticks: {
+                    callback: function (val): string | number {
+                        if (typeof val !== "number") {
+                            return val
+                        }
+                        if (val.toString().length > 5) {
+                            return val.toExponential(2)
+                        }
+                        return val
+                    },
+                },
                 grid: {
                     display: display_grid,
                 },
@@ -1036,7 +1047,7 @@ export class GraphWidget extends BaseWidget {
             }
             sr_select.removeAttr("disabled")
         }
-
+        this.update_estimated_duration()
         this.update_config_form()
     }
 
@@ -1271,20 +1282,23 @@ export class GraphWidget extends BaseWidget {
                             }
                         }
                         if (!bad_entry && size_per_sample > 0) {
-                            const nb_samples = Math.floor(this.app.server_conn.datalogging_capabilities.buffer_size / size_per_sample)
-                            let duration = (nb_samples / sampling_rate.frequency) * decimation
-                            let units = "seconds"
-                            if (duration < 1) {
-                                duration *= 1000
-                                units = "milliseconds"
-                            }
+                            const nb_samples = Math.floor(this.app.server_conn.datalogging_capabilities.buffer_size / size_per_sample - 1)
+                            if (nb_samples > 0) {
+                                let duration = (nb_samples / sampling_rate.frequency) * decimation
+                                let units = "seconds"
 
-                            if (duration < 1) {
-                                duration *= 1000
-                                units = "microseconds"
-                            }
+                                if (duration < 1) {
+                                    duration *= 1000
+                                    units = "milliseconds"
+                                }
 
-                            new_duration_label = `${duration.toFixed(1)} ${units}`
+                                if (duration < 1) {
+                                    duration *= 1000
+                                    units = "microseconds"
+                                }
+
+                                new_duration_label = `${duration.toFixed(1)} ${units}`
+                            }
                         }
                     }
                 }
