@@ -12,7 +12,7 @@ import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
-import { WatchableInterface } from "@src/widgets/common"
+import { WatchableTableInterface } from "@src/widgets/common"
 
 import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
@@ -162,14 +162,14 @@ export class VarListWidget extends BaseWidget {
         const children = this.app.datastore.get_children(entry_type, display_path)
 
         children["subfolders"].forEach(function (subfolder, i) {
-            const row_desc = WatchableInterface.make_folder_row_from_datastore_folder(subfolder, entry_type, 1)
+            const row_desc = WatchableTableInterface.make_folder_row_from_datastore_folder(subfolder, entry_type, 1)
             output.push({
                 tr: row_desc.tr,
             })
         })
 
         children["entries"][entry_type].forEach(function (entry, i) {
-            const row_data = WatchableInterface.make_entry_row(entry, entry.default_name ?? "", false, true)
+            const row_data = WatchableTableInterface.make_entry_row(entry, entry.default_name ?? "", false, true)
             output.push({
                 tr: row_data.tr,
                 no_children: true,
@@ -199,7 +199,7 @@ export class VarListWidget extends BaseWidget {
         }
 
         for (let i = 0; i < entry_type_list.length; i++) {
-            const row_desc = WatchableInterface.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
+            const row_desc = WatchableTableInterface.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
             this.tree_table.scrutiny_treetable("add_root_node", ROOT_NODE_DESC[entry_type_list[i]].id, row_desc.tr)
         }
     }

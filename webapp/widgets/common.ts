@@ -1,7 +1,9 @@
 import { Datastore, DatastoreEntry, DatastoreEntryType, SubfolderDescription } from "@src/datastore"
 import { CLASS_LIVE_EDIT_CONTENT, scrutiny_live_edit, JQueryLiveEdit } from "@scrutiny-live-edit"
+import { scrutiny_objtextbox, JQueryObjTextbox, PluginOptions as ObjTextboxOptions } from "@scrutiny-objtextbox"
 
 $.extend($.fn, { scrutiny_live_edit })
+$.extend($.fn, { scrutiny_objtextbox })
 
 export const ATTR_ENTRY_TYPE = "entry_type"
 export const ATTR_DISPLAY_PATH = "display_path"
@@ -34,7 +36,58 @@ export interface FolderRowDetails {
     td_name: JQueryLiveEdit<HTMLTableCellElement>
 }
 
-export class WatchableInterface {
+function get_icon_class(entry: DatastoreEntry): string {
+    let icon_class = null
+    if (entry.entry_type == DatastoreEntryType.Var) {
+        icon_class = CLASS_VAR_ICON
+    } else if (entry.entry_type == DatastoreEntryType.Alias) {
+        icon_class = CLASS_ALIAS_ICON
+    } else if (entry.entry_type == DatastoreEntryType.RPV) {
+        icon_class = CLASS_RPV_ICON
+    } else {
+        throw "Unknown entry type"
+    }
+
+    return icon_class
+}
+
+interface ObjTextboxObject {
+    entry: DatastoreEntry
+    name: string
+}
+
+export class WatchableTextbox {
+    static make(element: JQueryObjTextbox): JQueryObjTextbox {
+        if (!element.is("div")) {
+            throw "Require a div element"
+        }
+
+        const objtextbox_options: ObjTextboxOptions = {
+            render_func: function (arg: object) {
+                const obj = arg as ObjTextboxObject
+                const icon_class = get_icon_class(obj.entry)
+                return $(`<div><div class="entry_icon ${icon_class}"></div><span>${obj.name}</span></div>`)
+            },
+        }
+
+        element.on("otb.delete", function () {
+            element.scrutiny_objtextbox("set_text", "0")
+        })
+
+        element.on("otb.select", function () {
+            element.css("border", "1px solid black")
+        })
+
+        element.on("otb.unselect", function () {
+            element.css("border", "")
+        })
+
+        element.scrutiny_objtextbox(objtextbox_options)
+        return element
+    }
+}
+
+export class WatchableTableInterface {
     static get_display_path(row: JQueryRow): string {
         const dispaly_path = row.attr(ATTR_DISPLAY_PATH)
         if (typeof dispaly_path === "undefined") {
@@ -94,16 +147,7 @@ export class WatchableInterface {
         output.tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
         output.tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
 
-        let icon_class = null
-        if (entry.entry_type == DatastoreEntryType.Var) {
-            icon_class = CLASS_VAR_ICON
-        } else if (entry.entry_type == DatastoreEntryType.Alias) {
-            icon_class = CLASS_ALIAS_ICON
-        } else if (entry.entry_type == DatastoreEntryType.RPV) {
-            icon_class = CLASS_RPV_ICON
-        } else {
-            throw "Unknown entry type"
-        }
+        let icon_class = get_icon_class(entry)
 
         output.td_name = $(
             `<td class="${CLASS_NAME_COL}"><div class="entry_icon ${icon_class}"></div><div class="${CLASS_LIVE_EDIT_CONTENT}">${name}</div></td>`
@@ -136,7 +180,7 @@ export class WatchableInterface {
         entry_type: DatastoreEntryType,
         extra_col: number = 0
     ): FolderRowDetails {
-        return WatchableInterface.make_folder_row(subfolder.name, subfolder.display_path, entry_type, extra_col)
+        return WatchableTableInterface.make_folder_row(subfolder.name, subfolder.display_path, entry_type, extra_col)
     }
 
     static make_folder_row(name: string, display_path: string, entry_type: DatastoreEntryType, extra_col: number = 0): FolderRowDetails {
@@ -158,7 +202,7 @@ export class WatchableInterface {
     }
 
     static make_root_row(text: string, entry_type: DatastoreEntryType, extra_col: number = 0): FolderRowDetails {
-        return WatchableInterface.make_folder_row(text, "/", entry_type, extra_col)
+        return WatchableTableInterface.make_folder_row(text, "/", entry_type, extra_col)
     }
 
     /**

@@ -1,5 +1,3 @@
-import { DatastoreEntry } from "@src/datastore"
-
 const CLASS_OBJTEXTBOX = "otb"
 const CLASS_OBJTEXTBOX_HAS_OBJ = "otb-obj"
 const CLASS_OBJTEXTBOX_OBJ_SELECTED = "otb-obj-selected"
@@ -12,7 +10,6 @@ const DATAKEY_OPTIONS = "otb-dk-options"
 const DATAKEY_OBJ = "otb-dk-obj"
 
 const DEFAULT_OPTIONS = {
-    /**  Indentation caused by each nesting */
     input_template: $("<input type='text' />") as JQueryTextBox,
     render_func: null as ((obj: object) => JQuery) | null,
 }
@@ -20,6 +17,10 @@ const DEFAULT_OPTIONS = {
 type JQueryTextBox = JQuery<HTMLInputElement>
 type JQueryDiv = JQuery<HTMLDivElement>
 type PluginOptionsFull = typeof DEFAULT_OPTIONS
+
+export interface JQueryObjTextbox extends JQueryDiv {
+    scrutiny_objtextbox: Function
+}
 
 export type PluginOptions = Partial<PluginOptionsFull> // The user doesn't have to specify them all
 
@@ -175,8 +176,8 @@ function _global_init_body() {
         const obj = _get_obj(selected_otb)
         if (obj !== null) {
             if (e.key == "Delete") {
-                selected_otb.trigger(EVENT_DELETE, obj)
                 _set_text(selected_otb, "")
+                selected_otb.trigger(EVENT_DELETE, obj)
                 e.preventDefault()
             } else if (e.key == "Escape") {
                 _unselect(selected_otb)
@@ -205,6 +206,10 @@ function init($element: JQueryDiv, config?: null | PluginOptions, val?: string |
     }
 
     $element.on("click", function (e) {
+        const selected = _get_otb_with_selected_obj()
+        if (!selected.is($element)) {
+            _unselect(selected)
+        }
         _select($element)
         e.stopPropagation()
     })

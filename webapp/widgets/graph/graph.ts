@@ -6,7 +6,7 @@ import { number2str, trim, force_input_int, force_input_float } from "@src/tools
 import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
-import { WatchableInterface } from "@src/widgets/common"
+import { WatchableTableInterface, WatchableTextbox } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
 
 import {
@@ -424,6 +424,11 @@ export class GraphWidget extends BaseWidget {
 
         const config_table = this.get_config_table()
 
+        config_table.find(".graph-operand-objtextbox").each(function (el) {
+            const element = $(this)
+            WatchableTextbox.make(element).scrutiny_objtextbox("set_text", "0")
+        })
+
         config_table.find("select").on("change", function () {
             that.config_changed()
         })
@@ -491,7 +496,7 @@ export class GraphWidget extends BaseWidget {
                     return { scope: TransferScope.NONE }
                 }
 
-                if (WatchableInterface.is_entry_row(tr as JQueryRow)) {
+                if (WatchableTableInterface.is_entry_row(tr as JQueryRow)) {
                     return { scope: TransferScope.ROW_ONLY }
                 }
 
@@ -506,14 +511,14 @@ export class GraphWidget extends BaseWidget {
                 meta: TransferFunctionMetadata
             ): TransferFunctionOutput {
                 try {
-                    const text_name = WatchableInterface.get_name_cell(bare_line).text()
-                    const entry = WatchableInterface.get_entry_from_row(that.app.datastore, bare_line)
+                    const text_name = WatchableTableInterface.get_name_cell(bare_line).text()
+                    const entry = WatchableTableInterface.get_entry_from_row(that.app.datastore, bare_line)
                     if (entry === null) {
                         that.logger.error("Failed to transfer row. Entry not found in " + bare_line)
                         return null
                     }
 
-                    const row_desc = WatchableInterface.make_entry_row(entry, text_name, false, false)
+                    const row_desc = WatchableTableInterface.make_entry_row(entry, text_name, false, false)
                     row_desc.td_name.live_edit()
                     return { tr: row_desc.tr }
                 } catch (e) {
@@ -530,8 +535,8 @@ export class GraphWidget extends BaseWidget {
 
                     let td: JQueryLiveEdit<HTMLTableCellElement> | null = null
 
-                    if (WatchableInterface.is_entry_row(selected_rows)) {
-                        td = WatchableInterface.get_name_cell(first_row)
+                    if (WatchableTableInterface.is_entry_row(selected_rows)) {
+                        td = WatchableTableInterface.get_name_cell(first_row)
                     } else if (first_row.hasClass(CLASS_AXIS_ROW)) {
                         td = first_row.children("td:first") as JQueryLiveEdit<HTMLTableCellElement>
                     }
@@ -1170,7 +1175,6 @@ export class GraphWidget extends BaseWidget {
         }
 
         const trigger_type = this.get_selected_trigger_type()
-        const nb_operands = NB_OPERANDS_MAP[trigger_type]
 
         const hold_time_millisec = this.get_selected_hold_time_millisec()
         if (hold_time_millisec === null) {
@@ -1193,7 +1197,7 @@ export class GraphWidget extends BaseWidget {
         const signals = [] as API.Datalogging.AcquisitionRequestSignalDef[]
         for (let i = 0; i < signal_config.signals.length; i++) {
             const row = signal_config.signals[i].row
-            const entry = WatchableInterface.get_entry_from_row(this.app.datastore, row)
+            const entry = WatchableTableInterface.get_entry_from_row(this.app.datastore, row)
             if (entry == null) {
                 valid = false
                 row.addClass(CLASS_INPUT_ERROR)
@@ -1201,7 +1205,7 @@ export class GraphWidget extends BaseWidget {
                 signals.push({
                     axis_id: signal_config.signals[i].axis_id,
                     id: entry.server_id,
-                    name: WatchableInterface.get_name_cell(row).text(),
+                    name: WatchableTableInterface.get_name_cell(row).text(),
                 })
             }
         }
@@ -1266,7 +1270,7 @@ export class GraphWidget extends BaseWidget {
                         for (let i = 0; i < axis.length; i++) {
                             const signals_row = this.get_signal_list_table().scrutiny_treetable("get_children", axis.eq(i))
                             for (let j = 0; j < signals_row.length; j++) {
-                                const entry = WatchableInterface.get_entry_from_row(this.app.datastore, signals_row.eq(j))
+                                const entry = WatchableTableInterface.get_entry_from_row(this.app.datastore, signals_row.eq(j))
                                 if (entry == null) {
                                     bad_entry = true
                                     break
