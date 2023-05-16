@@ -18,6 +18,7 @@
             "@scrutiny-treetable" : ["webapp/components/scrutiny-treetable/scrutiny-treetable"],
             "@scrutiny-resizable-table" : ["webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"],
             "@scrutiny-live-edit" : ["webapp/components/scrutiny-live-edit/scrutiny-live-edit"],
+            "@scrutiny-objtextbox" : ["webapp/components/scrutiny-objtextbox/scrutiny-objtextbox"],
         },
     },   
     "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts", "tests/**/*"],
