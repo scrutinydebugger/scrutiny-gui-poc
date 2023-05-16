@@ -1,6 +1,7 @@
 import { Datastore, DatastoreEntry, DatastoreEntryType, SubfolderDescription } from "@src/datastore"
 import { CLASS_LIVE_EDIT_CONTENT, scrutiny_live_edit, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { scrutiny_objtextbox, JQueryObjTextbox, PluginOptions as ObjTextboxOptions } from "@scrutiny-objtextbox"
+import { get_drag_data_from_drop_event } from "@scrutiny-treetable"
 
 $.extend($.fn, { scrutiny_live_edit })
 $.extend($.fn, { scrutiny_objtextbox })
@@ -24,6 +25,13 @@ export const CLASS_UNAVAILABLE = "unavailable"
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryCell = JQuery<HTMLTableCellElement>
 
+interface ScrutinyResizableTable extends JQuery<HTMLTableElement> {
+    scrutiny_resizable_table: Function
+}
+interface ScrutinyTreeTable extends ScrutinyResizableTable {
+    scrutiny_treetable: Function
+}
+
 export interface EntryRowDetails {
     tr: JQueryRow
     td_name: JQueryLiveEdit<HTMLTableCellElement>
@@ -34,6 +42,11 @@ export interface EntryRowDetails {
 export interface FolderRowDetails {
     tr: JQueryRow
     td_name: JQueryLiveEdit<HTMLTableCellElement>
+}
+
+export interface NameEntryPair {
+    entry: DatastoreEntry
+    name: string
 }
 
 function get_icon_class(entry: DatastoreEntry): string {
@@ -51,39 +64,73 @@ function get_icon_class(entry: DatastoreEntry): string {
     return icon_class
 }
 
-interface ObjTextboxObject {
-    entry: DatastoreEntry
-    name: string
-}
-
 export class WatchableTextbox {
-    static make(element: JQueryObjTextbox): JQueryObjTextbox {
+    static make(element: JQueryObjTextbox, datastore: Datastore, readonly = false): JQueryObjTextbox {
         if (!element.is("div")) {
             throw "Require a div element"
         }
 
-        const objtextbox_options: ObjTextboxOptions = {
-            render_func: function (arg: object) {
-                const obj = arg as ObjTextboxObject
-                const icon_class = get_icon_class(obj.entry)
-                return $(`<div><div class="entry_icon ${icon_class}"></div><span>${obj.name}</span></div>`)
-            },
+        const default_val = readonly ? "" : "0"
+        const input_template = $("<input type='text' />") as JQuery<HTMLInputElement>
+        if (readonly) {
+            input_template.attr("readonly", "readonly")
         }
 
-        element.on("otb.delete", function () {
-            element.scrutiny_objtextbox("set_text", "0")
+        const objtextbox_options: ObjTextboxOptions = {
+            render_func: function (arg: object) {
+                const obj = arg as NameEntryPair
+                const icon_class = get_icon_class(obj.entry)
+                return $(`<div class="textbox-watchable"><div class="entry_icon ${icon_class}"></div><span>${obj.name}</span></div>`)
+            },
+            input_template: input_template,
+        }
+
+        element.on("otb.obj_unset", function () {
+            element.scrutiny_objtextbox("set_text", default_val)
         })
 
         element.on("otb.select", function () {
-            element.css("border", "1px solid black")
+            element.find(".textbox-watchable").addClass("selected")
         })
 
         element.on("otb.unselect", function () {
-            element.css("border", "")
+            element.find(".textbox-watchable").removeClass("selected")
         })
 
-        element.scrutiny_objtextbox(objtextbox_options)
+        element.on("dragover", function (e) {
+            e.preventDefault()
+        })
+
+        element.on("drop", function (e) {
+            const drag_data = get_drag_data_from_drop_event(e) // Will have a meaningful value only if it comes from a treetable, null otherwise
+            if (drag_data != null) {
+                const table = $(`#${drag_data.source_table_id}`) as ScrutinyTreeTable
+                const row = table.scrutiny_treetable("get_nodes", drag_data.dragged_row_id)
+                const entry = WatchableTableInterface.get_entry_from_row(datastore, row)
+                if (entry == null) {
+                    element.scrutiny_objtextbox("set_text", default_val)
+                } else {
+                    const obj: NameEntryPair = {
+                        entry: entry,
+                        name: WatchableTableInterface.get_name(row),
+                    }
+                    element.scrutiny_objtextbox("set_obj", obj)
+                }
+
+                e.stopPropagation()
+            }
+        })
+
+        element.scrutiny_objtextbox(objtextbox_options, default_val)
         return element
+    }
+
+    static get(element: JQueryObjTextbox): NameEntryPair | string {
+        if (element.scrutiny_objtextbox("is_obj_mode")) {
+            return element.scrutiny_objtextbox("get_obj") as NameEntryPair
+        } else {
+            return element.scrutiny_objtextbox("get_text") as string
+        }
     }
 }
 
@@ -118,6 +165,11 @@ export class WatchableTableInterface {
             throw "No name column on row"
         }
         return cell
+    }
+
+    static get_name(row: JQueryRow): string {
+        const cell = WatchableTableInterface.get_name_cell(row)
+        return cell.text()
     }
 
     static get_type_cell(row: JQueryRow): JQueryLiveEdit<HTMLTableCellElement> {

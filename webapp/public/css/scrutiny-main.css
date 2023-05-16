@@ -330,3 +330,17 @@ template{
     font-size: 4em;
     z-index: 9999999
 }
+
+.textbox-watchable {
+    font-size: small;
+    border: 1px solid #ddd;
+    cursor: default;
+    
+}
+
+.textbox-watchable.selected{
+    outline-color:rgb(124, 199, 250);
+    outline-style: solid;
+    outline-width: 2px;
+    
+}

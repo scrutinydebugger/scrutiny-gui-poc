@@ -5,6 +5,9 @@ const CLASS_OBJTEXTBOX_OBJ_SELECTED = "otb-obj-selected"
 const EVENT_SELECT = "otb.select"
 const EVENT_UNSELECT = "otb.unselect"
 const EVENT_DELETE = "otb.delete"
+const EVENT_OBJ_SET = "otb.obj_set"
+const EVENT_OBJ_UNSET = "otb.obj_unset"
+const EVENT_CHANGE = "change"
 
 const DATAKEY_OPTIONS = "otb-dk-options"
 const DATAKEY_OBJ = "otb-dk-obj"
@@ -30,7 +33,6 @@ function is_text_mode($element: JQueryDiv) {
 function is_obj_mode($element: JQueryDiv) {
     return _is_obj_mode($element)
 }
-
 function set_text($element: JQueryDiv, val: string) {
     return _set_text($element, val)
 }
@@ -78,13 +80,23 @@ function _get_textbox($element: JQueryDiv): JQueryTextBox {
 
 function _set_text_mode($element: JQueryDiv, force_create: boolean = false): JQueryTextBox {
     let textbox: JQueryTextBox | null = null
-    if (!_is_text_mode($element) || force_create) {
+    const is_text_mode = _is_text_mode($element)
+    if (!is_text_mode || force_create) {
         _unselect($element)
         $element.removeClass(CLASS_OBJTEXTBOX_HAS_OBJ)
+        const obj = $element.data(DATAKEY_OBJ)
         $element.data(DATAKEY_OBJ, null)
 
         textbox = _get_options($element).input_template.clone()
         $element.html("").append(textbox)
+        textbox.on("change", function () {
+            $element.trigger(EVENT_CHANGE)
+        })
+        if (!is_text_mode) {
+            // Do not fire event on creation
+            $element.trigger(EVENT_OBJ_UNSET, obj)
+            $element.trigger(EVENT_CHANGE)
+        }
     } else {
         textbox = _get_textbox($element)
     }
@@ -109,6 +121,8 @@ function _set_obj($element: JQueryDiv, obj: object): void {
     if (options.render_func != null) {
         const content = options.render_func(obj)
         $element.append(content)
+        $element.trigger(EVENT_OBJ_SET, obj)
+        $element.trigger(EVENT_CHANGE)
     } else {
         throw "Missing render function in options"
     }
@@ -118,7 +132,11 @@ function _get_obj($element: JQueryDiv): object | null {
     if (!_is_obj_mode($element)) {
         throw "Cannot read object. objtextbox element is not in object mode"
     }
-    return $element.data(DATAKEY_OBJ)
+    const obj = $element.data(DATAKEY_OBJ)
+    if (typeof obj === "undefined") {
+        return null
+    }
+    return obj
 }
 
 function _get_text($element: JQueryDiv): string {

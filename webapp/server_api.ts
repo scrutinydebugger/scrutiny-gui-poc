@@ -27,6 +27,11 @@ export namespace Datalogging {
         value: number | string
     }
 
+    export interface SignalDefinition {
+        id: string
+        name: string
+    }
+
     export interface SamplingRate {
         identifier: number
         name: string
@@ -100,7 +105,7 @@ export namespace Message {
             yaxis: Datalogging.AxisDef[]
             signals: Datalogging.AcquisitionRequestSignalDef[]
             x_axis_type: Datalogging.XAxisType
-            x_axis_signal: string | null
+            x_axis_signal: Datalogging.SignalDefinition | null
         }
         export interface ReadDataloggingAcquisitionContent extends BaseC2SMessage {
             reference_id: string

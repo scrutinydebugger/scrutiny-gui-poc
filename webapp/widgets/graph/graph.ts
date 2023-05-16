@@ -6,7 +6,7 @@ import { number2str, trim, force_input_int, force_input_float } from "@src/tools
 import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
-import { WatchableTableInterface, WatchableTextbox } from "@src/widgets/common"
+import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
 
 import {
@@ -19,6 +19,7 @@ import {
     TransferCompleteEventData,
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
+import { JQueryObjTextbox } from "@scrutiny-objtextbox"
 
 const payload = {
     cmd: "read_datalogging_acquisition_content_response",
@@ -356,6 +357,7 @@ export class GraphWidget extends BaseWidget {
 
     waiting_on_acquisition: boolean
     pending_acquisition_token: string | null = null
+    expected_failure_token: Set<string>
 
     layout_content_div: JQuery<HTMLDivElement>
     graph_config_div: JQuery<HTMLDivElement>
@@ -394,6 +396,7 @@ export class GraphWidget extends BaseWidget {
 
         this.waiting_on_acquisition = false
         this.pending_acquisition_token = null
+        this.expected_failure_token = new Set()
     }
 
     /**
@@ -415,18 +418,36 @@ export class GraphWidget extends BaseWidget {
         this.graph_config_div.find(".pane-left").append(signal_list_pane)
         this.graph_config_div.find(".pane-right").append(config_form_pane)
         this.container.append(layout)
-        this.update_config_capabilities()
-
-        this.app.on_event("scrutiny.datalogging_capabilities_changed", function () {
-            debugger
-            that.update_config_capabilities()
-        })
 
         const config_table = this.get_config_table()
 
         config_table.find(".graph-operand-objtextbox").each(function (el) {
             const element = $(this)
-            WatchableTextbox.make(element).scrutiny_objtextbox("set_text", "0")
+            WatchableTextbox.make(element, that.app.datastore)
+        })
+
+        WatchableTextbox.make(this.get_xaxis_watchable_input(), this.app.datastore, true)
+
+        this.update_config_capabilities()
+
+        this.app.on_event("scrutiny.datalogging_capabilities_changed", function () {
+            that.update_config_capabilities()
+        })
+
+        this.get_xaxis_watchable_input().on("change", function () {
+            that.config_changed()
+        })
+
+        this.get_operand1_input().on("change", function () {
+            that.config_changed()
+        })
+
+        this.get_operand2_input().on("change", function () {
+            that.config_changed()
+        })
+
+        this.get_operand3_input().on("change", function () {
+            that.config_changed()
         })
 
         config_table.find("select").on("change", function () {
@@ -582,6 +603,12 @@ export class GraphWidget extends BaseWidget {
         this.button_acquire.on("click", function () {
             const req = that.validate_config_and_make_request() // Mark the bad configs on the UI
             if (req !== null) {
+                if (that.waiting_on_acquisition && that.pending_acquisition_token !== null) {
+                    // Since we purposely push a new request before the previous was completed,
+                    //we expect the server to broadcast a failure message for that token
+                    that.expected_failure_token.add(that.pending_acquisition_token)
+                }
+
                 that.waiting_on_acquisition = true
                 that.pending_acquisition_token = null
                 that.logger.debug("Requesting datalogging acquisition")
@@ -627,8 +654,15 @@ export class GraphWidget extends BaseWidget {
                 }
 
                 if (that.pending_acquisition_token != data.request_token) {
-                    that.logger.debug("Acquisition completed, but was not mine")
-                    that.stop_waiting_for_acquisition()
+                    if (data.success == false && that.expected_failure_token.has(data.request_token)) {
+                        // Expected failure when ask for a new acquisition while one is already pending.
+                        // The server will cancel the previous one before starting the new one
+                        that.logger.debug(`Previous request canceled by the server. Token=${data.request_token}`)
+                        that.expected_failure_token.delete(data.request_token)
+                    } else {
+                        that.logger.warning(`Acquisition completed, but was not mine. Token=${data.request_token}`)
+                        that.stop_waiting_for_acquisition()
+                    }
                     return
                 }
 
@@ -888,12 +922,61 @@ export class GraphWidget extends BaseWidget {
         return this.get_config_table().find('select[name="xaxis_type"]') as JQuery<HTMLSelectElement>
     }
 
+    get_xaxis_watchable_input(): JQueryObjTextbox {
+        return this.get_config_table().find(".xaxis-watchable-objtextox") as JQueryObjTextbox
+    }
+
     get_trigger_type_select(): JQuery<HTMLSelectElement> {
         return this.get_config_table().find('select[name="trigger_type"]') as JQuery<HTMLSelectElement>
     }
 
     get_hold_time_input(): JQuery<HTMLInputElement> {
         return this.get_config_table().find('input[name="trigger_hold_time"]') as JQuery<HTMLInputElement>
+    }
+
+    get_operand1_input(): JQueryObjTextbox {
+        return this.get_config_table().find("div.operand1") as JQueryObjTextbox
+    }
+
+    get_operand2_input(): JQueryObjTextbox {
+        return this.get_config_table().find("div.operand2") as JQueryObjTextbox
+    }
+
+    get_operand3_input(): JQueryObjTextbox {
+        return this.get_config_table().find("div.operand3") as JQueryObjTextbox
+    }
+
+    get_selected_operand_from_operand_objtextbox(input: JQueryObjTextbox): API.Datalogging.Operand | null {
+        const operand = {} as API.Datalogging.Operand
+        if (input.scrutiny_objtextbox("is_text_mode")) {
+            const val = input.scrutiny_objtextbox("get_text") as string
+            let val_num = 0
+            if (val.search(".") != -1) {
+                val_num = parseFloat(val)
+            } else {
+                val_num = parseInt(val)
+            }
+            if (isNaN(val_num)) {
+                return null
+            }
+            operand.type = "literal"
+            operand.value = val_num
+        } else {
+            const name_entry_pair = input.scrutiny_objtextbox("get_obj") as NameEntryPair
+            operand.type = "watchable"
+            operand.value = name_entry_pair.entry.server_id
+        }
+        return operand
+    }
+
+    get_selected_operand1(): API.Datalogging.Operand | null {
+        return this.get_selected_operand_from_operand_objtextbox(this.get_operand1_input())
+    }
+    get_selected_operand2(): API.Datalogging.Operand | null {
+        return this.get_selected_operand_from_operand_objtextbox(this.get_operand2_input())
+    }
+    get_selected_operand3(): API.Datalogging.Operand | null {
+        return this.get_selected_operand_from_operand_objtextbox(this.get_operand3_input())
     }
 
     get_selected_config_name() {
@@ -977,6 +1060,14 @@ export class GraphWidget extends BaseWidget {
 
     get_selected_xaxis_type(): API.Datalogging.XAxisType {
         return this.get_xaxis_type_select().val() as API.Datalogging.XAxisType
+    }
+
+    get_xaxis_watchable_val(): NameEntryPair | null {
+        const val = WatchableTextbox.get(this.get_xaxis_watchable_input())
+        if (typeof val !== "object") {
+            return null
+        }
+        return val
     }
 
     get_selected_trigger_type(): API.Datalogging.TriggerType {
@@ -1165,12 +1256,26 @@ export class GraphWidget extends BaseWidget {
         }
 
         const xaxis_type = this.get_selected_xaxis_type()
+        const xaxis_watchable = this.get_xaxis_watchable_val()
+        let x_axis_signal: API.Datalogging.SignalDefinition | null = null
         if (xaxis_type == "ideal_time" && sampling_rate !== null) {
             if (sampling_rate.type == "variable_freq") {
                 const select = this.get_xaxis_type_select()
                 select.addClass(CLASS_INPUT_ERROR)
                 select.after(err_msg.clone().text("Unavailable with variable frequency"))
                 valid = false
+            }
+        } else if (xaxis_type === "signal") {
+            if (xaxis_watchable === null) {
+                const input = this.get_xaxis_watchable_input()
+                input.addClass(CLASS_INPUT_ERROR)
+                input.after(err_msg.clone().text("Missing watchable"))
+                valid = false
+            } else {
+                x_axis_signal = {
+                    id: xaxis_watchable.entry.server_id,
+                    name: xaxis_watchable.name,
+                }
             }
         }
 
@@ -1182,6 +1287,45 @@ export class GraphWidget extends BaseWidget {
             input.addClass(CLASS_INPUT_ERROR)
             input.after(err_msg.clone().text("Invalid value"))
             valid = false
+        }
+
+        const operands_list: API.Datalogging.Operand[] = []
+
+        const nb_operands = NB_OPERANDS_MAP[trigger_type]
+        if (nb_operands >= 1) {
+            const operand = this.get_selected_operand1()
+            if (operand === null) {
+                const input = this.get_operand1_input()
+                input.addClass(CLASS_INPUT_ERROR)
+                input.after(err_msg.clone().text("Invalid value"))
+                valid = false
+            } else {
+                operands_list.push(operand)
+            }
+        }
+
+        if (nb_operands >= 2) {
+            const operand = this.get_selected_operand2()
+            if (operand === null) {
+                const input = this.get_operand2_input()
+                input.addClass(CLASS_INPUT_ERROR)
+                input.after(err_msg.clone().text("Invalid value"))
+                valid = false
+            } else {
+                operands_list.push(operand)
+            }
+        }
+
+        if (nb_operands >= 3) {
+            const operand = this.get_selected_operand3()
+            if (operand === null) {
+                const input = this.get_operand3_input()
+                input.addClass(CLASS_INPUT_ERROR)
+                input.after(err_msg.clone().text("Invalid value"))
+                valid = false
+            } else {
+                operands_list.push(operand)
+            }
         }
 
         const signal_list_table = this.get_signal_list_table()
@@ -1221,9 +1365,9 @@ export class GraphWidget extends BaseWidget {
             probe_location: (probe_location as number) / 100.0,
             timeout: timeout as number,
             x_axis_type: xaxis_type,
-            x_axis_signal: null, // todo
+            x_axis_signal: x_axis_signal,
             condition: trigger_type,
-            operands: [], // todo
+            operands: operands_list,
             trigger_hold_time: hold_time_millisec as number,
             signals: signals,
             yaxis: signal_config.yaxis,
@@ -1254,14 +1398,16 @@ export class GraphWidget extends BaseWidget {
                 const sampling_rate = this.get_selected_sampling_rate()
                 const decimation = this.get_selected_decimation()
                 const x_axis_type = this.get_selected_xaxis_type()
-                const x_axis_signal = null // todo!
+                const x_axis_signal = this.get_xaxis_watchable_val()
                 const entry_id_set = new Set()
                 if (this.app.server_conn.datalogging_capabilities.encoding == "raw") {
                     let size_per_sample = 0
                     if (x_axis_type == "measured_time") {
                         size_per_sample += 4
                     } else if (x_axis_type == "signal") {
-                        throw "Not supported yet"
+                        if (x_axis_signal !== null) {
+                            size_per_sample += this.get_typesize_bytes(x_axis_signal.entry.datatype)
+                        }
                     }
                     // sampling rate and decimation will be null if invalid. frequency null if variable frequency rate
                     if (sampling_rate != null && decimation != null && sampling_rate.frequency !== null) {
@@ -1301,7 +1447,7 @@ export class GraphWidget extends BaseWidget {
                                     units = "microseconds"
                                 }
 
-                                new_duration_label = `${duration.toFixed(1)} ${units}`
+                                new_duration_label = `${duration.toFixed(1)} ${units} (${nb_samples} samples)`
                             }
                         }
                     }
