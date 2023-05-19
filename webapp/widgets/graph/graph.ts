@@ -8,6 +8,8 @@ import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
+import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
+import { set_nested } from "@src/tools"
 
 import {
     scrutiny_treetable,
@@ -297,6 +299,12 @@ const MAX_TIMEOUT_SEC = 420 // 2^32/1e7 = 429.49;  Make it round to 7 minutes
 const MIN_HOLD_TIME_MS = 0
 const MAX_HOLD_TIME_MS = 420 * 1000
 
+const DEFAULT_LINE_WIDTH = 1
+const DEFAULT_TICKS_COLOR = "#666666"
+
+const FOCUSED_LINE_WIDTH = 3
+const FOCUSED_TICKS_COLOR = "#000000"
+
 const NB_OPERANDS_MAP: Record<API.Datalogging.TriggerType, number> = {
     true: 0,
     eq: 2,
@@ -320,6 +328,8 @@ $.extend($.fn, {
         return this.attr("disabled", "disabled")
     },
 })
+
+Chart.register(RemoveUnusedAxesPlugin)
 
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -694,6 +704,7 @@ export class GraphWidget extends BaseWidget {
 
         split_table.scrutiny_resizable_table("refresh")
         this.clear_graph()
+
         this.show_acquisition_data(payload) // debug only
     }
 
@@ -744,6 +755,7 @@ export class GraphWidget extends BaseWidget {
     }
 
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
+        const that = this
         this.switch_to_graph()
         if (this.chart !== null) {
             this.chart.clear()
@@ -763,7 +775,78 @@ export class GraphWidget extends BaseWidget {
 
         config.options.interaction = {}
         config.options.interaction.intersect = false
-        config.options.interaction.mode = "x"
+        config.options.interaction.mode = "index" // mode = "x" cause duplicate label. bug?
+        config.options.interaction.axis = "x"
+
+        config.options.plugins = {}
+        config.options.plugins.tooltip = {}
+        config.options.plugins.tooltip.position = "nearest"
+        config.options.plugins.tooltip.enabled = false
+
+        // @ts-ignore
+        config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
+
+        config.options.plugins.legend = {}
+        config.options.plugins.legend.position = "top"
+        config.options.plugins.legend.onLeave = function (e, legendItem, legend) {
+            canvas.css("cursor", "default")
+        }
+        config.options.plugins.legend.onHover = function (e, legendItem, legend) {
+            canvas.css("cursor", "pointer")
+        }
+
+        let selected_dataset: number | null = null
+        config.options.onClick = function (e, elements, chart) {
+            if (e.native == null) {
+                return
+            }
+            const nearest_list = chart.getElementsAtEventForMode(e.native, "nearest", { axis: "xy" }, true)
+            if (nearest_list.length !== 1) {
+                return
+            }
+            const nearest = nearest_list[0]
+            if (selected_dataset !== nearest.datasetIndex) {
+                selected_dataset = nearest.datasetIndex
+            } else {
+                selected_dataset = null // toggle
+            }
+
+            for (let i = 0; i < chart.data.datasets.length; i++) {
+                const dataset = chart.data.datasets[i]
+                const meta = chart.getDatasetMeta(i)
+                if (typeof meta === "undefined") {
+                    throw "No metadata for dataset " + i
+                }
+                if (typeof meta.yAxisID === "undefined") {
+                    throw "No axis ID for dataset " + i
+                }
+                if (typeof chart.options.scales === "undefined") {
+                    chart.options.scales = {}
+                }
+                let scale_options = chart.options.scales[meta.yAxisID]
+                if (typeof scale_options === "undefined") {
+                    throw "No scales set"
+                }
+
+                if (selected_dataset === i) {
+                    dataset.borderWidth = FOCUSED_LINE_WIDTH
+                    set_nested(scale_options, ["ticks", "font", "weight"], "bold")
+                    set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
+                    set_nested(scale_options, ["grid", "display"], true)
+                } else {
+                    scale_options.display = false
+                    dataset.borderWidth = DEFAULT_LINE_WIDTH
+                    set_nested(scale_options, ["ticks", "font", "weight"], "normal")
+                    set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
+                    if (selected_dataset !== null) {
+                        // Leave active grid untouched when we unselect.
+                        set_nested(scale_options, ["grid", "display"], false)
+                    }
+                }
+            }
+
+            chart.update()
+        }
 
         config.options.scales = {}
         config.data = { labels: [], datasets: [] }
@@ -771,16 +854,23 @@ export class GraphWidget extends BaseWidget {
         config.options.elements = {}
         config.options.elements.line = {
             tension: 0,
-            borderWidth: 2,
+            borderWidth: DEFAULT_LINE_WIDTH,
         }
         config.options.elements.point = {
             pointStyle: "circle",
             radius: 0,
-            hoverRadius: 5,
+            hoverRadius: 4,
+        }
+
+        config.options.transitions = {
+            active: {
+                animation: {
+                    duration: 0,
+                },
+            },
         }
 
         // Y - Axis
-        const display_grid = data.yaxis.length <= 2 // Don't display grid if too many axis
         for (let i = 0; i < data.yaxis.length; i++) {
             const yaxis = data.yaxis[i]
             config.options.scales[`yaxis_${yaxis.id}`] = {
@@ -796,17 +886,18 @@ export class GraphWidget extends BaseWidget {
                         }
                         return val
                     },
+                    color: DEFAULT_TICKS_COLOR,
+                    font: {
+                        size: 11,
+                    },
                 },
                 grid: {
-                    display: display_grid,
+                    display: i == 0,
                 },
                 title: {
-                    display: true,
+                    display: false,
                     text: yaxis.name,
                     align: "end",
-                    font: {
-                        size: 12,
-                    },
                 },
             }
         }
@@ -1358,6 +1449,8 @@ export class GraphWidget extends BaseWidget {
             return null
         }
 
+        const hold_time_sec = hold_time_millisec !== null ? hold_time_millisec / 1000.0 : 0.0
+
         let request: Partial<API.Message.C2S.RequestDataloggingAcquisition> = {
             name: config_name,
             sampling_rate_id: (sampling_rate as API.Datalogging.SamplingRate).identifier,
@@ -1368,7 +1461,7 @@ export class GraphWidget extends BaseWidget {
             x_axis_signal: x_axis_signal,
             condition: trigger_type,
             operands: operands_list,
-            trigger_hold_time: hold_time_millisec as number,
+            trigger_hold_time: hold_time_sec,
             signals: signals,
             yaxis: signal_config.yaxis,
         }

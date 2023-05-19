@@ -123,3 +123,14 @@ export function force_input_float(input: JQuery<HTMLInputElement>, min: number, 
         input.val(val)
     }
 }
+
+export function set_nested(obj: Record<string, any>, path: string[], value: any): void {
+    if (path.length === 1) {
+        obj[path[0]] = value
+    } else {
+        if (typeof obj[path[0]] === "undefined") {
+            obj[path[0]] = {}
+        }
+        set_nested(obj[path[0]], path.slice(1), value)
+    }
+}
