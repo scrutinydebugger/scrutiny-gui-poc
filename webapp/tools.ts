@@ -106,7 +106,7 @@ export function clamp_val(val: number, min: number, max: number): number {
     return val
 }
 
-export function force_input_int(input: JQuery<HTMLInputElement>, min: number, max: number) {
+export function force_input_int(input: JQuery<HTMLInputElement>, min: number, max: number): void {
     let val = parseInt(input.val() as string)
     val = clamp_val(val, min, max)
     if (val != input.val()) {
@@ -115,7 +115,7 @@ export function force_input_int(input: JQuery<HTMLInputElement>, min: number, ma
     }
 }
 
-export function force_input_float(input: JQuery<HTMLInputElement>, min: number, max: number) {
+export function force_input_float(input: JQuery<HTMLInputElement>, min: number, max: number): void {
     let val = parseFloat(input.val() as string)
     val = clamp_val(val, min, max)
     if (val != input.val()) {
@@ -133,4 +133,14 @@ export function set_nested(obj: Record<string, any>, path: string[], value: any)
         }
         set_nested(obj[path[0]], path.slice(1), value)
     }
+}
+
+export function check_exist_nested(obj: Record<string, any>, keys: string[]): boolean {
+    for (let i = 0; i < keys.length; i++) {
+        if (!obj || typeof obj[keys[i]] === "undefined") {
+            return false
+        }
+        obj = obj[keys[i]] as object
+    }
+    return true
 }

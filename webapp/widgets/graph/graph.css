@@ -127,3 +127,57 @@
 .graph-config .input-error{
     border:1px solid red;
 }
+
+.graph-display{
+    display:flex; 
+    flex-direction:row;
+}
+
+.graph-display .graph_zone{
+    display:flex; 
+}
+
+.graph-display .legend_zone{
+    font-size: small;
+    margin-right:10px;
+}
+
+.graph-display .legend_zone tr.selected{
+    background-color:#ddd;
+}
+
+.graph-display .legend_zone table.legend{
+    margin: 0;
+    padding: 0;
+    border-collapse: collapse;
+    height: max-content;
+}
+
+.graph-display .legend_zone .legend_color_box{
+    display : inline-block;
+    height : 10px;
+    margin-right : 3px;
+    width : 10px;
+    cursor: pointer;
+    border-style: solid;
+    border-width: 1px;
+}
+
+.graph-display .legend_zone .legend_text{
+    margin:0;
+    padding:0;
+    cursor:default;
+}
+
+.graph-display .legend_zone .legend_val{
+    margin:0;
+    padding-right:0;
+    padding-left:0;
+    padding-top:0;
+    padding-left:5px;
+    min-width: 15px;
+}
+
+.graph-display .legend_zone .legend_text.line_hidden{
+    text-decoration: line-through;
+}

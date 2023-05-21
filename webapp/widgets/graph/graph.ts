@@ -8,7 +8,7 @@ import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
-import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
+import { RemoveUnusedAxesPlugin, DataLegendPlugin, DataLegendPluginOptions } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
 
 import {
@@ -22,6 +22,8 @@ import {
 } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
 import { JQueryObjTextbox } from "@scrutiny-objtextbox"
+
+type ActiveTab = "configure" | "graph" | "browse"
 
 const payload = {
     cmd: "read_datalogging_acquisition_content_response",
@@ -330,6 +332,7 @@ $.extend($.fn, {
 })
 
 Chart.register(RemoveUnusedAxesPlugin)
+Chart.register(DataLegendPlugin)
 
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -372,11 +375,16 @@ export class GraphWidget extends BaseWidget {
     layout_content_div: JQuery<HTMLDivElement>
     graph_config_div: JQuery<HTMLDivElement>
     graph_display_div: JQuery<HTMLDivElement>
+    legend_zone: JQuery<HTMLDivElement>
+    graph_zone: JQuery<HTMLDivElement>
     graph_broswer_div: JQuery<HTMLDivElement>
+    estimated_duration_field_div: JQuery<HTMLDivElement>
     button_configure: JQueryDisableable<HTMLButtonElement>
     button_acquire: JQueryDisableable<HTMLButtonElement>
     button_browse: JQueryDisableable<HTMLButtonElement>
     button_graph: JQueryDisableable<HTMLButtonElement>
+
+    active_tab: ActiveTab
 
     chart: Chart | null
 
@@ -397,16 +405,20 @@ export class GraphWidget extends BaseWidget {
         this.layout_content_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_config_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_display_div = null as unknown as JQuery<HTMLDivElement>
+        this.legend_zone = null as unknown as JQuery<HTMLDivElement>
+        this.graph_zone = null as unknown as JQuery<HTMLDivElement>
         this.graph_broswer_div = null as unknown as JQuery<HTMLDivElement>
         this.button_configure = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.button_acquire = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.button_browse = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.button_graph = null as unknown as JQueryDisableable<HTMLButtonElement>
+        this.estimated_duration_field_div = null as unknown as JQuery<HTMLDivElement>
         this.chart = null
 
         this.waiting_on_acquisition = false
         this.pending_acquisition_token = null
         this.expected_failure_token = new Set()
+        this.active_tab = "configure"
     }
 
     /**
@@ -422,12 +434,17 @@ export class GraphWidget extends BaseWidget {
         this.button_graph = layout.find("button.btn-graph").first() as JQueryDisableable<HTMLButtonElement>
         this.graph_config_div = layout.find(".graph-config") as JQuery<HTMLDivElement>
         this.graph_display_div = layout.find(".graph-display") as JQuery<HTMLDivElement>
+        this.legend_zone = this.graph_display_div.find(".legend_zone") as JQuery<HTMLDivElement>
+        this.graph_zone = this.graph_display_div.find(".graph_zone") as JQuery<HTMLDivElement>
         this.graph_broswer_div = layout.find(".graph-browser") as JQuery<HTMLDivElement>
+        this.estimated_duration_field_div = layout.find(".status-bar .estimated_duration") as JQuery<HTMLDivElement>
         const config_form_pane = this.app.get_template(this, "config_form_pane") as JQuery<HTMLDivElement>
         const signal_list_pane = this.app.get_template(this, "signal_list_pane") as JQuery<HTMLDivElement>
         this.graph_config_div.find(".pane-left").append(signal_list_pane)
         this.graph_config_div.find(".pane-right").append(config_form_pane)
         this.container.append(layout)
+
+        this.legend_zone.prop("id", `graph_legend_${this.instance_id}`)
 
         const config_table = this.get_config_table()
 
@@ -705,7 +722,10 @@ export class GraphWidget extends BaseWidget {
         split_table.scrutiny_resizable_table("refresh")
         this.clear_graph()
 
-        this.show_acquisition_data(payload) // debug only
+        // debug only
+        setTimeout(function () {
+            that.show_acquisition_data(payload)
+        }, 0)
     }
 
     stop_waiting_for_acquisition(): void {
@@ -721,6 +741,9 @@ export class GraphWidget extends BaseWidget {
         this.button_configure.enable()
         this.button_browse.enable()
         this.button_graph.disable()
+        this.estimated_duration_field_div.hide() // This field is floating. May conflict with canvas
+
+        this.active_tab = "graph"
     }
 
     switch_to_config() {
@@ -731,6 +754,10 @@ export class GraphWidget extends BaseWidget {
         this.button_configure.disable()
         this.button_browse.enable()
         this.button_graph.enable()
+
+        this.estimated_duration_field_div.show() // This field is floating. May conflict with canvas
+
+        this.active_tab = "configure"
     }
 
     switch_to_browser() {
@@ -741,6 +768,10 @@ export class GraphWidget extends BaseWidget {
         this.button_configure.enable()
         this.button_browse.disable()
         this.button_graph.enable()
+
+        this.estimated_duration_field_div.hide() // This field is floating. May conflict with canvas
+
+        this.active_tab = "browse"
     }
 
     request_load_acquisition_data(reference_id: string) {
@@ -751,7 +782,8 @@ export class GraphWidget extends BaseWidget {
     }
 
     clear_graph() {
-        this.graph_display_div.html("No graph to display yet...")
+        this.graph_zone.html("No graph to display yet...")
+        this.legend_zone.html("")
     }
 
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
@@ -762,8 +794,9 @@ export class GraphWidget extends BaseWidget {
             this.chart = null
         }
         const canvas = $("<canvas></canvas>")
-        this.graph_display_div.html("")
-        this.graph_display_div.append(canvas)
+        this.graph_zone.html("")
+        this.legend_zone.html("")
+        this.graph_zone.append(canvas)
 
         const config = {} as ChartConfiguration
         config.type = "line"
@@ -786,66 +819,73 @@ export class GraphWidget extends BaseWidget {
         // @ts-ignore
         config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
 
-        config.options.plugins.legend = {}
-        config.options.plugins.legend.position = "top"
-        config.options.plugins.legend.onLeave = function (e, legendItem, legend) {
-            canvas.css("cursor", "default")
-        }
-        config.options.plugins.legend.onHover = function (e, legendItem, legend) {
-            canvas.css("cursor", "pointer")
-        }
-
-        let selected_dataset: number | null = null
-        config.options.onClick = function (e, elements, chart) {
-            if (e.native == null) {
-                return
-            }
-            const nearest_list = chart.getElementsAtEventForMode(e.native, "nearest", { axis: "xy" }, true)
-            if (nearest_list.length !== 1) {
-                return
-            }
-            const nearest = nearest_list[0]
-            if (selected_dataset !== nearest.datasetIndex) {
-                selected_dataset = nearest.datasetIndex
-            } else {
-                selected_dataset = null // toggle
-            }
-
-            for (let i = 0; i < chart.data.datasets.length; i++) {
-                const dataset = chart.data.datasets[i]
-                const meta = chart.getDatasetMeta(i)
-                if (typeof meta === "undefined") {
-                    throw "No metadata for dataset " + i
-                }
-                if (typeof meta.yAxisID === "undefined") {
-                    throw "No axis ID for dataset " + i
-                }
-                if (typeof chart.options.scales === "undefined") {
-                    chart.options.scales = {}
-                }
-                let scale_options = chart.options.scales[meta.yAxisID]
-                if (typeof scale_options === "undefined") {
-                    throw "No scales set"
+        let selected_datasets: Set<number> = new Set()
+        // @ts-ignore
+        config.options.plugins[DataLegendPlugin.id] = {
+            container_id: this.legend_zone.prop("id"),
+            onClick: function (e, item, chart) {
+                if (item === null || typeof item.datasetIndex === "undefined") {
+                    return
                 }
 
-                if (selected_dataset === i) {
-                    dataset.borderWidth = FOCUSED_LINE_WIDTH
-                    set_nested(scale_options, ["ticks", "font", "weight"], "bold")
-                    set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
-                    set_nested(scale_options, ["grid", "display"], true)
+                if (e.ctrlKey) {
+                    if (selected_datasets.has(item.datasetIndex)) {
+                        selected_datasets.delete(item.datasetIndex)
+                    } else {
+                        selected_datasets.add(item.datasetIndex)
+                    }
                 } else {
-                    scale_options.display = false
-                    dataset.borderWidth = DEFAULT_LINE_WIDTH
-                    set_nested(scale_options, ["ticks", "font", "weight"], "normal")
-                    set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
-                    if (selected_dataset !== null) {
-                        // Leave active grid untouched when we unselect.
-                        set_nested(scale_options, ["grid", "display"], false)
+                    if (selected_datasets.size == 1 && selected_datasets.has(item.datasetIndex)) {
+                        selected_datasets.clear()
+                    } else {
+                        selected_datasets.clear()
+                        selected_datasets.add(item.datasetIndex)
                     }
                 }
-            }
 
-            chart.update()
+                // @ts-ignore
+                chart.options.plugins[DataLegendPlugin.id].selected_datasets = selected_datasets
+
+                for (let i = 0; i < chart.data.datasets.length; i++) {
+                    const meta = chart.getDatasetMeta(i)
+                    if (typeof meta === "undefined") {
+                        throw "No metadata for dataset " + i
+                    }
+                    if (typeof meta.yAxisID === "undefined") {
+                        throw "No axis ID for dataset " + i
+                    }
+                    if (typeof chart.options.scales === "undefined") {
+                        chart.options.scales = {}
+                    }
+                    let scale_options = chart.options.scales[meta.yAxisID]
+                    if (typeof scale_options === "undefined") {
+                        throw "No scales set"
+                    }
+
+                    const dataset = chart.data.datasets[i]
+                    if (selected_datasets.has(i)) {
+                        dataset.borderWidth = FOCUSED_LINE_WIDTH
+                        set_nested(scale_options, ["ticks", "font", "weight"], "bold")
+                        set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
+                        set_nested(scale_options, ["grid", "display"], true)
+                    } else {
+                        scale_options.display = false
+                        dataset.borderWidth = DEFAULT_LINE_WIDTH
+                        set_nested(scale_options, ["ticks", "font", "weight"], "normal")
+                        set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
+                        if (selected_datasets.size > 0) {
+                            // Leave active grid untouched when we unselect.
+                            set_nested(scale_options, ["grid", "display"], false)
+                        }
+                    }
+                }
+
+                chart.update()
+            },
+        } as DataLegendPluginOptions
+
+        config.options.plugins.legend = {
+            display: false,
         }
 
         config.options.scales = {}
@@ -925,6 +965,29 @@ export class GraphWidget extends BaseWidget {
 
         config.data.labels = data.xdata.data
 
+        config.options.onHover = function (e, elements, chart: Chart) {
+            let index: number | null = null
+            for (let i = 0; i < elements.length; i++) {
+                const element = elements[i]
+                if (index !== null && index !== element.index) {
+                    throw "Active element does not have the same active index"
+                }
+                index = element.index
+                const val_label = that.legend_zone.find(`tr[dataset-index='${element.datasetIndex}'] p.legend_val`)
+                if (val_label.length > 0) {
+                    const dataset = chart.data.datasets[element.datasetIndex]
+                    const val = dataset.data[index]
+                    val_label.text("" + val)
+                } else {
+                    that.logger.error("Cannot write value to legend")
+                }
+            }
+
+            if (index !== null && typeof chart.data.labels !== "undefined") {
+                const xaxis_label = that.legend_zone.find("tr.xaxis p.legend_val")
+                xaxis_label.text(chart.data.labels[index] as string)
+            }
+        }
         this.chart = new Chart(canvas[0], config)
         this.chart.update()
     }
@@ -1596,6 +1659,11 @@ export class GraphWidget extends BaseWidget {
         const parent = this.layout_content_div.parent() as JQuery<HTMLDivElement>
         const top_delta = (this.layout_content_div.offset()?.top as number) - (parent.offset()?.top as number)
         this.layout_content_div.outerHeight((parent.innerHeight() as number) - top_delta)
+
+        if (this.active_tab == "graph") {
+            // Leave some room for the legend on the right.
+            this.graph_zone.width((this.layout_content_div.innerWidth() as number) - (this.legend_zone.outerWidth() as number))
+        }
     }
 
     destroy() {}
