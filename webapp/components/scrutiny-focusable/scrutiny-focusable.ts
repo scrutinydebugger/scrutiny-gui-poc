@@ -8,6 +8,8 @@ const DATAKEY_FOCUSABLE_CHILDREN = "scrutiny-focusable-children"
 const EVENT_FOCUS = "scrutiny-focusable-focus"
 const EVENT_BLUR = "scrutiny-focusable-blur"
 
+const PLUGIN_NAME = "scrutiny-focusable"
+
 const DEFAULT_OPTIONS = {
     root: null as JQuery | null,
 }
@@ -19,12 +21,15 @@ export interface JQueryFocusable<T> extends JQuery<T> {
     scrutiny_focusable: Function
 }
 
+function _error_msg(msg: string): string {
+    return `[${PLUGIN_NAME}]: ${msg}`
+}
+
 function _root_click_callback(root: JQuery, e: JQuery.ClickEvent) {
     let root_id_string = root.attr("id")
     if (!root_id_string) {
         root_id_string = root[0].tagName
     }
-    console.log("[plugin] Root click. " + root_id_string)
     const to_blur = root.find(`.${CLASS_FOCUSED}`).not($(e.target))
     to_blur.removeClass(CLASS_FOCUSED)
     to_blur.trigger(EVENT_BLUR)
@@ -55,7 +60,6 @@ function _global_init_body() {
 
     body.on("keydown", function (e) {
         if (e.key == "Escape") {
-            console.log("[plugin] Escape key")
             const to_blur = _get_active_root().find(`.${CLASS_FOCUSED}`)
             to_blur.removeClass(CLASS_FOCUSED)
             to_blur.trigger(EVENT_BLUR)
@@ -65,21 +69,21 @@ function _global_init_body() {
 
 function get_focused(root: JQueryFocusable<HTMLElement>) {
     if (!root.hasClass(CLASS_FOCUS_ROOT)) {
-        throw "Node is not a valid focus group root"
+        throw _error_msg("Node is not a valid focus group root")
     }
     return root.find(`.${CLASS_FOCUSED}`)
 }
 
 function is_active_root(root: JQueryFocusable<HTMLElement>) {
     if (!root.hasClass(CLASS_FOCUS_ROOT)) {
-        throw "Node is not a valid focus group root"
+        throw _error_msg("Node is not a valid focus group root")
     }
     return root.hasClass(CLASS_ACTIVE_ROOT)
 }
 
 function is_focused($element: JQueryFocusable<HTMLElement>) {
     if (!$element.hasClass(CLASS_FOCUSABLE)) {
-        throw "Node is not a valid focusable element"
+        throw _error_msg("Node is not a valid focusable element")
     }
     return $element.hasClass(CLASS_FOCUSED)
 }
@@ -93,7 +97,7 @@ function init($element: JQuery, config?: PluginOptions): void {
     const root = options.root !== null ? options.root : $("body").first()
 
     if (root.find($element).length == 0) {
-        throw "[scrutiny-focusable] root is not the parent of the focusable element"
+        throw _error_msg("root is not the parent of the focusable element")
     }
 
     if (!root.hasClass(CLASS_FOCUS_ROOT)) {
@@ -104,15 +108,13 @@ function init($element: JQuery, config?: PluginOptions): void {
         })
     }
 
-    $element.on("remove", function () {
-        console.log("element removed " + $element.attr("id"))
+    $element.on("DOMNodeRemoved", function () {
         root.data(DATAKEY_FOCUSABLE_CHILDREN, root.data(DATAKEY_FOCUSABLE_CHILDREN).not($element))
     })
 
     root.data(DATAKEY_FOCUSABLE_CHILDREN, root.data(DATAKEY_FOCUSABLE_CHILDREN).add($element))
 
     $element.on("click", function (e) {
-        console.log("[plugin] : Element click " + $element.attr("id"))
         if ($element.is($(e.target)) && !$element.hasClass(CLASS_FOCUSED)) {
             $element.addClass(CLASS_FOCUSED)
             $element.trigger(EVENT_FOCUS)
@@ -139,7 +141,7 @@ export function scrutiny_focusable(...args: any[]) {
         if (typeof args[0] === "string") {
             const funcname = args[0]
             if (!public_funcs.hasOwnProperty(funcname)) {
-                throw "Unknown function " + funcname
+                throw _error_msg("Unknown function " + funcname)
             }
             //@ts-ignore
             const result = public_funcs[funcname]($element, ...args.slice(1))
