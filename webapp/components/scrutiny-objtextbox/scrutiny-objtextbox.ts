@@ -20,12 +20,12 @@ const DEFAULT_OPTIONS = {
 type JQueryTextBox = JQuery<HTMLInputElement>
 type JQueryDiv = JQuery<HTMLDivElement>
 type PluginOptionsFull = typeof DEFAULT_OPTIONS
+export type PluginOptions = Partial<PluginOptionsFull> // The user doesn't have to specify them all
 
 export interface JQueryObjTextbox extends JQueryDiv {
     scrutiny_objtextbox: Function
 }
 
-export type PluginOptions = Partial<PluginOptionsFull> // The user doesn't have to specify them all
 
 function is_text_mode($element: JQueryDiv) {
     return _is_text_mode($element)

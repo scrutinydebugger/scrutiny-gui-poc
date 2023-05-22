@@ -65,7 +65,8 @@ export default {
             "@scrutiny-treetable": resolve("webapp/components/scrutiny-treetable/scrutiny-treetable"),
             "@scrutiny-resizable-table": resolve("webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"),
             "@scrutiny-live-edit": resolve("webapp/components/scrutiny-live-edit/scrutiny-live-edit"),
-            "@scrutiny-objtextbox": resolve("webapp/components/scrutiny-objtextbox/scrutiny-objtextbox")
+            "@scrutiny-objtextbox": resolve("webapp/components/scrutiny-objtextbox/scrutiny-objtextbox"),
+            "@scrutiny-focusable": resolve("webapp/components/scrutiny-focusable/scrutiny-focusable")
         },
     },
     externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, { jquery: "chart.js" }],
