@@ -1,3 +1,11 @@
+//    common.ts
+//        Some common elements shared across widget such as watchable table rows or testbox.
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2023 Scrutiny Debugger
+
 import { Datastore, DatastoreEntry, DatastoreEntryType, SubfolderDescription } from "@src/datastore"
 import { CLASS_LIVE_EDIT_CONTENT, scrutiny_live_edit, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { scrutiny_objtextbox, JQueryObjTextbox, PluginOptions as ObjTextboxOptions } from "@scrutiny-objtextbox"

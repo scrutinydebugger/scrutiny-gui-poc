@@ -1,3 +1,13 @@
+//    scrutiny-focusable.ts
+//        Component allowing to make any HTML element focusable using a custom event. Focus
+//        are controlled by group meaning 2 items can have focused if they do not share a
+//        common root.
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2023 Scrutiny Debugger
+
 const CLASS_FOCUSABLE = "scrutiny-focusable"
 const CLASS_FOCUSED = "scrutiny-focusable-focused"
 const CLASS_FOCUS_ROOT = "scruitny-focusable-root"

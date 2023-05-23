@@ -1,3 +1,11 @@
+//    scrutiny-live-edit.ts
+//        Make a field live-editable by switch the content to a textbox on double click
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2023 Scrutiny Debugger
+
 const ATTR_LIVE_EDIT_CANCEL_VAL = "live-edit-last-val"
 
 const CLASS_LIVE_EDIT_ACTIVE = "live-edit-active"

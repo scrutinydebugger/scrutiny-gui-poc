@@ -1,3 +1,11 @@
+//    chartjs_custom_plugins.ts
+//        Some custom made Chart.js plugins used within the application
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2023 Scrutiny Debugger
+
 import { check_exist_nested } from "@src/tools"
 import { Chart, Plugin, LegendItem } from "chart.js/auto"
 

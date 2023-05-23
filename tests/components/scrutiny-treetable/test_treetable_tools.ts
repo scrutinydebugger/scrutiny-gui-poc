@@ -4,7 +4,7 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 import { scrutiny_treetable, LoadFunctionInterface as TreeTableLoadFn } from "@scrutiny-treetable"
 import { default as $ } from "@jquery"

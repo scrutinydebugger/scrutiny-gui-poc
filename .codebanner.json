@@ -87,6 +87,27 @@
         },
         "tests/components/scrutiny-treetable/test_treetable.test.ts": {
             "docstring": "Test suite for the tree table plugin"
+        },
+        "webapp/chartjs_custom_plugins.ts": {
+            "docstring": "Some custom made Chart.js plugins used within the application"
+        },
+        "webapp/scrutiny-testbench.ts": {
+            "docstring": "Internal test file"
+        },
+        "webapp/widgets/common.ts": {
+            "docstring": "Some common elements shared across widget such as watchable table rows or testbox."
+        },
+        "webapp/widgets/graph/graph.ts": {
+            "docstring": "Graph widget"
+        },
+        "webapp/components/scrutiny-focusable/scrutiny-focusable.ts": {
+            "docstring": "Component allowing to make any HTML element focusable using a custom event. Focus are controlled by group meaning 2 items can have focused if they do not share a common root."
+        },
+        "webapp/components/scrutiny-objtextbox/scrutiny-objtextbox.ts": {
+            "docstring": "Component making a textbox convertible into any element that represent a custom object. Mainly used to drop watchable into textbox"
+        },
+        "webapp/components/scrutiny-live-edit/scrutiny-live-edit.ts": {
+            "docstring": "Make a field live-editable by switch the content to a textbox on double click"
         }
     }
 }

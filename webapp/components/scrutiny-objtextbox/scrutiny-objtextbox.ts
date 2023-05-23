@@ -1,3 +1,12 @@
+//    scrutiny-objtextbox.ts
+//        Component making a textbox convertible into any element that represent a custom object.
+//        Mainly used to drop watchable into textbox
+//
+//   - License : MIT - See LICENSE file.
+//   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
+//
+//   Copyright (c) 2021-2023 Scrutiny Debugger
+
 const CLASS_OBJTEXTBOX = "otb"
 const CLASS_OBJTEXTBOX_HAS_OBJ = "otb-obj"
 const CLASS_OBJTEXTBOX_OBJ_SELECTED = "otb-obj-selected"
