@@ -22,8 +22,8 @@ const DATAKEY_OPTIONS = "otb-dk-options"
 const DATAKEY_OBJ = "otb-dk-obj"
 
 const DEFAULT_OPTIONS = {
-    input_template: $("<input type='text' />") as JQueryTextBox,
-    render_func: null as ((obj: object) => JQuery) | null,
+    input_template: $("<input type='text' />") as JQueryTextBox, // Input element to use as a template when converting to textbox
+    render_func: null as ((obj: object) => JQuery) | null, // Function that creates the element that represent the object
 }
 
 type JQueryTextBox = JQuery<HTMLInputElement>
@@ -34,7 +34,6 @@ export type PluginOptions = Partial<PluginOptionsFull> // The user doesn't have 
 export interface JQueryObjTextbox extends JQueryDiv {
     scrutiny_objtextbox: Function
 }
-
 
 function is_text_mode($element: JQueryDiv) {
     return _is_text_mode($element)
@@ -221,7 +220,7 @@ function init($element: JQueryDiv, config?: null | PluginOptions, val?: string |
     $element.data(DATAKEY_OPTIONS, options)
 
     $element.addClass(CLASS_OBJTEXTBOX)
-    if (typeof val == "undefined") {
+    if (typeof val === "undefined") {
         val = ""
     }
 

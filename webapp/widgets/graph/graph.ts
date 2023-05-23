@@ -15,9 +15,10 @@ import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
-import { Chart, ChartConfiguration, ChartDataset } from "chart.js/auto"
-import { RemoveUnusedAxesPlugin, DataLegendPlugin, DataLegendPluginOptions } from "@src/chartjs_custom_plugins"
+import { Chart, ChartConfiguration, ChartDataset, LegendItem } from "chart.js/auto"
+import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
+import { scrutiny_focusable, PluginOptions as FocusableOptions, JQueryFocusable } from "@scrutiny-focusable"
 
 import {
     scrutiny_treetable,
@@ -329,6 +330,7 @@ const NB_OPERANDS_MAP: Record<API.Datalogging.TriggerType, number> = {
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
+$.extend($.fn, { scrutiny_focusable })
 
 $.extend($.fn, {
     enable: function () {
@@ -340,7 +342,6 @@ $.extend($.fn, {
 })
 
 Chart.register(RemoveUnusedAxesPlugin)
-Chart.register(DataLegendPlugin)
 
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -393,6 +394,7 @@ export class GraphWidget extends BaseWidget {
     button_graph: JQueryDisableable<HTMLButtonElement>
 
     active_tab: ActiveTab
+    selected_datasets: Set<number> // Graph datasets that are selected with click
 
     chart: Chart | null
 
@@ -422,6 +424,7 @@ export class GraphWidget extends BaseWidget {
         this.button_graph = null as unknown as JQueryDisableable<HTMLButtonElement>
         this.estimated_duration_field_div = null as unknown as JQuery<HTMLDivElement>
         this.chart = null
+        this.selected_datasets = new Set()
 
         this.waiting_on_acquisition = false
         this.pending_acquisition_token = null
@@ -792,18 +795,156 @@ export class GraphWidget extends BaseWidget {
     clear_graph() {
         this.graph_zone.html("No graph to display yet...")
         this.legend_zone.html("")
+        this.selected_datasets.clear()
+        if (this.chart !== null) {
+            this.chart.clear()
+            this.chart = null
+        }
+    }
+
+    update_legend_display() {}
+
+    make_legend_row(item: LegendItem | null, text: string, chart: Chart, is_xaxis: boolean = false): JQuery<HTMLTableRowElement> {
+        const that = this
+        let dataset_index: number | null = null
+        if (item !== null) {
+            dataset_index = item.datasetIndex ?? null
+        }
+        const colorbox_td = $("<td></td>")
+        const text_td = $("<td></td>")
+        const val_td = $("<td></td>")
+        const tr = $("<tr></tr>") as JQuery<HTMLTableRowElement>
+        tr.append(colorbox_td).append(text_td).append(val_td)
+
+        if (is_xaxis) {
+            tr.addClass("xaxis")
+        }
+
+        // Color box
+        if (item !== null && dataset_index !== null) {
+            const colorbox = $("<span class='legend_color_box'></span>")
+            if (typeof item.fillStyle == "string") {
+                colorbox.css("background", item.fillStyle)
+            }
+            if (typeof item.strokeStyle == "string") {
+                colorbox.css("border-color", item.strokeStyle)
+            }
+            colorbox.on("click", function (e: JQuery.ClickEvent) {
+                if (dataset_index !== null) {
+                    chart.setDatasetVisibility(dataset_index, !chart.isDatasetVisible(dataset_index))
+                    chart.update()
+                    e.stopPropagation()
+
+                    if (!chart.isDatasetVisible(dataset_index)) {
+                        text_td.css("text-decoration", "line-through")
+                    } else {
+                        text_td.css("text-decoration", "initial")
+                    }
+                }
+            })
+            colorbox_td.append(colorbox)
+        }
+
+        // Text
+        const ptext = $("<p class='legend_text'></p>")
+        if (item !== null && item.hidden) {
+            ptext.addClass("line_hidden")
+        }
+        ptext.text(text + ":")
+        text_td.append(ptext)
+
+        // value
+        const pval = $("<p class='legend_val'></p>")
+        val_td.append(pval)
+        tr.append(val_td)
+
+        tr.on("click", function (e: JQuery.ClickEvent) {
+            if (item === null || typeof item.datasetIndex === "undefined") {
+                return
+            }
+
+            if (e.ctrlKey) {
+                if (that.selected_datasets.has(item.datasetIndex)) {
+                    that.selected_datasets.delete(item.datasetIndex)
+                } else {
+                    that.selected_datasets.add(item.datasetIndex)
+                }
+            } else {
+                if (that.selected_datasets.size == 1 && that.selected_datasets.has(item.datasetIndex)) {
+                    that.selected_datasets.clear()
+                } else {
+                    that.selected_datasets.clear()
+                    that.selected_datasets.add(item.datasetIndex)
+                }
+            }
+
+            for (let i = 0; i < chart.data.datasets.length; i++) {
+                const meta = chart.getDatasetMeta(i)
+                if (typeof meta === "undefined") {
+                    throw "No metadata for dataset " + i
+                }
+                if (typeof meta.yAxisID === "undefined") {
+                    throw "No axis ID for dataset " + i
+                }
+                if (typeof chart.options.scales === "undefined") {
+                    chart.options.scales = {}
+                }
+                let scale_options = chart.options.scales[meta.yAxisID]
+                if (typeof scale_options === "undefined") {
+                    throw "No scales set"
+                }
+
+                const dataset = chart.data.datasets[i]
+                if (that.selected_datasets.has(i)) {
+                    dataset.borderWidth = FOCUSED_LINE_WIDTH
+                    tr.addClass("selected")
+                    set_nested(scale_options, ["ticks", "font", "weight"], "bold")
+                    set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
+                    set_nested(scale_options, ["grid", "display"], true)
+                } else {
+                    tr.removeClass("selected")
+                    scale_options.display = false
+                    dataset.borderWidth = DEFAULT_LINE_WIDTH
+                    set_nested(scale_options, ["ticks", "font", "weight"], "normal")
+                    set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
+                    if (that.selected_datasets.size > 0) {
+                        // Leave active grid untouched when we unselect.
+                        set_nested(scale_options, ["grid", "display"], false)
+                    }
+                }
+            }
+
+            chart.update()
+        })
+
+        return tr
+    }
+
+    build_legend() {
+        if (this.chart === null) {
+            return
+        }
+        const that = this
+        this.legend_zone.html("")
+        const legend_table = $("<table class='legend'><thead></thead></table>")
+        const tbody = $("<tbody></tbody>")
+        this.legend_zone.append(legend_table)
+        legend_table.append(tbody)
+
+        legend_table.append(this.make_legend_row(null, "x-axis", this.chart, true))
+        // @ts-ignore
+        const items = this.chart.options.plugins.legend.labels.generateLabels(this.chart)
+        for (let i = 0; i < items.length; i++) {
+            legend_table.append(this.make_legend_row(items[i], items[i].text, this.chart, false))
+        }
     }
 
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
         const that = this
         this.switch_to_graph()
-        if (this.chart !== null) {
-            this.chart.clear()
-            this.chart = null
-        }
+        this.clear_graph()
         const canvas = $("<canvas></canvas>")
         this.graph_zone.html("")
-        this.legend_zone.html("")
         this.graph_zone.append(canvas)
 
         const config = {} as ChartConfiguration
@@ -828,69 +969,6 @@ export class GraphWidget extends BaseWidget {
         config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
 
         let selected_datasets: Set<number> = new Set()
-        // @ts-ignore
-        config.options.plugins[DataLegendPlugin.id] = {
-            container_id: this.legend_zone.prop("id"),
-            onClick: function (e, item, chart) {
-                if (item === null || typeof item.datasetIndex === "undefined") {
-                    return
-                }
-
-                if (e.ctrlKey) {
-                    if (selected_datasets.has(item.datasetIndex)) {
-                        selected_datasets.delete(item.datasetIndex)
-                    } else {
-                        selected_datasets.add(item.datasetIndex)
-                    }
-                } else {
-                    if (selected_datasets.size == 1 && selected_datasets.has(item.datasetIndex)) {
-                        selected_datasets.clear()
-                    } else {
-                        selected_datasets.clear()
-                        selected_datasets.add(item.datasetIndex)
-                    }
-                }
-
-                // @ts-ignore
-                chart.options.plugins[DataLegendPlugin.id].selected_datasets = selected_datasets
-
-                for (let i = 0; i < chart.data.datasets.length; i++) {
-                    const meta = chart.getDatasetMeta(i)
-                    if (typeof meta === "undefined") {
-                        throw "No metadata for dataset " + i
-                    }
-                    if (typeof meta.yAxisID === "undefined") {
-                        throw "No axis ID for dataset " + i
-                    }
-                    if (typeof chart.options.scales === "undefined") {
-                        chart.options.scales = {}
-                    }
-                    let scale_options = chart.options.scales[meta.yAxisID]
-                    if (typeof scale_options === "undefined") {
-                        throw "No scales set"
-                    }
-
-                    const dataset = chart.data.datasets[i]
-                    if (selected_datasets.has(i)) {
-                        dataset.borderWidth = FOCUSED_LINE_WIDTH
-                        set_nested(scale_options, ["ticks", "font", "weight"], "bold")
-                        set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
-                        set_nested(scale_options, ["grid", "display"], true)
-                    } else {
-                        scale_options.display = false
-                        dataset.borderWidth = DEFAULT_LINE_WIDTH
-                        set_nested(scale_options, ["ticks", "font", "weight"], "normal")
-                        set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
-                        if (selected_datasets.size > 0) {
-                            // Leave active grid untouched when we unselect.
-                            set_nested(scale_options, ["grid", "display"], false)
-                        }
-                    }
-                }
-
-                chart.update()
-            },
-        } as DataLegendPluginOptions
 
         config.options.plugins.legend = {
             display: false,
@@ -998,6 +1076,8 @@ export class GraphWidget extends BaseWidget {
         }
         this.chart = new Chart(canvas[0], config)
         this.chart.update()
+
+        this.build_legend()
     }
 
     add_axis() {

@@ -15,13 +15,13 @@ const CLASS_ACTIVE_ROOT = "scrutiny-focusable-active-root"
 const DATAKEY_OPTIONS = "scrutiny-focusable-options"
 const DATAKEY_FOCUSABLE_CHILDREN = "scrutiny-focusable-children"
 
-const EVENT_FOCUS = "scrutiny-focusable-focus"
-const EVENT_BLUR = "scrutiny-focusable-blur"
+export const EVENT_FOCUS = "scrutiny-focusable-focus"
+export const EVENT_BLUR = "scrutiny-focusable-blur"
 
 const PLUGIN_NAME = "scrutiny-focusable"
 
 const DEFAULT_OPTIONS = {
-    root: null as JQuery | null,
+    root: null as JQuery | null, // The focus group root node in which assign the element. If null, body will be the root
 }
 
 type PluginOptionsFull = typeof DEFAULT_OPTIONS
@@ -31,10 +31,20 @@ export interface JQueryFocusable<T> extends JQuery<T> {
     scrutiny_focusable: Function
 }
 
+/**
+ * Format an error message when throwing an exception
+ * @param msg Error message
+ * @returns Formatted error message
+ */
 function _error_msg(msg: string): string {
     return `[${PLUGIN_NAME}]: ${msg}`
 }
 
+/**
+ * OnClick Callback assigned to each root element, only once
+ * @param root Root element of a focus group
+ * @param e Event
+ */
 function _root_click_callback(root: JQuery, e: JQuery.ClickEvent) {
     let root_id_string = root.attr("id")
     if (!root_id_string) {
@@ -45,6 +55,10 @@ function _root_click_callback(root: JQuery, e: JQuery.ClickEvent) {
     to_blur.trigger(EVENT_BLUR)
 }
 
+/**
+ * Retourn the active root, meaning which is the last focus group the user has selected. Can be none
+ * @returns Active root
+ */
 function _get_active_root(): JQuery {
     let active_root = $(`.${CLASS_ACTIVE_ROOT}`)
     return active_root
@@ -60,14 +74,19 @@ const _global_init = (function () {
     }
 })()
 
+/**
+ * Add a global body handlers to manage focus groups.
+ */
 function _global_init_body() {
     const body = $("body") as JQuery<HTMLBodyElement>
+    // Switch the active group based on where the target is
     body.on("click", function (e: JQuery.ClickEvent) {
         let new_active_root = $(e.target).parents(`.${CLASS_FOCUS_ROOT}:first`).first()
         _get_active_root().removeClass(CLASS_ACTIVE_ROOT)
         new_active_root.addClass(CLASS_ACTIVE_ROOT)
     })
 
+    // If escape key is pressed, blur active element in active focus group
     body.on("keydown", function (e) {
         if (e.key == "Escape") {
             const to_blur = _get_active_root().find(`.${CLASS_FOCUSED}`)
@@ -77,6 +96,11 @@ function _global_init_body() {
     })
 }
 
+/**
+ * Return the element that has the focus within a focus group identified by a root node
+ * @param root The root of the focus group
+ * @returns Focused element
+ */
 function get_focused(root: JQueryFocusable<HTMLElement>) {
     if (!root.hasClass(CLASS_FOCUS_ROOT)) {
         throw _error_msg("Node is not a valid focus group root")
@@ -84,6 +108,11 @@ function get_focused(root: JQueryFocusable<HTMLElement>) {
     return root.find(`.${CLASS_FOCUSED}`)
 }
 
+/**
+ * Tells if an element is being used as a focus group root node
+ * @param root Root node
+ * @returns true if node is a root node
+ */
 function is_active_root(root: JQueryFocusable<HTMLElement>) {
     if (!root.hasClass(CLASS_FOCUS_ROOT)) {
         throw _error_msg("Node is not a valid focus group root")
@@ -91,6 +120,11 @@ function is_active_root(root: JQueryFocusable<HTMLElement>) {
     return root.hasClass(CLASS_ACTIVE_ROOT)
 }
 
+/**
+ * Tells if an element has the focus wihin its group
+ * @param $element Element that could be focused
+ * @returns true if the element has focus iwthin its group
+ */
 function is_focused($element: JQueryFocusable<HTMLElement>) {
     if (!$element.hasClass(CLASS_FOCUSABLE)) {
         throw _error_msg("Node is not a valid focusable element")
@@ -98,6 +132,11 @@ function is_focused($element: JQueryFocusable<HTMLElement>) {
     return $element.hasClass(CLASS_FOCUSED)
 }
 
+/**
+ * Initialize the plugin on a Jquery element
+ * @param $element Element to make focusable
+ * @param config The plugin configuration
+ */
 function init($element: JQuery, config?: PluginOptions): void {
     _global_init()
     const options: PluginOptionsFull = $.extend({}, DEFAULT_OPTIONS, config)
