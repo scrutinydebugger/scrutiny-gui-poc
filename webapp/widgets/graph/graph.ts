@@ -18,7 +18,7 @@ import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/w
 import { Chart, ChartConfiguration, ChartDataset, LegendItem } from "chart.js/auto"
 import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
-import { scrutiny_focusable, PluginOptions as FocusableOptions, JQueryFocusable } from "@scrutiny-focusable"
+import * as multiselect from "@scrutiny-multiselect"
 
 import {
     scrutiny_treetable,
@@ -328,9 +328,9 @@ const NB_OPERANDS_MAP: Record<API.Datalogging.TriggerType, number> = {
     within: 3,
 }
 
-$.extend($.fn, { scrutiny_treetable })
-$.extend($.fn, { scrutiny_resizable_table })
-$.extend($.fn, { scrutiny_focusable })
+$.extend($.fn, scrutiny_treetable)
+$.extend($.fn, scrutiny_resizable_table)
+$.extend($.fn, { scrutiny_multiselect: multiselect.scrutiny_multiselect })
 
 $.extend($.fn, {
     enable: function () {
@@ -802,7 +802,27 @@ export class GraphWidget extends BaseWidget {
         }
     }
 
-    update_legend_display() {}
+    get_dataset_scale_options(dataset_index: number): any {
+        if (this.chart === null) {
+            throw "No chart available"
+        }
+        const meta = this.chart.getDatasetMeta(dataset_index)
+        if (typeof meta === "undefined" || meta === null) {
+            throw "No metadata for dataset " + dataset_index
+        }
+        if (typeof meta.yAxisID === "undefined" || meta.yAxisID === null) {
+            throw "No axis ID for dataset " + dataset_index
+        }
+        if (typeof this.chart.options.scales === "undefined") {
+            this.chart.options.scales = {}
+        }
+        let scale_options = this.chart.options.scales[meta.yAxisID]
+        if (typeof scale_options === "undefined" || scale_options === null) {
+            throw "No scales set for yAxisID = " + meta.yAxisID
+        }
+
+        return scale_options
+    }
 
     make_legend_row(item: LegendItem | null, text: string, chart: Chart, is_xaxis: boolean = false): JQuery<HTMLTableRowElement> {
         const that = this
@@ -822,6 +842,7 @@ export class GraphWidget extends BaseWidget {
 
         // Color box
         if (item !== null && dataset_index !== null) {
+            tr.attr("dataset-index", dataset_index)
             const colorbox = $("<span class='legend_color_box'></span>")
             if (typeof item.fillStyle == "string") {
                 colorbox.css("background", item.fillStyle)
@@ -858,65 +879,6 @@ export class GraphWidget extends BaseWidget {
         val_td.append(pval)
         tr.append(val_td)
 
-        tr.on("click", function (e: JQuery.ClickEvent) {
-            if (item === null || typeof item.datasetIndex === "undefined") {
-                return
-            }
-
-            if (e.ctrlKey) {
-                if (that.selected_datasets.has(item.datasetIndex)) {
-                    that.selected_datasets.delete(item.datasetIndex)
-                } else {
-                    that.selected_datasets.add(item.datasetIndex)
-                }
-            } else {
-                if (that.selected_datasets.size == 1 && that.selected_datasets.has(item.datasetIndex)) {
-                    that.selected_datasets.clear()
-                } else {
-                    that.selected_datasets.clear()
-                    that.selected_datasets.add(item.datasetIndex)
-                }
-            }
-
-            for (let i = 0; i < chart.data.datasets.length; i++) {
-                const meta = chart.getDatasetMeta(i)
-                if (typeof meta === "undefined") {
-                    throw "No metadata for dataset " + i
-                }
-                if (typeof meta.yAxisID === "undefined") {
-                    throw "No axis ID for dataset " + i
-                }
-                if (typeof chart.options.scales === "undefined") {
-                    chart.options.scales = {}
-                }
-                let scale_options = chart.options.scales[meta.yAxisID]
-                if (typeof scale_options === "undefined") {
-                    throw "No scales set"
-                }
-
-                const dataset = chart.data.datasets[i]
-                if (that.selected_datasets.has(i)) {
-                    dataset.borderWidth = FOCUSED_LINE_WIDTH
-                    tr.addClass("selected")
-                    set_nested(scale_options, ["ticks", "font", "weight"], "bold")
-                    set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
-                    set_nested(scale_options, ["grid", "display"], true)
-                } else {
-                    tr.removeClass("selected")
-                    scale_options.display = false
-                    dataset.borderWidth = DEFAULT_LINE_WIDTH
-                    set_nested(scale_options, ["ticks", "font", "weight"], "normal")
-                    set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
-                    if (that.selected_datasets.size > 0) {
-                        // Leave active grid untouched when we unselect.
-                        set_nested(scale_options, ["grid", "display"], false)
-                    }
-                }
-            }
-
-            chart.update()
-        })
-
         return tr
     }
 
@@ -926,9 +888,11 @@ export class GraphWidget extends BaseWidget {
         }
         const that = this
         this.legend_zone.html("")
+        const multiselect_container = $("<div class='multiselect-container'></div>")
         const legend_table = $("<table class='legend'><thead></thead></table>")
         const tbody = $("<tbody></tbody>")
-        this.legend_zone.append(legend_table)
+        this.legend_zone.append(multiselect_container)
+        multiselect_container.append(legend_table)
         legend_table.append(tbody)
 
         legend_table.append(this.make_legend_row(null, "x-axis", this.chart, true))
@@ -937,6 +901,94 @@ export class GraphWidget extends BaseWidget {
         for (let i = 0; i < items.length; i++) {
             legend_table.append(this.make_legend_row(items[i], items[i].text, this.chart, false))
         }
+
+        // @ts-ignore
+        multiselect_container.scrutiny_multiselect({
+            selectables: legend_table.find("tr:not(.xaxis) p.legend_text"),
+        })
+
+        function get_select_event_rows(data: multiselect.SelectEventData): JQueryRow {
+            return data.items.map(function (index) {
+                const parent_row = $(this).parents("tr:first") as JQueryRow
+                if (parent_row.length == 0) {
+                    throw "Cannot find legend row"
+                }
+                return parent_row[0]
+            }) as JQueryRow
+        }
+
+        function get_dataset_index_from_row(row: JQueryRow): number {
+            const dataset_index_str = row.attr("dataset-index") as string
+            const dataset_index = parseInt(dataset_index_str)
+            if (isNaN(dataset_index)) {
+                throw "Dataset index is not parsable " + dataset_index_str
+            }
+            return dataset_index
+        }
+
+        // Event handling. We simply update the "selecteD_index" set based on SELECT/UNSELECT event.
+        multiselect_container.on(multiselect.EVENT_SELECT, function (e: any, data: multiselect.SelectEventData) {
+            const rows = get_select_event_rows(data)
+            for (let i = 0; i < rows.length; i++) {
+                that.selected_datasets.add(get_dataset_index_from_row(rows.eq(i)))
+            }
+            that.update_chart_after_legend_select()
+        })
+
+        multiselect_container.on(multiselect.EVENT_UNSELECT, function (e: any, data: multiselect.UnselectEventData) {
+            const rows = get_select_event_rows(data)
+            for (let i = 0; i < rows.length; i++) {
+                that.selected_datasets.delete(get_dataset_index_from_row(rows.eq(i)))
+            }
+            that.update_chart_after_legend_select()
+        })
+    }
+
+    update_chart_after_legend_select() {
+        const that = this
+        if (this.chart === null) {
+            throw "No chart available"
+        }
+
+        // Based on dataset_index set, we highlight lines and scale
+        for (let dataset_index = 0; dataset_index < this.chart.data.datasets.length; dataset_index++) {
+            const row = this.legend_zone.find(`tr[dataset-index="${dataset_index}"]`)
+            if (this.selected_datasets.has(dataset_index)) {
+                const dataset = this.chart.data.datasets[dataset_index]
+                const scale_options = this.get_dataset_scale_options(dataset_index)
+                dataset.borderWidth = FOCUSED_LINE_WIDTH
+                row.addClass("selected")
+                set_nested(scale_options, ["ticks", "font", "weight"], "bold")
+                set_nested(scale_options, ["ticks", "color"], FOCUSED_TICKS_COLOR)
+                set_nested(scale_options, ["grid", "display"], true)
+            } else {
+                const dataset = this.chart.data.datasets[dataset_index]
+                const scale_options = this.get_dataset_scale_options(dataset_index)
+                dataset.borderWidth = DEFAULT_LINE_WIDTH
+                row.removeClass("selected")
+                set_nested(scale_options, ["ticks", "font", "weight"], "normal")
+                set_nested(scale_options, ["ticks", "color"], DEFAULT_TICKS_COLOR)
+                set_nested(scale_options, ["grid", "display"], false)
+            }
+        }
+
+        // Make sure at least one grid is always visible. Show the first possible
+        if (this.selected_datasets.size == 0) {
+            for (let i = 0; i < this.chart.data.datasets.length; i++) {
+                if (this.chart.isDatasetVisible(i)) {
+                    const scale_options = this.get_dataset_scale_options(0)
+                    set_nested(scale_options, ["grid", "display"], true)
+                    break
+                }
+            }
+        }
+
+        // Update graph after UI update
+        setTimeout(function () {
+            if (that.chart !== null) {
+                that.chart.update()
+            }
+        })
     }
 
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {

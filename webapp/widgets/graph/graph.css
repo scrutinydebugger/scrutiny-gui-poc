@@ -142,8 +142,20 @@
     margin-right:10px;
 }
 
+.graph-display .legend_zone .multiselect-container{
+    margin:0;
+    padding:0;
+    height:100%;
+    
+}
+
+.graph-display .legend_zone tr{
+    -moz-user-select: none;
+    user-select: none;
+}
+
 .graph-display .legend_zone tr.selected{
-    background-color:#ddd;
+    background-color:rgb(124, 199, 250);;
 }
 
 .graph-display .legend_zone table.legend{

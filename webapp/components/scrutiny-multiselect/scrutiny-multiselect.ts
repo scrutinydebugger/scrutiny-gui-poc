@@ -90,6 +90,19 @@ function get_selected(element: JQuery): JQuery {
 }
 
 /**
+ * Returns the list of selectable elements within a container
+ * @param element The plugin multiselect container
+ * @returns List of selectable childrens
+ */
+function get_selectables(element: JQuery): JQuery {
+    if (!element.hasClass(CLASS_MULTISELECT)) {
+        throw _error_msg("Element is not a multiselect container")
+    }
+
+    return element.find(`.${CLASS_MULTISELECT_ITEM}`)
+}
+
+/**
  * Unselect a list of items
  * @param container The plugin container element
  * @param items Children of container that needs to be selected
@@ -163,7 +176,7 @@ function _global_init_body() {
             focused.removeClass(CLASS_CONTAINER_FOCUS)
             focused.trigger(EVENT_BLUR)
 
-            const to_unselect = focused.children(`.${CLASS_MULTISELECT_ITEM}.${CLASS_SELECTED}`)
+            const to_unselect = focused.find(`.${CLASS_MULTISELECT_ITEM}.${CLASS_SELECTED}`)
             _unselect(focused, to_unselect)
         }
     })
@@ -215,6 +228,7 @@ const public_funcs = {
     is_selected: is_selected,
     is_focused: is_focused,
     get_selected: get_selected,
+    get_selectables: get_selectables,
 }
 
 export function scrutiny_multiselect(...args: any[]) {
