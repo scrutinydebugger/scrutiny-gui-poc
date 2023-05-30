@@ -9,7 +9,7 @@
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
-import { default as $ } from "@jquery"
+import { default as $ } from "jquery"
 import { number2str, trim, force_input_int, force_input_float } from "@src/tools"
 import * as API from "@src/server_api"
 import { configure_all_tooltips } from "@src/ui"
@@ -19,6 +19,7 @@ import { Chart, ChartConfiguration, ChartDataset, LegendItem } from "chart.js/au
 import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
 import * as multiselect from "@scrutiny-multiselect"
+import { default as Split } from "split.js"
 
 import {
     scrutiny_treetable,
@@ -333,10 +334,10 @@ $.extend($.fn, scrutiny_resizable_table)
 $.extend($.fn, { scrutiny_multiselect: multiselect.scrutiny_multiselect })
 
 $.extend($.fn, {
-    enable: function () {
+    enable: function (this: JQuery): JQuery {
         return this.removeAttr("disabled")
     },
-    disable: function () {
+    disable: function (this: JQuery): JQuery {
         return this.attr("disabled", "disabled")
     },
 })
@@ -460,7 +461,7 @@ export class GraphWidget extends BaseWidget {
         const config_table = this.get_config_table()
 
         config_table.find(".graph-operand-objtextbox").each(function (el) {
-            const element = $(this)
+            const element = $(this) as JQueryObjTextbox
             WatchableTextbox.make(element, that.app.datastore)
         })
 
@@ -522,11 +523,11 @@ export class GraphWidget extends BaseWidget {
 
         configure_all_tooltips(config_table)
 
-        const split_table = this.container.find("table.split-pane") as ScrutinyResizableTable
-        split_table.scrutiny_resizable_table({
-            table_width_constrained: true,
-            nowrap: false,
-        } as ResizableTableOptions)
+        Split([this.graph_config_div.find(".pane-left")[0], this.graph_config_div.find(".pane-right")[0]], {
+            minSize: 100,
+            gutterSize: 6,
+            snapOffset: 0,
+        })
 
         const signal_list_table = signal_list_pane.find("table.signal-list") as ScrutinyTreeTable
         signal_list_table.attr("id", "graph-signal-list-" + this.instance_id)
@@ -730,7 +731,7 @@ export class GraphWidget extends BaseWidget {
             }
         )
 
-        split_table.scrutiny_resizable_table("refresh")
+        //split_table.scrutiny_resizable_table("refresh")
         this.clear_graph()
 
         // debug only
@@ -995,9 +996,15 @@ export class GraphWidget extends BaseWidget {
         const that = this
         this.switch_to_graph()
         this.clear_graph()
-        const canvas = $("<canvas></canvas>")
+        const canvas = $("<canvas></canvas>") as JQuery<HTMLCanvasElement>
         this.graph_zone.html("")
         this.graph_zone.append(canvas)
+
+        Split([this.graph_zone[0], this.legend_zone[0]], {
+            gutterSize: 6,
+            dragInterval: 5,
+            sizes: [80, 20],
+        })
 
         const config = {} as ChartConfiguration
         config.type = "line"
@@ -1019,8 +1026,6 @@ export class GraphWidget extends BaseWidget {
 
         // @ts-ignore
         config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
-
-        let selected_datasets: Set<number> = new Set()
 
         config.options.plugins.legend = {
             display: false,
@@ -1134,7 +1139,7 @@ export class GraphWidget extends BaseWidget {
 
     add_axis() {
         const signal_list_table = this.container.find("table.signal-list") as ScrutinyTreeTable
-        const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
+        //const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
 
         const axis_rows = signal_list_table.scrutiny_treetable("get_root_nodes")
         let axis_name: string[] = []
@@ -1172,7 +1177,7 @@ export class GraphWidget extends BaseWidget {
 
         this.next_axis_id++
 
-        split_table.scrutiny_resizable_table("refresh")
+        //split_table.scrutiny_resizable_table("refresh")
     }
 
     /**

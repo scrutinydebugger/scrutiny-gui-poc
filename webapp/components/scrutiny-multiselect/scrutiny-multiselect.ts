@@ -7,6 +7,8 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
+import { default as $ } from "jquery"
+
 const CLASS_SELECTED = "scrutiny-multiselect-selected"
 const CLASS_MULTISELECT = "scrutiny-multiselect"
 const CLASS_MULTISELECT_ITEM = "scrutiny-multiselect-item"

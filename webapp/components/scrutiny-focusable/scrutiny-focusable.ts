@@ -8,6 +8,8 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
+import { default as $ } from "jquery"
+
 const CLASS_FOCUSABLE = "scrutiny-focusable"
 const CLASS_FOCUSED = "scrutiny-focusable-focused"
 const CLASS_FOCUS_ROOT = "scruitny-focusable-root"

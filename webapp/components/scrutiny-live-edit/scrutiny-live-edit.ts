@@ -6,6 +6,8 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
+import { default as $ } from "jquery"
+
 const ATTR_LIVE_EDIT_CANCEL_VAL = "live-edit-last-val"
 
 const CLASS_LIVE_EDIT_ACTIVE = "live-edit-active"

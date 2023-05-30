@@ -6,7 +6,7 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import * as $ from "jquery"
+import { default as $ } from "jquery"
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>

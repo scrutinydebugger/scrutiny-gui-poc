@@ -7,6 +7,8 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
+import { default as $ } from "jquery"
+
 const CLASS_OBJTEXTBOX = "otb"
 const CLASS_OBJTEXTBOX_HAS_OBJ = "otb-obj"
 const CLASS_OBJTEXTBOX_OBJ_SELECTED = "otb-obj-selected"
