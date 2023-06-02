@@ -59,3 +59,42 @@ export const RemoveUnusedAxesPlugin: Plugin = {
         }
     },
 }
+
+export interface DrawTriggerPluginOptions {
+    enabled: boolean
+    point_index: number
+    color: string
+}
+
+export const DrawTriggerPlugin: Plugin = {
+    id: "draw_trigger",
+    defaults: {
+        enabled: false,
+        point_index: 0,
+        color: "black",
+    },
+
+    afterDatasetsDraw: function (chart: Chart, args: any, options: DrawTriggerPluginOptions) {
+        if (options.enabled) {
+            const text = "T"
+            const meta = chart.getDatasetMeta(0)
+            if (meta.data.length > options.point_index) {
+                const lineLeftOffset = chart.getDatasetMeta(0).data[options.point_index].x
+                const area = chart.chartArea
+                const context = chart.ctx
+                // render vertical line
+                if (context !== null) {
+                    context.beginPath()
+                    context.setLineDash([5, 5])
+                    context.strokeStyle = options.color || "black"
+                    context.moveTo(lineLeftOffset, area.top + 16)
+                    context.lineTo(lineLeftOffset, area.bottom)
+                    context.stroke()
+                    context.fillStyle = options.color || "black"
+                    context.fillStyle = context.textAlign = "center"
+                    context.fillText(text || "", lineLeftOffset, area.top + 10)
+                }
+            }
+        }
+    },
+}

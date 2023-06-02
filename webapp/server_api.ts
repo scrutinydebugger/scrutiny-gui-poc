@@ -165,6 +165,7 @@ export namespace Message {
 
         export interface ReadDataloggingAcquisitionContent extends BaseS2CMessage {
             reference_id: string
+            trigger_index: number | null
             yaxis: Datalogging.AxisDef[]
             signals: Datalogging.SignalDataWithAxis[]
             xdata: Datalogging.SignalData

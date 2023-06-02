@@ -177,23 +177,22 @@ export function scrutiny_live_edit(...args: any[]) {
     let hasResults = false
     //@ts-ignore
     const results = $(this).map(function () {
-        const $element = $(this)
+        const $table = $(this)
 
         // Jquery plugin like approach.
-        if (args.length < 1) throw "Missing arguments"
-        if (typeof args[0] === "string") {
+        if (args.length == 0) {
+            init($table)
+        } else if (typeof args[0] === "string") {
             const funcname = args[0]
             if (!public_funcs.hasOwnProperty(funcname)) {
                 throw "Unknown function " + funcname
             }
             //@ts-ignore
-            const result = public_funcs[funcname]($element, ...args.slice(1))
+            const result = public_funcs[funcname]($table, ...args.slice(1))
             if (typeof result !== "undefined") {
                 hasResults = true
                 return result
             }
-        } else {
-            init($element, args[0])
         }
     })
 

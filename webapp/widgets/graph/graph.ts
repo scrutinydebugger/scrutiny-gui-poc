@@ -16,7 +16,7 @@ import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset, LegendItem } from "chart.js/auto"
-import { RemoveUnusedAxesPlugin } from "@src/chartjs_custom_plugins"
+import { RemoveUnusedAxesPlugin, DrawTriggerPlugin } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
 import * as multiselect from "@scrutiny-multiselect"
 import { default as Split } from "split.js"
@@ -39,6 +39,7 @@ const payload = {
     cmd: "read_datalogging_acquisition_content_response",
     reqid: 111,
     reference_id: "30364187463f4f10a49d061cb1f5abd3",
+    trigger_index: 300,
     signals: [
         {
             name: "counter_var",
@@ -343,6 +344,7 @@ $.extend($.fn, {
 })
 
 Chart.register(RemoveUnusedAxesPlugin)
+Chart.register(DrawTriggerPlugin)
 
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -527,6 +529,13 @@ export class GraphWidget extends BaseWidget {
             minSize: 100,
             gutterSize: 6,
             snapOffset: 0,
+        })
+
+        Split([this.graph_zone[0], this.legend_zone[0]], {
+            minSize: 100,
+            gutterSize: 6,
+            dragInterval: 5,
+            sizes: [80, 20],
         })
 
         const signal_list_table = signal_list_pane.find("table.signal-list") as ScrutinyTreeTable
@@ -895,8 +904,10 @@ export class GraphWidget extends BaseWidget {
         this.legend_zone.append(multiselect_container)
         multiselect_container.append(legend_table)
         legend_table.append(tbody)
+        // @ts-ignore
+        const xaxis_title = this.chart.scales["x"].options?.title?.text || "x-axis"
 
-        legend_table.append(this.make_legend_row(null, "x-axis", this.chart, true))
+        legend_table.append(this.make_legend_row(null, xaxis_title, this.chart, true))
         // @ts-ignore
         const items = this.chart.options.plugins.legend.labels.generateLabels(this.chart)
         for (let i = 0; i < items.length; i++) {
@@ -1000,12 +1011,6 @@ export class GraphWidget extends BaseWidget {
         this.graph_zone.html("")
         this.graph_zone.append(canvas)
 
-        Split([this.graph_zone[0], this.legend_zone[0]], {
-            gutterSize: 6,
-            dragInterval: 5,
-            sizes: [80, 20],
-        })
-
         const config = {} as ChartConfiguration
         config.type = "line"
         config.options = {}
@@ -1026,6 +1031,15 @@ export class GraphWidget extends BaseWidget {
 
         // @ts-ignore
         config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
+        // @ts-ignore
+
+        if (data["trigger_index"] !== null) {
+            // @ts-ignore
+            config.options.plugins[DrawTriggerPlugin.id] = {
+                enabled: true,
+                point_index: data["trigger_index"],
+            }
+        }
 
         config.options.plugins.legend = {
             display: false,
@@ -1132,6 +1146,8 @@ export class GraphWidget extends BaseWidget {
             }
         }
         this.chart = new Chart(canvas[0], config)
+
+        this.chart
         this.chart.update()
 
         this.build_legend()
@@ -1139,7 +1155,6 @@ export class GraphWidget extends BaseWidget {
 
     add_axis() {
         const signal_list_table = this.container.find("table.signal-list") as ScrutinyTreeTable
-        //const split_table = this.container.find("table.split-pane") as ScrutinyTreeTable
 
         const axis_rows = signal_list_table.scrutiny_treetable("get_root_nodes")
         let axis_name: string[] = []
@@ -1176,8 +1191,6 @@ export class GraphWidget extends BaseWidget {
         )
 
         this.next_axis_id++
-
-        //split_table.scrutiny_resizable_table("refresh")
     }
 
     /**
