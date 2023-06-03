@@ -6,7 +6,6 @@
 //
 //   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import { check_exist_nested } from "@src/tools"
 import { Chart, Plugin, LegendItem } from "chart.js/auto"
 
 export interface RemoveUnusedAxesPluginOptions {
@@ -76,7 +75,6 @@ export const DrawTriggerPlugin: Plugin = {
 
     afterDatasetsDraw: function (chart: Chart, args: any, options: DrawTriggerPluginOptions) {
         if (options.enabled) {
-            const text = "T"
             const meta = chart.getDatasetMeta(0)
             if (meta.data.length > options.point_index) {
                 const lineLeftOffset = chart.getDatasetMeta(0).data[options.point_index].x
@@ -87,12 +85,9 @@ export const DrawTriggerPlugin: Plugin = {
                     context.beginPath()
                     context.setLineDash([5, 5])
                     context.strokeStyle = options.color || "black"
-                    context.moveTo(lineLeftOffset, area.top + 16)
+                    context.moveTo(lineLeftOffset, area.top)
                     context.lineTo(lineLeftOffset, area.bottom)
                     context.stroke()
-                    context.fillStyle = options.color || "black"
-                    context.fillStyle = context.textAlign = "center"
-                    context.fillText(text || "", lineLeftOffset, area.top + 10)
                 }
             }
         }

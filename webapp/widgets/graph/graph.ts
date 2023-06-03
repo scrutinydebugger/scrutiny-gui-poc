@@ -534,7 +534,7 @@ export class GraphWidget extends BaseWidget {
         Split([this.graph_zone[0], this.legend_zone[0]], {
             minSize: 100,
             gutterSize: 6,
-            dragInterval: 5,
+            snapOffset: 0,
             sizes: [80, 20],
         })
 
@@ -834,15 +834,55 @@ export class GraphWidget extends BaseWidget {
         return scale_options
     }
 
-    make_legend_row(item: LegendItem | null, text: string, chart: Chart, is_xaxis: boolean = false): JQuery<HTMLTableRowElement> {
+    make_legend_trigger_row() {
         const that = this
+        const trigger_row = $("<tr class='trigger_row'></tr>") as JQueryRow
+        const colorbox_td = $("<td class='colorbox_td'></td>")
+        const trigger_text_cell = $("<td colspan='2'>Trigger</td>")
+        const colorbox = $("<span class='legend_color_box'></span>")
+        colorbox.css("background", "white")
+        colorbox.css("border-color", "black")
+        trigger_row.append(colorbox_td.append(colorbox)).append(trigger_text_cell)
+
+        const update_trigger_row = function () {
+            if (that.chart == null) {
+                return
+            }
+            //@ts-ignore
+            if (!that.chart.options.plugins[DrawTriggerPlugin.id].enabled) {
+                trigger_text_cell.css("text-decoration", "line-through")
+            } else {
+                trigger_text_cell.css("text-decoration", "")
+            }
+        }
+
+        update_trigger_row()
+
+        colorbox.on("click", function (e: JQuery.ClickEvent) {
+            if (that.chart == null) {
+                return
+            }
+            //@ts-ignore
+            that.chart.options.plugins[DrawTriggerPlugin.id].enabled = !that.chart.options.plugins[DrawTriggerPlugin.id].enabled
+            update_trigger_row()
+            that.chart.update()
+        })
+
+        return trigger_row
+    }
+
+    make_legend_row(item: LegendItem | null, text: string, is_xaxis: boolean = false): JQuery<HTMLTableRowElement> {
+        const that = this
+        if (this.chart == null) {
+            throw "No chart to make legend for"
+        }
         let dataset_index: number | null = null
         if (item !== null) {
             dataset_index = item.datasetIndex ?? null
         }
-        const colorbox_td = $("<td></td>")
-        const text_td = $("<td></td>")
-        const val_td = $("<td></td>")
+        const colorbox_td = $("<td class='colorbox_td'></td>")
+        const text_td = $("<td class='text_td'></td>")
+        const val_td = $("<td class='val_td'></td>")
         const tr = $("<tr></tr>") as JQuery<HTMLTableRowElement>
         tr.append(colorbox_td).append(text_td).append(val_td)
 
@@ -861,16 +901,20 @@ export class GraphWidget extends BaseWidget {
                 colorbox.css("border-color", item.strokeStyle)
             }
             colorbox.on("click", function (e: JQuery.ClickEvent) {
+                if (that.chart == null) {
+                    return
+                }
                 if (dataset_index !== null) {
-                    chart.setDatasetVisibility(dataset_index, !chart.isDatasetVisible(dataset_index))
-                    chart.update()
+                    that.chart.setDatasetVisibility(dataset_index, !that.chart.isDatasetVisible(dataset_index))
+                    that.chart.update()
                     e.stopPropagation()
 
-                    if (!chart.isDatasetVisible(dataset_index)) {
+                    if (!that.chart.isDatasetVisible(dataset_index)) {
                         text_td.css("text-decoration", "line-through")
                     } else {
                         text_td.css("text-decoration", "initial")
                     }
+                    e.stopPropagation() // Will prevent to select the row that we disable
                 }
             })
             colorbox_td.append(colorbox)
@@ -907,27 +951,18 @@ export class GraphWidget extends BaseWidget {
         // @ts-ignore
         const xaxis_title = this.chart.scales["x"].options?.title?.text || "x-axis"
 
-        legend_table.append(this.make_legend_row(null, xaxis_title, this.chart, true))
+        legend_table.append(this.make_legend_row(null, xaxis_title, true))
         // @ts-ignore
         const items = this.chart.options.plugins.legend.labels.generateLabels(this.chart)
         for (let i = 0; i < items.length; i++) {
-            legend_table.append(this.make_legend_row(items[i], items[i].text, this.chart, false))
+            legend_table.append(this.make_legend_row(items[i], items[i].text, false))
         }
+        legend_table.append(this.make_legend_trigger_row())
 
         // @ts-ignore
         multiselect_container.scrutiny_multiselect({
-            selectables: legend_table.find("tr:not(.xaxis) p.legend_text"),
+            selectables: legend_table.find("tr:not(.xaxis):not(.trigger_row)"),
         })
-
-        function get_select_event_rows(data: multiselect.SelectEventData): JQueryRow {
-            return data.items.map(function (index) {
-                const parent_row = $(this).parents("tr:first") as JQueryRow
-                if (parent_row.length == 0) {
-                    throw "Cannot find legend row"
-                }
-                return parent_row[0]
-            }) as JQueryRow
-        }
 
         function get_dataset_index_from_row(row: JQueryRow): number {
             const dataset_index_str = row.attr("dataset-index") as string
@@ -940,7 +975,7 @@ export class GraphWidget extends BaseWidget {
 
         // Event handling. We simply update the "selecteD_index" set based on SELECT/UNSELECT event.
         multiselect_container.on(multiselect.EVENT_SELECT, function (e: any, data: multiselect.SelectEventData) {
-            const rows = get_select_event_rows(data)
+            const rows = data.items as JQuery<HTMLTableRowElement>
             for (let i = 0; i < rows.length; i++) {
                 that.selected_datasets.add(get_dataset_index_from_row(rows.eq(i)))
             }
@@ -948,7 +983,7 @@ export class GraphWidget extends BaseWidget {
         })
 
         multiselect_container.on(multiselect.EVENT_UNSELECT, function (e: any, data: multiselect.UnselectEventData) {
-            const rows = get_select_event_rows(data)
+            const rows = data.items as JQuery<HTMLTableRowElement>
             for (let i = 0; i < rows.length; i++) {
                 that.selected_datasets.delete(get_dataset_index_from_row(rows.eq(i)))
             }
@@ -1018,6 +1053,8 @@ export class GraphWidget extends BaseWidget {
         config.options.maintainAspectRatio = false
         config.options.layout = {}
         config.options.layout.padding = 0
+        config.options.animation = {}
+        config.options.animation.duration = 0
 
         config.options.interaction = {}
         config.options.interaction.intersect = false
@@ -1146,10 +1183,7 @@ export class GraphWidget extends BaseWidget {
             }
         }
         this.chart = new Chart(canvas[0], config)
-
-        this.chart
         this.chart.update()
-
         this.build_legend()
     }
 
