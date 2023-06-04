@@ -377,13 +377,18 @@ export class GraphWidget extends BaseWidget {
     instance_id: number
     /** Logger element */
     logger: logging.Logger
-
+    /** incrementing number to uniquely identify axes row in the signal list table.*/
     next_axis_id: number
 
+    /* Tells wether we are waiting on an acquisition to complete or not. Sets to true after the user clicks "Acquire"*/
     waiting_on_acquisition: boolean
+    /* Token given by the server to identify the acquisition request */
     pending_acquisition_token: string | null = null
+    /* Some acquisition are expected to fails. This list contains them so we silently ignore their failure.  
+    Happens when we interrupt a previous acquisition */
     expected_failure_token: Set<string>
 
+    // Some layout variable referencing important UI elements that we often modify
     layout_content_div: JQuery<HTMLDivElement>
     graph_config_div: JQuery<HTMLDivElement>
     graph_display_div: JQuery<HTMLDivElement>
@@ -396,9 +401,11 @@ export class GraphWidget extends BaseWidget {
     button_browse: JQueryDisableable<HTMLButtonElement>
     button_graph: JQueryDisableable<HTMLButtonElement>
 
+    /* Actual active tab. Configure, Browse, Graph */
     active_tab: ActiveTab
+    /* List of dataset selected by the user by clicking them in the legend. */
     selected_datasets: Set<number> // Graph datasets that are selected with click
-
+    /* The Chart object from Chart.js */
     chart: Chart | null
 
     /**
@@ -440,6 +447,7 @@ export class GraphWidget extends BaseWidget {
      */
     initialize() {
         const that = this
+        // Let's start by building the HTML structure based on our templates
         const layout = this.app.get_template(this, "layout") as JQuery<HTMLDivElement>
         this.layout_content_div = layout.find(".layout-content") as JQueryDisableable<HTMLDivElement>
         this.button_configure = layout.find("button.btn-configure").first() as JQueryDisableable<HTMLButtonElement>
@@ -458,10 +466,12 @@ export class GraphWidget extends BaseWidget {
         this.graph_config_div.find(".pane-right").append(config_form_pane)
         this.container.append(layout)
 
-        this.legend_zone.prop("id", `graph_legend_${this.instance_id}`)
-
         const config_table = this.get_config_table()
 
+        /**
+         * Some configurations row are using the custom ObjTextbox plugin to display dran n' dropped element.
+         * For instance X-Axis as signal or trigger operands.
+         */
         config_table.find(".graph-operand-objtextbox").each(function (el) {
             const element = $(this) as JQueryObjTextbox
             WatchableTextbox.make(element, that.app.datastore)
@@ -469,12 +479,17 @@ export class GraphWidget extends BaseWidget {
 
         WatchableTextbox.make(this.get_xaxis_watchable_input(), this.app.datastore, true)
 
+        // Read the datalogging capabilities from the server module and update UI accordingly
+        // (Put some element N/A if disconnected, basically)
         this.update_config_capabilities()
 
+        // Server module throws that event when the datalogging
         this.app.on_event("scrutiny.datalogging_capabilities_changed", function () {
             that.update_config_capabilities()
         })
 
+        // Attach the config_change callback on each event that tells that the configuration ahs changed.
+        // Will basically display error messages if any valud is wrong
         this.get_xaxis_watchable_input().on("change", function () {
             that.config_changed()
         })
@@ -523,14 +538,17 @@ export class GraphWidget extends BaseWidget {
             that.config_changed()
         })
 
+        // Show help tooltip
         configure_all_tooltips(config_table)
 
+        // Split pane between graph and legend
         Split([this.graph_config_div.find(".pane-left")[0], this.graph_config_div.find(".pane-right")[0]], {
             minSize: 100,
             gutterSize: 6,
             snapOffset: 0,
         })
 
+        // Split pane between configuration and list of signals
         Split([this.graph_zone[0], this.legend_zone[0]], {
             minSize: 100,
             gutterSize: 6,
@@ -538,13 +556,15 @@ export class GraphWidget extends BaseWidget {
             sizes: [80, 20],
         })
 
+        // Let's configure the custom treetable component so that we can drop signals and add axes
         const signal_list_table = signal_list_pane.find("table.signal-list") as ScrutinyTreeTable
         signal_list_table.attr("id", "graph-signal-list-" + this.instance_id)
 
         const tree_table_config: TreeTableOptions = {
-            draggable: true,
-            droppable: true,
-            allow_delete: true,
+            draggable: true, // Elements can be dragged from the signal list
+            droppable: true, // Elements can be dropped in the signal list
+            allow_delete: true, // Elements can be deleted
+            // Rule to tell move an item: Element must be a signal (not an axis, that are root nodes with no parent.)
             move_allowed_fn: function (tr: JQueryRow, node_id: string, new_parent_id: string | null, after_node_id: string | null) {
                 if (new_parent_id == null) {
                     // Do not allow to move to a root node (axis are root nodes.)
@@ -552,7 +572,7 @@ export class GraphWidget extends BaseWidget {
                 }
                 return true
             },
-            col_index: 1,
+            col_index: 1, // The cell index (left ot right) in which to put the tree button. 1 base indexing
             transfer_policy_fn: function (
                 source_table: JQueryTable,
                 dest_table: JQueryTable,
@@ -560,25 +580,31 @@ export class GraphWidget extends BaseWidget {
                 new_parent_id: string | null,
                 after_node_id: string | null
             ): TransferPolicy {
+                // This function tells what to do if someone wants to transfer items from another table to this signal list table
                 if (new_parent_id == null) {
                     // Root node are reserved to axis
                     return { scope: TransferScope.NONE }
                 }
 
+                // Allow to transfer a row that contains a watchable
                 if (WatchableTableInterface.is_entry_row(tr as JQueryRow)) {
                     return { scope: TransferScope.ROW_ONLY }
                 }
 
+                // anything else cannot be transfered (dropped)
                 return { scope: TransferScope.NONE }
             },
+            // By default, empty table
             load_fn: function (node_id, tr) {
                 return []
             },
+
             transfer_fn: function (
                 source_table: JQueryTable,
                 bare_line: JQueryRow,
                 meta: TransferFunctionMetadata
             ): TransferFunctionOutput {
+                // Function that does the element transfer
                 try {
                     const text_name = WatchableTableInterface.get_name_cell(bare_line).text()
                     const entry = WatchableTableInterface.get_entry_from_row(that.app.datastore, bare_line)
@@ -589,7 +615,7 @@ export class GraphWidget extends BaseWidget {
 
                     const row_desc = WatchableTableInterface.make_entry_row(entry, text_name, false, false)
                     row_desc.td_name.live_edit()
-                    return { tr: row_desc.tr }
+                    return { tr: row_desc.tr } // REturn the element to be added to the signal list table
                 } catch (e) {
                     that.logger.error("Failed to transfer row. Entry not found in " + bare_line)
                     return null
@@ -686,6 +712,8 @@ export class GraphWidget extends BaseWidget {
             }
         })
 
+        // Register a callback for when the server tells that an acquisition is complete.
+        // Action is to request for its data and show it to the user.
         this.app.server_conn.register_api_callback(
             "inform_datalogging_acquisition_complete",
             function (data: API.Message.S2C.InformDataloggingAcquisitionComplete) {
@@ -719,6 +747,7 @@ export class GraphWidget extends BaseWidget {
                         that.logger.debug(
                             `Datalogging acquisition complete. Request token=${data.request_token}). Acquisition reference ID=${data.reference_id}`
                         )
+                        // Sends a request to the server for downloading the acquisition that just completed.
                         that.request_load_acquisition_data(data.reference_id)
                     } else {
                         that.logger.error("Server did not provide a reference id for datalogging acquisition")
@@ -740,7 +769,6 @@ export class GraphWidget extends BaseWidget {
             }
         )
 
-        //split_table.scrutiny_resizable_table("refresh")
         this.clear_graph()
 
         // debug only
@@ -749,11 +777,17 @@ export class GraphWidget extends BaseWidget {
         }, 0)
     }
 
+    /**
+     * Change the internal state of the graph widget so that it does not wait on an acquisition from the server
+     */
     stop_waiting_for_acquisition(): void {
         this.waiting_on_acquisition = false
         this.pending_acquisition_token = null
     }
 
+    /**
+     * Switch the widget pane to "Graph"
+     */
     switch_to_graph() {
         this.graph_config_div.hide()
         this.graph_display_div.show()
@@ -767,6 +801,9 @@ export class GraphWidget extends BaseWidget {
         this.active_tab = "graph"
     }
 
+    /**
+     * Switch the widget pane to "Configuration"
+     */
     switch_to_config() {
         this.graph_config_div.show()
         this.graph_display_div.hide()
@@ -781,6 +818,9 @@ export class GraphWidget extends BaseWidget {
         this.active_tab = "configure"
     }
 
+    /**
+     * Switch the widget pane to "Browser"
+     */
     switch_to_browser() {
         this.graph_config_div.hide()
         this.graph_display_div.hide()
@@ -795,6 +835,10 @@ export class GraphWidget extends BaseWidget {
         this.active_tab = "browse"
     }
 
+    /**
+     * Reads the content of an acquisition from the server. A callback on the response will display the graph right away
+     * @param reference_id The acquisition reference ID given by the server when listing the acquisitions
+     */
     request_load_acquisition_data(reference_id: string) {
         const req: Partial<API.Message.C2S.ReadDataloggingAcquisitionContent> = {
             reference_id: reference_id,
@@ -802,6 +846,9 @@ export class GraphWidget extends BaseWidget {
         this.app.server_conn.send_request("read_datalogging_acquisition_content", req)
     }
 
+    /**
+     * Delete the graph from the UI
+     */
     clear_graph() {
         this.graph_zone.html("No graph to display yet...")
         this.legend_zone.html("")
@@ -812,6 +859,11 @@ export class GraphWidget extends BaseWidget {
         }
     }
 
+    /**
+     * Get the chart scales options based on a dataset index. Simple helper to make code cleaner
+     * @param dataset_index The dataset index
+     * @returns The scale options or null if not accessible
+     */
     get_dataset_scale_options(dataset_index: number): any {
         if (this.chart === null) {
             throw "No chart available"
@@ -834,6 +886,10 @@ export class GraphWidget extends BaseWidget {
         return scale_options
     }
 
+    /**
+     * Makes a row for the legend that let the user control the display of the trigger.
+     * Not tied to any dataset. Interracts with a custom plugin designed to show a dotted line on the trigger
+     */
     make_legend_trigger_row() {
         const that = this
         const trigger_row = $("<tr class='trigger_row'></tr>") as JQueryRow
@@ -845,6 +901,7 @@ export class GraphWidget extends BaseWidget {
         trigger_row.append(colorbox_td.append(colorbox)).append(trigger_text_cell)
 
         const update_trigger_row = function () {
+            // Function that adjust the display styled based on the display status of the trigger line
             if (that.chart == null) {
                 return
             }
@@ -871,6 +928,10 @@ export class GraphWidget extends BaseWidget {
         return trigger_row
     }
 
+    /**
+     * Generates a X or Y axis row that will be shown in the legend.  Trigger is a special case
+     * Each rows has 3 cell. Colorbox, title, value
+     */
     make_legend_row(item: LegendItem | null, text: string, is_xaxis: boolean = false): JQuery<HTMLTableRowElement> {
         const that = this
         if (this.chart == null) {
@@ -887,7 +948,7 @@ export class GraphWidget extends BaseWidget {
         tr.append(colorbox_td).append(text_td).append(val_td)
 
         if (is_xaxis) {
-            tr.addClass("xaxis")
+            tr.addClass("xaxis") // Used to exclude this row from the multiselect (user can't select x-axis)
         }
 
         // Color box
@@ -900,6 +961,8 @@ export class GraphWidget extends BaseWidget {
             if (typeof item.strokeStyle == "string") {
                 colorbox.css("border-color", item.strokeStyle)
             }
+
+            // Toggle visibility of element on click.  A custom plugin will hide the scale if necessary
             colorbox.on("click", function (e: JQuery.ClickEvent) {
                 if (that.chart == null) {
                     return
@@ -907,7 +970,6 @@ export class GraphWidget extends BaseWidget {
                 if (dataset_index !== null) {
                     that.chart.setDatasetVisibility(dataset_index, !that.chart.isDatasetVisible(dataset_index))
                     that.chart.update()
-                    e.stopPropagation()
 
                     if (!that.chart.isDatasetVisible(dataset_index)) {
                         text_td.css("text-decoration", "line-through")
@@ -936,12 +998,16 @@ export class GraphWidget extends BaseWidget {
         return tr
     }
 
-    build_legend() {
+    /**
+     * Generates a legend to show in the split pane based on the data in the Chart object
+     */
+    build_legend(): void {
         if (this.chart === null) {
             return
         }
         const that = this
         this.legend_zone.html("")
+        // Custom plugin to do multiselect on items that are not forms multiselect objects.
         const multiselect_container = $("<div class='multiselect-container'></div>")
         const legend_table = $("<table class='legend'><thead></thead></table>")
         const tbody = $("<tbody></tbody>")
@@ -952,6 +1018,7 @@ export class GraphWidget extends BaseWidget {
         const xaxis_title = this.chart.scales["x"].options?.title?.text || "x-axis"
 
         legend_table.append(this.make_legend_row(null, xaxis_title, true))
+        // Following Chart.js doc, we are reusing an internal function to generate the labels
         // @ts-ignore
         const items = this.chart.options.plugins.legend.labels.generateLabels(this.chart)
         for (let i = 0; i < items.length; i++) {
@@ -964,6 +1031,7 @@ export class GraphWidget extends BaseWidget {
             selectables: legend_table.find("tr:not(.xaxis):not(.trigger_row)"),
         })
 
+        // Takes the legend jquery row object and tells the dataset index of this element
         function get_dataset_index_from_row(row: JQueryRow): number {
             const dataset_index_str = row.attr("dataset-index") as string
             const dataset_index = parseInt(dataset_index_str)
@@ -973,7 +1041,8 @@ export class GraphWidget extends BaseWidget {
             return dataset_index
         }
 
-        // Event handling. We simply update the "selecteD_index" set based on SELECT/UNSELECT event.
+        // Event handling. We simply update the "selected_index" set based on SELECT/UNSELECT event.
+        // The SELECT and UNSELECT events are thrown at the container. The selected elements are in the event data
         multiselect_container.on(multiselect.EVENT_SELECT, function (e: any, data: multiselect.SelectEventData) {
             const rows = data.items as JQuery<HTMLTableRowElement>
             for (let i = 0; i < rows.length; i++) {
@@ -991,6 +1060,10 @@ export class GraphWidget extends BaseWidget {
         })
     }
 
+    /**
+     * When the user clicks on something in the legend, it changes the display of the chart.
+     * We update the chart here. Show/hides scales. Emphasis scales and plotted lines
+     */
     update_chart_after_legend_select() {
         const that = this
         if (this.chart === null) {
@@ -1038,6 +1111,10 @@ export class GraphWidget extends BaseWidget {
         })
     }
 
+    /**
+     * Display the graph after getting the content of the acquisition by the server
+     * @param data The graph data message gotten by the server after a read_acquisition_content request
+     */
     show_acquisition_data(data: API.Message.S2C.ReadDataloggingAcquisitionContent) {
         const that = this
         this.switch_to_graph()
@@ -1046,31 +1123,35 @@ export class GraphWidget extends BaseWidget {
         this.graph_zone.html("")
         this.graph_zone.append(canvas)
 
+        // Let's create a Chart.js configuration
         const config = {} as ChartConfiguration
         config.type = "line"
-        config.options = {}
-        config.options.responsive = true
-        config.options.maintainAspectRatio = false
-        config.options.layout = {}
-        config.options.layout.padding = 0
-        config.options.animation = {}
-        config.options.animation.duration = 0
+        config.options = {
+            responsive: true,
+            maintainAspectRatio: false,
+        }
+        config.options.layout = { padding: 0 }
+        config.options.animation = { duration: 0 }
 
-        config.options.interaction = {}
-        config.options.interaction.intersect = false
-        config.options.interaction.mode = "index" // mode = "x" cause duplicate label. bug?
-        config.options.interaction.axis = "x"
+        config.options.interaction = {
+            intersect: false,
+            mode: "index", // mode = "x" cause duplicate label. bug?
+            axis: "x",
+        }
 
         config.options.plugins = {}
-        config.options.plugins.tooltip = {}
-        config.options.plugins.tooltip.position = "nearest"
-        config.options.plugins.tooltip.enabled = false
+        config.options.plugins.tooltip = {
+            position: "nearest",
+            enabled: false,
+        }
 
+        // Custom plugin that removes axes when all attached signals are hidden
         // @ts-ignore
         config.options.plugins[RemoveUnusedAxesPlugin.id] = { enabled: true }
         // @ts-ignore
 
         if (data["trigger_index"] !== null) {
+            // Custom triggert that draw a line on the trigger sample
             // @ts-ignore
             config.options.plugins[DrawTriggerPlugin.id] = {
                 enabled: true,
@@ -1078,22 +1159,26 @@ export class GraphWidget extends BaseWidget {
             }
         }
 
+        // We hide the legend provided by Chart.js because we makes our own custom legend in HTML
         config.options.plugins.legend = {
             display: false,
         }
 
-        config.options.scales = {}
-        config.data = { labels: [], datasets: [] }
-
-        config.options.elements = {}
-        config.options.elements.line = {
-            tension: 0,
-            borderWidth: DEFAULT_LINE_WIDTH,
+        config.data = {
+            labels: [],
+            datasets: [],
         }
-        config.options.elements.point = {
-            pointStyle: "circle",
-            radius: 0,
-            hoverRadius: 4,
+
+        config.options.elements = {
+            line: {
+                tension: 0,
+                borderWidth: DEFAULT_LINE_WIDTH,
+            },
+            point: {
+                pointStyle: "circle",
+                radius: 0,
+                hoverRadius: 4,
+            },
         }
 
         config.options.transitions = {
@@ -1104,6 +1189,7 @@ export class GraphWidget extends BaseWidget {
             },
         }
 
+        config.options.scales = {}
         // Y - Axis
         for (let i = 0; i < data.yaxis.length; i++) {
             const yaxis = data.yaxis[i]
@@ -1157,10 +1243,13 @@ export class GraphWidget extends BaseWidget {
             config.data.datasets.push(dataset)
         }
 
+        // X-axis values goes in the labels property
         config.data.labels = data.xdata.data
 
+        // OnHover function to write the value of the datasets inside the legend box
         config.options.onHover = function (e, elements, chart: Chart) {
             let index: number | null = null
+            // For each signal being hovered (all of them because interaction mode is intersect)
             for (let i = 0; i < elements.length; i++) {
                 const element = elements[i]
                 if (index !== null && index !== element.index) {
@@ -1177,16 +1266,21 @@ export class GraphWidget extends BaseWidget {
                 }
             }
 
+            // Write x-axis value
             if (index !== null && typeof chart.data.labels !== "undefined") {
                 const xaxis_label = that.legend_zone.find("tr.xaxis p.legend_val")
                 xaxis_label.text(chart.data.labels[index] as string)
             }
         }
         this.chart = new Chart(canvas[0], config)
-        this.chart.update()
-        this.build_legend()
+        this.chart.update() // Draw the graph
+        this.build_legend() // Generates the legend in HTML in the split pane
     }
 
+    /**
+     * Adds an axis in the signal list pane (where the user drops element)
+     * Axes are treetable root nodes.
+     */
     add_axis() {
         const signal_list_table = this.container.find("table.signal-list") as ScrutinyTreeTable
 
@@ -1196,6 +1290,7 @@ export class GraphWidget extends BaseWidget {
             axis_name.push(trim($(axis_rows[i]).text(), " "))
         }
 
+        // Gives a unique numbered name by default
         let axis_number = 1
         let already_exist = false
         let axis_name_candidate = ""
@@ -1211,16 +1306,18 @@ export class GraphWidget extends BaseWidget {
             axis_number++
         } while (already_exist)
 
+        // Create the table line to add
         const tr = $(
             `<tr class="${CLASS_AXIS_ROW}"><td><div class="${CLASS_LIVE_EDIT_CONTENT}">${axis_name_candidate}</div></td></tr>`
         ) as JQueryLiveEdit<HTMLTableRowElement>
         tr.live_edit("init")
 
+        // Call the treetable plugin to add this axis line
         signal_list_table.scrutiny_treetable(
             "add_root_node",
             `axisid-${this.next_axis_id}`,
             tr,
-            false, // Children allowed
+            false, // Children allowed. Children are the signal themselves
             true // No drag
         )
 
@@ -1416,6 +1513,10 @@ export class GraphWidget extends BaseWidget {
         return val
     }
 
+    /**
+     * Gets the trigger type selected by the user
+     * @returns The trigger type selected by the user
+     */
     get_selected_trigger_type(): API.Datalogging.TriggerType {
         const trigger_type = this.get_trigger_type_select().val() as API.Datalogging.TriggerType
         if (!NB_OPERANDS_MAP.hasOwnProperty(trigger_type)) {
@@ -1426,10 +1527,14 @@ export class GraphWidget extends BaseWidget {
         return trigger_type
     }
 
+    /**
+     * Gets the list of signal to be acquired dropped by the user in the drag n' drop region
+     */
     get_configured_signal_config(): SignalTableConfig {
         const signal_config = { signals: [], yaxis: [] } as SignalTableConfig
 
         const treetable = this.get_signal_list_table()
+        // Axes are treetable root nodes
         const root_nodes = treetable.scrutiny_treetable("get_root_nodes") as JQueryRow
         for (let i = 0; i < root_nodes.length; i++) {
             signal_config.yaxis.push({
@@ -1463,6 +1568,10 @@ export class GraphWidget extends BaseWidget {
         return val
     }
 
+    /**
+     * Reads the device capabilities in term of datalogging from the server comm module and <
+     * update any visual or internal variable based on it
+     */
     update_config_capabilities() {
         const capabilities = this.app.server_conn.datalogging_capabilities
         if (capabilities == null) {
@@ -1493,12 +1602,19 @@ export class GraphWidget extends BaseWidget {
         this.update_config_form()
     }
 
+    /**
+     * To be called everytime the configuration has changed. Will give the proper feedback to the user.
+     */
     config_changed() {
         this.clear_config_error()
         this.update_config_form() // Change available choices
         this.update_estimated_duration()
     }
 
+    /**
+     * Update the graph configuration display. The form is dynamic based on user input, so we need to add/remove elements
+     * and we also fixes any invalid values (example: clamping to min/max)
+     */
     update_config_form() {
         const selected_xaxis_type = this.get_selected_xaxis_type()
         const trigger_type = this.get_selected_trigger_type()
@@ -1557,18 +1673,25 @@ export class GraphWidget extends BaseWidget {
         }
     }
 
+    /**
+     * Make sure the configuration form is valid, show an error message if it is not and generates
+     * a request object to send to the server
+     * @returns The request to send to the server based on the config form
+     */
     validate_config_and_make_request(): Partial<API.Message.C2S.RequestDataloggingAcquisition> | null {
         this.clear_config_error()
 
         let valid = true
         const err_msg = $("<span></span>").addClass(CLASS_ERROR_MSG)
 
+        //Graph name, default to Graph
         let config_name = this.get_selected_config_name()
         if (config_name === "null") {
             this.get_config_name_input().val("Graph")
             config_name = "Graph"
         }
 
+        // Sampling rate, null if invalid
         const sampling_rate = this.get_selected_sampling_rate()
         if (sampling_rate == null) {
             valid = false
@@ -1577,6 +1700,7 @@ export class GraphWidget extends BaseWidget {
             sr_select.after(err_msg.clone().text("Invalid value"))
         }
 
+        //Decimation, null if invalid
         const decimation = this.get_selected_decimation()
         if (decimation == null) {
             const input = this.get_decimation_input()
@@ -1585,6 +1709,7 @@ export class GraphWidget extends BaseWidget {
             valid = false
         }
 
+        // probe location (trigger position). Null if invalid
         const probe_location = this.get_selected_probe_location()
         if (probe_location == null) {
             const input = this.get_probe_location_input()
@@ -1593,6 +1718,7 @@ export class GraphWidget extends BaseWidget {
             valid = false
         }
 
+        // Acquisition timeout. Null if invalid. 0 to ignore
         const timeout = this.get_selected_timeout_sec()
         if (timeout == null) {
             const input = this.get_timeout_input()
@@ -1601,6 +1727,7 @@ export class GraphWidget extends BaseWidget {
             valid = false
         }
 
+        // Type of X-Axis + sampling rate selection.
         const xaxis_type = this.get_selected_xaxis_type()
         const xaxis_watchable = this.get_xaxis_watchable_val()
         let x_axis_signal: API.Datalogging.SignalDefinition | null = null
@@ -1625,6 +1752,7 @@ export class GraphWidget extends BaseWidget {
             }
         }
 
+        // Read the type of trigger selected by the user
         const trigger_type = this.get_selected_trigger_type()
 
         const hold_time_millisec = this.get_selected_hold_time_millisec()
@@ -1635,8 +1763,10 @@ export class GraphWidget extends BaseWidget {
             valid = false
         }
 
+        // List of operands
         const operands_list: API.Datalogging.Operand[] = []
 
+        // Expected operand count based on trigger type
         const nb_operands = NB_OPERANDS_MAP[trigger_type]
         if (nb_operands >= 1) {
             const operand = this.get_selected_operand1()
@@ -1674,16 +1804,20 @@ export class GraphWidget extends BaseWidget {
             }
         }
 
+        // Read the list of watchable dragged in the Axis region
         const signal_list_table = this.get_signal_list_table()
         const signal_config = this.get_configured_signal_config()
         if (signal_config.yaxis.length == 0) {
+            // Need at least one axis
             valid = false
             signal_list_table.before(err_msg.clone().text("Missing Y-Axis"))
         } else if (signal_config.signals.length == 0) {
+            //Need at least one signal
             valid = false
             signal_list_table.before(err_msg.clone().text("Missing signals"))
         }
 
+        // Get the datastore entry matching the element dropped by the user
         const signals = [] as API.Datalogging.AcquisitionRequestSignalDef[]
         for (let i = 0; i < signal_config.signals.length; i++) {
             const row = signal_config.signals[i].row
@@ -1700,12 +1834,15 @@ export class GraphWidget extends BaseWidget {
             }
         }
 
+        // If any of the user input is invalid, stop there and return null
         if (!valid) {
             return null
         }
 
+        // The server wants a value in seconds
         const hold_time_sec = hold_time_millisec !== null ? hold_time_millisec / 1000.0 : 0.0
 
+        // Build a request for the server
         let request: Partial<API.Message.C2S.RequestDataloggingAcquisition> = {
             name: config_name,
             sampling_rate_id: (sampling_rate as API.Datalogging.SamplingRate).identifier,
@@ -1724,6 +1861,9 @@ export class GraphWidget extends BaseWidget {
         return request
     }
 
+    /**
+     * Remove any error message written to the user in case of bad configurations
+     */
     clear_config_error() {
         this.container.find(`.${CLASS_INPUT_ERROR}`).removeClass(CLASS_INPUT_ERROR)
         this.container.find(`.${CLASS_ERROR_MSG}`).remove()
@@ -1811,6 +1951,11 @@ export class GraphWidget extends BaseWidget {
         }
     }
 
+    /**
+     * Gets the data size in byte of a given data type
+     * @param dtype A datatype provided by the server
+     * @returns The size in byte of this datatype
+     */
     get_typesize_bytes(dtype: API.ValueDataType): number {
         const TYPEMAP = {
             sint8: 1,
@@ -1847,6 +1992,11 @@ export class GraphWidget extends BaseWidget {
         return TYPEMAP[dtype]
     }
 
+    // Everything below this is app integration boilerplate
+
+    /**
+     * Resize is called by the UI when the layout changes
+     */
     resize() {
         const parent = this.layout_content_div.parent() as JQuery<HTMLDivElement>
         const top_delta = (this.layout_content_div.offset()?.top as number) - (parent.offset()?.top as number)
