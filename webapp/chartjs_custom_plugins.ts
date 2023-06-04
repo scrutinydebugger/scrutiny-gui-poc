@@ -63,6 +63,7 @@ export interface DrawTriggerPluginOptions {
     enabled: boolean
     point_index: number
     color: string
+    xaxis_id: string
 }
 
 export const DrawTriggerPlugin: Plugin = {
@@ -71,17 +72,18 @@ export const DrawTriggerPlugin: Plugin = {
         enabled: false,
         point_index: 0,
         color: "black",
+        xaxis_id: "x",
     },
 
     afterDatasetsDraw: function (chart: Chart, args: any, options: DrawTriggerPluginOptions) {
         if (options.enabled) {
             const meta = chart.getDatasetMeta(0)
             if (meta.data.length > options.point_index) {
-                const lineLeftOffset = chart.getDatasetMeta(0).data[options.point_index].x
-                const area = chart.chartArea
                 const context = chart.ctx
+                const area = chart.chartArea
+                const lineLeftOffset = chart.getDatasetMeta(0).data[options.point_index].x
                 // render vertical line
-                if (context !== null) {
+                if (context !== null && lineLeftOffset > area.left && lineLeftOffset < area.right) {
                     context.beginPath()
                     context.setLineDash([5, 5])
                     context.strokeStyle = options.color || "black"

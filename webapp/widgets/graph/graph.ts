@@ -16,6 +16,7 @@ import { configure_all_tooltips } from "@src/ui"
 import { CLASS_LIVE_EDIT_CONTENT, JQueryLiveEdit } from "@scrutiny-live-edit"
 import { WatchableTableInterface, WatchableTextbox, NameEntryPair } from "@src/widgets/common"
 import { Chart, ChartConfiguration, ChartDataset, LegendItem } from "chart.js/auto"
+import zoomPlugin from "chartjs-plugin-zoom"
 import { RemoveUnusedAxesPlugin, DrawTriggerPlugin } from "@src/chartjs_custom_plugins"
 import { set_nested } from "@src/tools"
 import * as multiselect from "@scrutiny-multiselect"
@@ -345,6 +346,7 @@ $.extend($.fn, {
 
 Chart.register(RemoveUnusedAxesPlugin)
 Chart.register(DrawTriggerPlugin)
+Chart.register(zoomPlugin)
 
 type JQueryTable = JQuery<HTMLTableElement>
 type JQueryRow = JQuery<HTMLTableRowElement>
@@ -1151,17 +1153,35 @@ export class GraphWidget extends BaseWidget {
         // @ts-ignore
 
         if (data["trigger_index"] !== null) {
-            // Custom triggert that draw a line on the trigger sample
+            // Custom plugin that draw a line on the trigger sample
             // @ts-ignore
             config.options.plugins[DrawTriggerPlugin.id] = {
                 enabled: true,
                 point_index: data["trigger_index"],
+                xaxis_id: "x",
             }
         }
 
         // We hide the legend provided by Chart.js because we makes our own custom legend in HTML
         config.options.plugins.legend = {
             display: false,
+        }
+
+        config.options.plugins.zoom = {
+            zoom: {
+                wheel: {
+                    enabled: true,
+                },
+                drag: {
+                    enabled: true,
+                },
+                mode: "xy",
+                scaleMode: "xy",
+            },
+            pan: {
+                enabled: true,
+                modifierKey: "ctrl",
+            },
         }
 
         config.data = {
@@ -1193,7 +1213,8 @@ export class GraphWidget extends BaseWidget {
         // Y - Axis
         for (let i = 0; i < data.yaxis.length; i++) {
             const yaxis = data.yaxis[i]
-            config.options.scales[`yaxis_${yaxis.id}`] = {
+            const scale_id = `yaxis_${yaxis.id}`
+            config.options.scales[scale_id] = {
                 type: "linear",
                 position: "left",
                 ticks: {
@@ -1220,6 +1241,7 @@ export class GraphWidget extends BaseWidget {
                     align: "end",
                 },
             }
+            set_nested(config.options.plugins, ["zoom", "limits", scale_id], { min: "original", max: "original" })
         }
 
         // X - Axis
@@ -1230,14 +1252,16 @@ export class GraphWidget extends BaseWidget {
                 text: data.xdata.name,
             },
         }
+        set_nested(config.options.plugins, ["zoom", "limits", "x"], { min: "original", max: "original" })
 
         // Dataseries
         for (let i = 0; i < data.signals.length; i++) {
             const signal = data.signals[i]
+            const scale_id = `yaxis_${signal.axis_id}`
             const dataset = {
                 label: signal.name,
                 data: signal.data,
-                yAxisID: `yaxis_${signal.axis_id}`,
+                yAxisID: scale_id,
                 xAxisID: "x",
             } as ChartDataset<"line", number[]>
             config.data.datasets.push(dataset)

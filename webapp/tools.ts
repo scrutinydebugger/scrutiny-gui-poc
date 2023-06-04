@@ -144,3 +144,23 @@ export function check_exist_nested(obj: Record<string, any>, keys: string[]): bo
     }
     return true
 }
+
+interface MinMax {
+    min: number
+    max: number
+}
+
+export function array_minmax(arr: number[]): MinMax {
+    let len = arr.length
+    let min_val = Infinity
+    let max_val = -Infinity
+    while (len--) {
+        if (arr[len] < min_val) {
+            min_val = arr[len]
+        }
+        if (arr[len] > max_val) {
+            max_val = arr[len]
+        }
+    }
+    return { min: min_val, max: max_val }
+}
