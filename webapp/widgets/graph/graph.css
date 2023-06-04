@@ -14,11 +14,6 @@
     padding-bottom:5px;
 }
 
-.graph-layout .status-bar .estimated-duration {
-    float:right;
-    margin-right:20px;
-}
-
 .graph-layout .status-bar .button-block button {
     padding:2px 5px 2px 5px; 
     margin-left:5px;
