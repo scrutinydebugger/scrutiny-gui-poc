@@ -35,6 +35,7 @@ import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from
 import { JQueryObjTextbox } from "@scrutiny-objtextbox"
 
 type ActiveTab = "configure" | "graph" | "browse"
+type ZoomDir = "x" | "y" | "xy"
 
 const payload = {
     cmd: "read_datalogging_acquisition_content_response",
@@ -394,6 +395,7 @@ export class GraphWidget extends BaseWidget {
     layout_content_div: JQuery<HTMLDivElement>
     graph_config_div: JQuery<HTMLDivElement>
     graph_display_div: JQuery<HTMLDivElement>
+    zoom_buttons_block: JQuery<HTMLDivElement>
     legend_zone: JQuery<HTMLDivElement>
     graph_zone: JQuery<HTMLDivElement>
     graph_broswer_div: JQuery<HTMLDivElement>
@@ -409,6 +411,8 @@ export class GraphWidget extends BaseWidget {
     selected_datasets: Set<number> // Graph datasets that are selected with click
     /* The Chart object from Chart.js */
     chart: Chart | null
+    /* The active zoom direction */
+    zoom_dir: ZoomDir
 
     /**
      *
@@ -427,6 +431,7 @@ export class GraphWidget extends BaseWidget {
         this.layout_content_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_config_div = null as unknown as JQuery<HTMLDivElement>
         this.graph_display_div = null as unknown as JQuery<HTMLDivElement>
+        this.zoom_buttons_block = null as unknown as JQuery<HTMLDivElement>
         this.legend_zone = null as unknown as JQuery<HTMLDivElement>
         this.graph_zone = null as unknown as JQuery<HTMLDivElement>
         this.graph_broswer_div = null as unknown as JQuery<HTMLDivElement>
@@ -442,6 +447,7 @@ export class GraphWidget extends BaseWidget {
         this.pending_acquisition_token = null
         this.expected_failure_token = new Set()
         this.active_tab = "configure"
+        this.zoom_dir = "xy"
     }
 
     /**
@@ -458,6 +464,7 @@ export class GraphWidget extends BaseWidget {
         this.button_graph = layout.find("button.btn-graph").first() as JQueryDisableable<HTMLButtonElement>
         this.graph_config_div = layout.find(".graph-config") as JQuery<HTMLDivElement>
         this.graph_display_div = layout.find(".graph-display") as JQuery<HTMLDivElement>
+        this.zoom_buttons_block = layout.find(".graph-zoom-buttons") as JQuery<HTMLDivElement>
         this.legend_zone = this.graph_display_div.find(".legend_zone") as JQuery<HTMLDivElement>
         this.graph_zone = this.graph_display_div.find(".graph_zone") as JQuery<HTMLDivElement>
         this.graph_broswer_div = layout.find(".graph-browser") as JQuery<HTMLDivElement>
@@ -714,6 +721,23 @@ export class GraphWidget extends BaseWidget {
             }
         })
 
+        this.zoom_buttons_block.find(".btn-zoom-x").on("click", function () {
+            that.set_zoom_dir("x")
+        })
+        this.zoom_buttons_block.find(".btn-zoom-y").on("click", function () {
+            that.set_zoom_dir("y")
+        })
+        this.zoom_buttons_block.find(".btn-zoom-xy").on("click", function () {
+            that.set_zoom_dir("xy")
+        })
+        this.zoom_buttons_block.find(".btn-zoom-reset").on("click", function () {
+            if (that.chart !== null) {
+                that.chart.resetZoom()
+            }
+        })
+
+        this.set_zoom_dir("xy")
+
         // Register a callback for when the server tells that an acquisition is complete.
         // Action is to request for its data and show it to the user.
         this.app.server_conn.register_api_callback(
@@ -779,6 +803,16 @@ export class GraphWidget extends BaseWidget {
         }, 0)
     }
 
+    set_zoom_dir(dir: ZoomDir) {
+        this.zoom_buttons_block.find("button").removeClass("selected")
+        this.zoom_buttons_block.find(`button.btn-zoom-${dir}`).addClass("selected")
+        this.zoom_dir = dir
+
+        if (this.chart !== null) {
+            set_nested(this.chart.options, ["plugins", "zoom", "zoom", "mode"], dir)
+        }
+    }
+
     /**
      * Change the internal state of the graph widget so that it does not wait on an acquisition from the server
      */
@@ -793,6 +827,7 @@ export class GraphWidget extends BaseWidget {
     switch_to_graph() {
         this.graph_config_div.hide()
         this.graph_display_div.show()
+        this.zoom_buttons_block.show()
         this.graph_broswer_div.hide()
 
         this.button_configure.enable()
@@ -809,6 +844,7 @@ export class GraphWidget extends BaseWidget {
     switch_to_config() {
         this.graph_config_div.show()
         this.graph_display_div.hide()
+        this.zoom_buttons_block.hide()
         this.graph_broswer_div.hide()
 
         this.button_configure.disable()
@@ -825,6 +861,7 @@ export class GraphWidget extends BaseWidget {
      */
     switch_to_browser() {
         this.graph_config_div.hide()
+        this.zoom_buttons_block.hide()
         this.graph_display_div.hide()
         this.graph_broswer_div.show()
 
@@ -1175,7 +1212,7 @@ export class GraphWidget extends BaseWidget {
                 drag: {
                     enabled: true,
                 },
-                mode: "xy",
+                mode: this.zoom_dir,
                 scaleMode: "xy",
             },
             pan: {

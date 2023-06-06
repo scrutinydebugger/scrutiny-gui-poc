@@ -4,9 +4,15 @@
 
 
 .graph-layout .status-bar {
+    display: flex;
+    flex-direction: row;
     width:100%;
     padding-top:2px;
     bottom:0;
+}
+
+.graph-layout .status-bar .status-bar-field{
+    display:flex;
 }
 
 .graph-layout .status-bar .button-block {
@@ -23,9 +29,22 @@
     margin-left:15px;
 }
 
-.graph-layout .status-bar .status-bar-field{
-    display:inline-block;
+
+.graph-layout .status-bar .graph-zoom-buttons{
+    margin-left: 15px;
+    padding-bottom:5px;
 }
+
+.graph-layout .status-bar .graph-zoom-buttons button{
+    padding:2px 5px 2px 5px;
+    margin-left: 5px;
+}
+
+.graph-layout .status-bar .graph-zoom-buttons button.selected{
+    background-color: rgb(124, 199, 250);
+}
+
+
 
 .graph-layout .layout-content-element{
     height:100%; /* Container gets resized by javascript*/
@@ -152,7 +171,7 @@
 }
 
 .graph-display .legend_zone tr.selected td:not(.colorbox_td){
-    background-color:rgb(124, 199, 250);;
+    background-color:rgb(124, 199, 250);
 }
 
 .graph-display .legend_zone table.legend{
