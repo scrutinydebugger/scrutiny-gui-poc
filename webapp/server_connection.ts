@@ -466,13 +466,13 @@ export class ServerConnection {
 
                 setTimeout(function () {
                     // Reject the Promise and delete it
-                    reject()
+                    reject(new Error("Request timed out"))
                     if (that.pending_request_queue.hasOwnProperty(reqid)) {
                         delete that.pending_request_queue[reqid]
                     }
                 }, timeout)
             } else {
-                reject() // Could not send the request
+                reject(new Error("Could not send the request")) // Could not send the request
             }
         })
     }
@@ -525,14 +525,18 @@ export class ServerConnection {
     request_server_status_and_keep_going(): void {
         const that = this
         this.stop_get_status_periodic_call()
-        this.chain_request("get_server_status").finally(function () {
-            that.get_status_timer_handle = setTimeout(
-                function () {
-                    that.request_server_status_and_keep_going()
-                } as Function,
-                that.get_status_interval_ms()
-            )
-        })
+        this.chain_request("get_server_status")
+            .finally(function () {
+                that.get_status_timer_handle = setTimeout(
+                    function () {
+                        that.request_server_status_and_keep_going()
+                    } as Function,
+                    that.get_status_interval_ms()
+                )
+            })
+            .catch((e) => {
+                this.logger.error("Failed to get the server status. " + e.message)
+            })
     }
 
     get_status_interval_ms(): number {

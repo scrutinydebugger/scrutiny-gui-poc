@@ -206,7 +206,7 @@ export class App {
                     that.logger.debug(template_file + " loaded")
                     resolve()
                 } else {
-                    reject()
+                    reject(new Error("Could not load template file. " + template_file))
                 }
             })
         })
