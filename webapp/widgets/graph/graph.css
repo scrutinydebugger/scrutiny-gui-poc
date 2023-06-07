@@ -148,7 +148,15 @@
 }
 
 .graph-display .graph_zone{
-    display:flex; 
+    
+}
+
+.graph-display .graph_zone p{
+    margin:0;
+}
+
+.graph-display .graph_zone p.error_msg{
+    color:#f00;
 }
 
 .graph-display .legend_zone{

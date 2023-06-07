@@ -161,6 +161,7 @@ export namespace Message {
             request_token: string
             reference_id: string | null
             success: boolean
+            detail_msg: string
         }
 
         export interface ReadDataloggingAcquisitionContent extends BaseS2CMessage {

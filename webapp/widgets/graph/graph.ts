@@ -779,8 +779,7 @@ export class GraphWidget extends BaseWidget {
                         that.logger.error("Server did not provide a reference id for datalogging acquisition")
                     }
                 } else {
-                    // todo : Add visual feedback
-                    that.logger.error("Datalogging acquisition failed to complete")
+                    that.graph_display_div.find("p.error_msg").text("Did not complete : " + data.detail_msg)
                 }
 
                 that.stop_waiting_for_acquisition()
@@ -889,7 +888,7 @@ export class GraphWidget extends BaseWidget {
      * Delete the graph from the UI
      */
     clear_graph() {
-        this.graph_zone.html("No graph to display yet...")
+        this.graph_zone.html("<p>No graph to display yet...</p> <p class='error_msg'></p>")
         this.legend_zone.html("")
         this.selected_datasets.clear()
         if (this.chart !== null) {
