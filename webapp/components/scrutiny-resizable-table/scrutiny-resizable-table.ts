@@ -4,9 +4,9 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import * as $ from "jquery"
+import { default as $ } from "jquery"
 
 type JQueryRow = JQuery<HTMLTableRowElement>
 type JQueryTable = JQuery<HTMLTableElement>
@@ -43,7 +43,7 @@ const RESIZE_HANDLE_TEMPLATE = $(`<div class='${CLASS_RESIZE_HANDLE}' />`)
 /***  Public functions *** */
 
 /**
- * Refresh the plugin so that its visual behavior is adjusted. Since it uses absolutes positioning, 
+ * Refresh the plugin so that its visual behavior is adjusted. Since it uses absolutes positioning,
  * we can't rely on the browser to auto-update its position
  * @param $table The table
  */
@@ -59,15 +59,16 @@ function _get_options($table: JQueryTable): PluginOptionsFull {
 
 /**
  * Adds some floating divs over the table columns separators using absolute positioning.
- * These handles are used to grab the table and highlight the separator. 
+ * These handles are used to grab the table and highlight the separator.
  * Their height needs to be adjusted when the table grows or shrink vertically as the browser won't do it
  * because of absolute positions. Calling refresh() does this update
  * @param $table The table
  */
 function _install_resize_handles($table: JQueryTable): void {
     const options = _get_options($table)
+    const thead = $table.children("thead:first") as JQuery<HTMLTableSectionElement>
 
-    let ths = $table.find("thead th") as JQueryCell
+    let ths = thead.find("th") as JQueryCell
     if (options.table_width_constrained == true) {
         ths = ths.slice(0, ths.length - 1)
     }
@@ -96,7 +97,7 @@ function _install_resize_handles($table: JQueryTable): void {
                 //  Release of a column separator
                 if (pressed) {
                     $table.removeClass(CLASS_RESIZING)
-                    $table.find("thead").find(`.${CLASS_RESIZE_HANDLE}`).removeClass(CLASS_HANDLE_ACTIVE)
+                    thead.find(`.${CLASS_RESIZE_HANDLE}`).removeClass(CLASS_HANDLE_ACTIVE)
                     last_cursor_x = null
                     _update_sizes($table)
                     pressed = false
@@ -181,7 +182,8 @@ function _increase_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
         th.outerWidth(new_width)
 
         if (extra_w_for_last_col > 0.1) {
-            const last_col = $table.find("thead th:last-child()")
+            const thead = $table.children("thead:first")
+            const last_col = thead.find("th:last-child()")
             const last_col_initial_width = last_col.outerWidth() as number
             if (last_col.length == 0) {
                 throw "Can't find last column"
@@ -234,7 +236,8 @@ function _decrease_size($table: JQueryTable, th: JQueryCell, delta_w: number): v
  * @param $table The table
  */
 function _recompute_col_width($table: JQueryTable): void {
-    $table.find(`thead th[${ATTR_HAS_WIDTH}]`).each(function () {
+    const thead = $table.children("thead:first")
+    thead.children(`th[${ATTR_HAS_WIDTH}]`).each(function () {
         $(this).width($(this).width() as number)
     })
 }
@@ -279,22 +282,23 @@ function _make_text_selectable($table: JQueryTable): void {
 }
 
 /**
- * Recompute all required size parameter in the table. 
+ * Recompute all required size parameter in the table.
  * Necessary since we use absolute positioning
  * @param $table The table
  */
 function _update_sizes($table: JQueryTable): void {
-    const first_row = $table.find("tr:visible:first") as JQueryRow
-    const last_row = $table.find("tr:visible:last") as JQueryRow
+    const thead = $table.children("thead:first") as JQuery<HTMLTableSectionElement>
+    const tbody = $table.children("tbody:first") as JQuery<HTMLTableSectionElement>
+    const first_row = thead.children("tr:visible:first") as JQueryRow
+    const last_row = tbody.children("tr:visible:last") as JQueryRow
     let table_height = 0
     if (last_row.length > 0 && first_row.length > 0) {
         //@ts-ignore
         table_height = last_row.offset().top + last_row.outerHeight() - first_row.offset().top
     }
 
-    const thead = $table.find("thead") as JQuery<HTMLTableSectionElement>
     let column_handles = thead.find(`.${CLASS_RESIZE_HANDLE}`)
-    const first_th = thead.find("th").first() as JQueryCell
+    const first_th = thead.find("th:first") as JQueryCell
     const top = -((first_th.outerHeight() as number) - (first_th.innerHeight() as number)) / 2
     column_handles.outerHeight(table_height)
     column_handles.css("top", `${top}px`)
@@ -321,8 +325,8 @@ function init($table: JQueryTable, config: PluginOptions): void {
     }
 
     $table.data(DATAKEY_OPTIONS, options)
-
-    let ths = $table.find("thead th") as JQueryCell
+    const thead = $table.children("thead:first") as JQuery<HTMLTableSectionElement>
+    let ths = thead.find("th") as JQueryCell
     if (ths.length == 0) {
         throw "<thead> with cells is required for a resizable table"
     }

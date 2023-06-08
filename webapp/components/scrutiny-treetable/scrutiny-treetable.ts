@@ -6,12 +6,22 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 import { default as $ } from "@jquery"
 
+type JQueryRow = JQuery<HTMLTableRowElement>
+type JQueryTable = JQuery<HTMLTableElement>
+type JQueryCell = JQuery<HTMLTableCellElement>
+
 export interface LoadFunctionInterface {
-    (node_id: string, tr: JQueryRow, user_data?: any): Array<{ id?: string; tr: JQueryRow; no_children?: boolean; user_data?: any }>
+    (node_id: string, tr: JQueryRow, user_data?: any): Array<{
+        id?: string
+        tr: JQueryRow
+        no_children?: boolean
+        no_drag?: boolean
+        user_data?: any
+    }>
 }
 
 export interface TransferFunctionMetadata {
@@ -48,6 +58,10 @@ export interface TransferPolicyFunctionInterface {
         new_parent_id: string | null,
         after_node_id: string | null
     ): TransferPolicy
+}
+
+export interface MoveAllowedFunctionInterface {
+    (row: JQueryRow, row_id: string, new_parent_id: string | null, after_node_id: string | null): boolean
 }
 
 export interface TransferResult {
@@ -106,10 +120,6 @@ export function get_drag_data_from_drop_event(e: JQuery.DropEvent<HTMLElement, u
     }
 }
 
-type JQueryRow = JQuery<HTMLTableRowElement>
-type JQueryTable = JQuery<HTMLTableElement>
-type JQueryCell = JQuery<HTMLTableCellElement>
-
 interface JQueryResizableTable extends JQueryTable {
     scrutiny_resizable_table?: any
 }
@@ -151,6 +161,8 @@ const CLASS_HEADER = "stt-cell-header"
 const CLASS_DISABLED = "stt-disabled"
 /**  Applied on a row that does not accept children */
 const CLASS_NO_CHILDREN = "stt-no-children"
+/**  Applied on a row that cannot be dragged */
+const CLASS_NO_DRAG = "stt-no-drag"
 /**  Applied on the cell that contains the tree element */
 const CLASS_TREE_CELL = "stt-tree-cell"
 /** Applied on rows that are loaded but hidden */
@@ -179,6 +191,8 @@ const EVENT_EXPANDED = "stt.expanded"
 const EVENT_DROPPED = "stt.dropped"
 /** Triggered when the vertical size of the table has changed  */
 const EVENT_SIZE_CHANGED = "stt.size-changed"
+/**Triggered when a row is removed */
+const EVENT_NODE_DELETED = "stt.node-deleted"
 /** Triggered when a transfer completes */
 const EVENT_TRANSFER_COMPLETE = "stt.transfer-complete"
 
@@ -195,7 +209,9 @@ const DEFAULT_OPTIONS = {
     /**  Indicate that we can drag rows from this table */
     draggable: false,
     /**  Allow rows to be moved within a table */
-    move_allowed: true,
+    move_allowed_fn: function () {
+        return true
+    } as MoveAllowedFunctionInterface,
     /**  The size in pixel of the expander. */
     expander_size: 12,
     /**  When a row is dropped, length of the temporary highlight */
@@ -242,9 +258,11 @@ export function get_node_id(tr: JQueryRow): string {
  * @param $table The JQuery table
  * @param node_id Node ID to assign to the row
  * @param tr The row to add
+ * @param no_children Prevent the node from having children
+ * @param no_drag Prevent this node from being draggable
  */
-function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): void {
-    add_node($table, node_id, tr, null)
+function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow, no_children: boolean = false, no_drag: boolean = false): void {
+    add_node($table, node_id, tr, null, no_children, no_drag)
 }
 
 /**
@@ -253,8 +271,17 @@ function add_root_node($table: JQueryTable, node_id: string, tr: JQueryRow): voi
  * @param node_id Node ID to assign to the row
  * @param tr The row to add
  * @param new_parent_id The node id of the parent. Set to null to make a root node
+ * @param no_children Prevent the node from having children
+ * @param no_drag Prevent this node from being draggable
  */
-function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_parent_id: string | null): void {
+function add_node(
+    $table: JQueryTable,
+    node_id: string,
+    tr: JQueryRow,
+    new_parent_id: string | null,
+    no_children: boolean = false,
+    no_drag: boolean = false
+): void {
     if (typeof node_id !== "string") {
         throw "node_id is not a string"
     }
@@ -263,7 +290,7 @@ function add_node($table: JQueryTable, node_id: string, tr: JQueryRow, new_paren
         throw "new_parent_id is not a string or null"
     }
 
-    _add_node($table, new_parent_id, node_id, tr)
+    _add_node($table, new_parent_id, node_id, tr, no_children, no_drag)
     _load_children($table, tr)
 }
 
@@ -395,11 +422,6 @@ function get_root_nodes($table: JQueryTable): JQueryRow {
  * the moved row will be set in last position
  */
 function move_node($table: JQueryTable, row_id: string, new_parent?: JQueryRow | string | null, after_node?: JQueryRow | string | null) {
-    let options = _get_options($table)
-    if (!options.move_allowed) {
-        throw "Moving node is not allowed"
-    }
-
     let new_parent_id: string | null = null
     if (typeof new_parent !== "undefined" && new_parent !== null) {
         new_parent_id = _get_node_id(_get_row_from_node_or_row($table, new_parent))
@@ -1043,6 +1065,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
         let child_node_id = loaded_children[i]["id"]
         const child_node_tr = $(loaded_children[i]["tr"]) as JQueryRow
         const no_children = loaded_children[i]["no_children"]
+        const no_drag = loaded_children[i]["no_drag"]
         const user_data = loaded_children[i]["user_data"]
 
         if (typeof child_node_id == "undefined") {
@@ -1057,7 +1080,7 @@ function _load_children($table: JQueryTable, tr: JQueryRow): JQueryRow {
             child_node_tr.data(DATAKEY_USER_DATA, user_data)
         }
 
-        _add_node($table, node_id, child_node_id, child_node_tr, no_children)
+        _add_node($table, node_id, child_node_id, child_node_tr, no_children, no_drag)
         children_output.push(child_node_tr)
     }
 
@@ -1108,11 +1131,29 @@ function _is_children_allowed(tr: JQueryRow): boolean {
 }
 
 /**
+ * Tells if a given rows has the right to be dragged. Defined by the user `load_fn`.
+ * Can be used to fix a row so that it never moves, but the children can be dragged.
+ * @param tr The JQuery row
+ * @returns True if the row can have children
+ */
+function _is_drag_allowed(tr: JQueryRow): boolean {
+    return !tr.hasClass(CLASS_NO_DRAG)
+}
+
+/**
  * Prevent a row from having children. Move, transfer, drag-n-drop will be denied if disallowed
  * @param tr The JQuery row
  */
 function _disallow_children(tr: JQueryRow): void {
     tr.addClass(CLASS_NO_CHILDREN)
+}
+
+/**
+ * Prevent a row from being draggable
+ * @param tr The JQuery row
+ */
+function _disallow_drag(tr: JQueryRow): void {
+    tr.addClass(CLASS_NO_DRAG)
 }
 
 /**
@@ -1340,9 +1381,19 @@ function _increase_children_count($table: JQueryTable, tr: JQueryRow, delta: num
  * @param tr The JQuery row to add
  * @param no_children true to prevent this row from having children
  */
-function _add_node($table: JQueryTable, parent_id: string | null, node_id: string | null, tr: JQueryRow, no_children?: boolean): void {
+function _add_node(
+    $table: JQueryTable,
+    parent_id: string | null,
+    node_id: string | null,
+    tr: JQueryRow,
+    no_children?: boolean,
+    no_drag?: boolean
+): void {
     if (typeof no_children === "undefined") {
         no_children = false
+    }
+    if (typeof no_drag === "undefined") {
+        no_drag = false
     }
 
     if (node_id == null) {
@@ -1354,6 +1405,10 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
 
     if (no_children) {
         _disallow_children(tr)
+    }
+
+    if (no_drag) {
+        _disallow_drag(tr)
     }
 
     let actual_level = 0 // Start at 0 for root node
@@ -1430,7 +1485,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
     })
 
     // Drag and drop logic
-    if (options.draggable) {
+    if (options.draggable && !no_drag) {
         let dragger = DRAGGER_TEMPLATE.clone() as JQuery<HTMLDivElement>
         header_block.prepend(dragger)
         dragger.attr("draggable", "true")
@@ -1492,6 +1547,7 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
             }
             const dest_options = _get_options(dest_table)
             if (!dest_table.is(source_table)) {
+                // Transfer
                 if (dest_options.transfer_policy_fn == null) {
                     return
                 }
@@ -1506,6 +1562,17 @@ function _add_node($table: JQueryTable, parent_id: string | null, node_id: strin
                     return
                 }
                 if (transfer_policy.scope == TransferScope.NONE) {
+                    return
+                }
+            } else {
+                // Move
+                const move_allowed = dest_options.move_allowed_fn(
+                    dragged_tr,
+                    gbl_drag_data.dragged_row_id,
+                    dnd_result.new_parent_id,
+                    dnd_result.after_tr_id
+                )
+                if (!move_allowed) {
                     return
                 }
             }
@@ -1574,7 +1641,7 @@ function _handle_drop(
             return
         }
 
-        let force_new_parent_id: string | null
+        let force_new_parent_id: string | null = null
         if (typeof force_new_parent === "undefined" || force_new_parent == null) {
             force_new_parent_id = null
         } else if (typeof force_new_parent === "string") {
@@ -1585,7 +1652,7 @@ function _handle_drop(
             throw "Invalid force_new_parent parameter"
         }
 
-        let force_insert_after_id: string | null
+        let force_insert_after_id: string | null = null
         if (typeof force_insert_after === "undefined" || force_insert_after == null) {
             force_insert_after_id = null
         } else if (typeof force_insert_after === "string") {
@@ -1916,6 +1983,7 @@ function _delete_node($table: JQueryTable, tr: JQueryRow): void {
     }
 
     $table.trigger(EVENT_SIZE_CHANGED)
+    $table.trigger(EVENT_NODE_DELETED)
 }
 
 function _delete_node_recursive($table: JQueryTable, tr: JQueryRow, recurse_level: number, arr?: string[]): void {
@@ -1964,7 +2032,13 @@ function _delete_single_row($table: JQueryTable, tr: JQueryRow): void {
  * @returns The rows moved
  */
 function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | null, after_node_id: string | null): JQueryRow {
-    let tr_id = _get_node_id(tr)
+    const tr_id = _get_node_id(tr)
+    const options = _get_options($table)
+    const move_allowed = options.move_allowed_fn(tr, tr_id, new_parent_id, after_node_id)
+    if (!move_allowed) {
+        throw "Moving this node is not allowed"
+    }
+
     //console.debug(`Moving ${tr_id}. Parent=${new_parent_id}. After=${after_node_id}`)
     const tree_to_move = _get_all_loaded_descendant($table, tr)
     const tr_original_parent = _get_parent($table, tr)
@@ -1981,7 +2055,7 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
 
             if (tr_id != after_node_id) {
                 tree_to_move.attr(ATTR_MOVING, "1")
-                let after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
+                const after_tr_last_descendant = _get_all_loaded_descendant($table, after_tr).filter(`tr[${ATTR_MOVING}!="1"]`).last()
                 tree_to_move.attr(ATTR_MOVING, "")
                 if (!after_tr_last_descendant.is(tree_to_move.first())) {
                     // Already at the right place.
@@ -2036,8 +2110,8 @@ function _move_row($table: JQueryTable, tr: JQueryRow, new_parent_id: string | n
         _increase_children_count($table, tr_original_parent, -1)
     }
 
-    let previous_nesting_level = _get_nesting_level(tr)
-    let delta_nesting_level = new_nesting_level - previous_nesting_level
+    const previous_nesting_level = _get_nesting_level(tr)
+    const delta_nesting_level = new_nesting_level - previous_nesting_level
     tree_to_move.each(function () {
         _set_nesting_level($table, $(this), _get_nesting_level($(this)) + delta_nesting_level)
     })
@@ -2077,7 +2151,7 @@ function _transfer_row(
         throw "Node transfer from another table is not supported"
     }
 
-    let new_parent_id: string | null
+    let new_parent_id: string | null = null
     if (typeof new_parent === "undefined" || new_parent == null) {
         new_parent_id = null
     } else if (typeof new_parent == "string") {
@@ -2088,7 +2162,7 @@ function _transfer_row(
         throw "Invalid new_parent parameter"
     }
 
-    let after_node_id: string | null
+    let after_node_id: string | null = null
     if (typeof after_node === "undefined" || after_node == null) {
         after_node_id = null
     } else if (typeof after_node === "string") {
@@ -2171,6 +2245,7 @@ function _transfer_row(
         const original_line = $(lines_to_moves[i]) as JQueryRow
         const original_parent_id = _get_parent_id(original_line)
         const no_children = !_is_children_allowed(original_line)
+        const no_drag = !_is_drag_allowed(original_line)
         const original_id = _get_node_id(original_line)
         const new_id = old_id_to_new_id_map[original_id]
         const new_tr = new_tr_by_new_id[new_id]
@@ -2190,7 +2265,7 @@ function _transfer_row(
             already_loaded_nodes_id_set.add(old_id_to_new_id_map[original_parent_id])
         }
 
-        _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children)
+        _add_node(dest_table, converted_parent_id, new_id, new_tr, no_children, no_drag)
     }
 
     // Mark loaded rows for which we saw children
@@ -2351,6 +2426,10 @@ function init($table: JQueryTable, config: PluginOptions): void {
     const table_id = $table.attr("id")
     if (typeof table_id === "undefined") {
         throw "TreeTable requires an id attribute work properly"
+    }
+
+    if (options.col_index <= 0) {
+        throw "Column index must be an integer starting at 1"
     }
     $table.addClass(CLASS_TABLE)
 

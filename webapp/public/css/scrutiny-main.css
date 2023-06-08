@@ -266,18 +266,21 @@ template{
     text-decoration: underline;
 }
 
-.help-content{
-    display: none;
-}
-
-.device-info-table .help-icon{
-    margin: auto;
-    vertical-align: middle;
+.help-cursor {
     cursor: help;
 }
 
-.tooltip{
-    position: fixed;
+.device-info-table .scrutiny-tooptip-hover{
+    margin: auto;
+    vertical-align: middle;
+}
+
+.scrutiny-tooltip-container{
+    position:relative
+}
+
+.scrutiny-tooltip-content{
+    position: absolute;
     background: #234;
     color: #fff;
     padding-left: 15px;
@@ -287,10 +290,9 @@ template{
     min-width: 250px;
     font-size: 0.8em;
     max-width: 400px;
-}
-
-.device-info-table .tooltip{
-    float: right;
+    z-index:1;
+    right:0;
+    display:none;
 }
 
 .no-style-list{
@@ -327,4 +329,18 @@ template{
     text-align: center;
     font-size: 4em;
     z-index: 9999999
+}
+
+.textbox-watchable {
+    font-size: small;
+    border: 1px solid #ddd;
+    cursor: default;
+    
+}
+
+.textbox-watchable.selected{
+    outline-color:rgb(124, 199, 250);
+    outline-style: solid;
+    outline-width: 2px;
+    
 }

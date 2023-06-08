@@ -4,7 +4,7 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 require("source-map-support").install({ handleUncaughtExceptions: false })
 
@@ -285,12 +285,12 @@ describe("scrutiny-treetable", function () {
 
             // get_visible_nodes
             visible_rows = table.tt("get_visible_nodes") as JQueryRow
-            assert.equal(visible_rows.length, 2, "Expect root node count after collpase")
+            assert.equal(visible_rows.length, 2, "Expect root node count after collapse")
 
             testing_tools.assert_list_equal_unordered(get_row_ids(visible_rows), ["root1", "root2"], "Visible rows after collapse")
         })
 
-        it("Expand/Collpase all", function () {
+        it("Expand/Collapse all", function () {
             let expand_event_count = 0
             let collapse_event_count = 0
 
@@ -347,7 +347,7 @@ describe("scrutiny-treetable", function () {
 
             // get_root_node_of
             let root = table.tt("get_root_node_of", "node1.3.2")
-            testing_tools.assert_list_equal_unordered(get_row_ids(root), ["root1"], "Expect root of ndoe1.3.2 to be root1")
+            testing_tools.assert_list_equal_unordered(get_row_ids(root), ["root1"], "Expect root of node1.3.2 to be root1")
         })
 
         it("Children/Parent logic", function () {
@@ -529,7 +529,9 @@ describe("scrutiny-treetable", function () {
 
         it("Never allowed", function () {
             init_table_with_options({
-                move_allowed: false,
+                move_allowed_fn: function () {
+                    return false
+                },
             })
 
             table.tt("load_all")

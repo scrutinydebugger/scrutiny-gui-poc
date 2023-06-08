@@ -2,7 +2,6 @@ import { resolve } from "path"
 import CopyPlugin from "copy-webpack-plugin"
 import GitRevisionPlugin from "git-revision-webpack-plugin"
 import webpack from "webpack"
-import { default as nodeExternals } from "webpack-node-externals"
 
 const gitRevisionPlugin = new GitRevisionPlugin.GitRevisionPlugin()
 
@@ -60,11 +59,16 @@ export default {
         extensions: [".ts", ".js"],
         alias: {
             "@jquery": resolve("externals/prod/jquery"),
+            "@chart.js": resolve("externals/prod/chartjs"),
             "@src": resolve("webapp"),
             "@tests": resolve("tests"),
             "@scrutiny-treetable": resolve("webapp/components/scrutiny-treetable/scrutiny-treetable"),
             "@scrutiny-resizable-table": resolve("webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"),
+            "@scrutiny-live-edit": resolve("webapp/components/scrutiny-live-edit/scrutiny-live-edit"),
+            "@scrutiny-objtextbox": resolve("webapp/components/scrutiny-objtextbox/scrutiny-objtextbox"),
+            "@scrutiny-focusable": resolve("webapp/components/scrutiny-focusable/scrutiny-focusable"),
+            "@scrutiny-multiselect": resolve("webapp/components/scrutiny-multiselect/scrutiny-multiselect")
         },
     },
-    externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, nodeExternals()],
+    externals: [{ goldenlayout: "GoldenLayout" }, { jquery: "jQuery" }, { jquery: "chart.js" }],
 }

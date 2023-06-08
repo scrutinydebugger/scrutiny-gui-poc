@@ -1,0 +1,218 @@
+<div class='form-pane'>
+    <table class="config-table">
+        <tbody>
+            <tr class="line-config-name">
+                <td class="text-label"><label for="config_name">Acquisition Name</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The name given to the acquisition for future reference.</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="text" name="config_name" value="Graph" /></td>
+            </tr>
+
+            <tr class="line-sample-rate">
+                <td class="text-label"><label for="sample_rate">Sampling Rate</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The sampling frequency of the graph. Availables values depends on the target devices capabilities</p>
+                        </div>
+                    </div>
+                </td>
+                <td><select name="sampling_rate"></select></td>
+            </tr>
+
+            <tr class="line-decimation">
+                <td class="text-label"><label for="decimation">Decimation</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>Decimation reduces the sampling frequency. A decimation of N means that 1 sample every N samples is acquired while all the other are discarded.</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="number" name="decimation" value="1" min="1" size="7"/></td>
+            </tr>
+
+            <tr>
+                <td class="text-label">Effective Sampling Rate</td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The real sampling rate computed based on the selected sampling rate and decimation</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input name="effective_sampling_rate" type="text" readonly size="10"/></td>
+            </tr>
+
+            <tr class="line-probe-location">
+                <td class="text-label"><label for="probe_location">Trigger Position (%)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>When the trigger condition gets fulfilled for the given hold time, a trigger event happens. 
+                            <br />This parameter control the position of the trigger event in the acquisition window. A value of 0% will put the trigger event on the left of the acquisition.  50% in the middle and 100% at the far right.
+                            <br /> Useful to see before or after an event.
+                        </p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="number" name="probe_location" value="50" min="0" max="100" size="7" /></td>
+            </tr>
+
+            <tr class="line-timeout">
+                <td class="text-label"><label for="timeout">Acquisition Timeout (s)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>Timeout from the trigger event before the end of the acquisition. A value of 0 means "no timeout" and acquisition will finish once the buffer is full</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="text" name="timeout" value="0" size="7"/></td>
+            </tr>
+
+            <tr class="line-xaxis-type">
+                <td class="text-label"><label for="xaxis_type">X-Axis Type</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>Select what the X-Axis is.</p>
+                            <ul>
+                                <li><strong>Ideal time:</strong> Time deduced from the sampling frequency. Uniform sampling is assumed and uses no space in the datalogging buffer. Not available for variable frequency rates.</li>
+                                <li><strong>Measured time:</strong> Time measured by the device. Depending on the device configuration, sampling may or may not be uniform. Requires a 32bits slot in the datalogging buffer.</li>
+                                <li><strong>Watchable:</strong> Any watchable object given by the server. Drag &amp; drop any Variable/Alias/RPV from a watch or list widget</li>
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <select name="xaxis_type">
+                        <option value="ideal_time">Ideal Time</option>
+                        <option value="measured_time">Measured Time</option>
+                        <option value="signal">Watchable</option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr class="line-xaxis-signal">
+                <td class="text-label"><label for="xaxis_signal">X-Axis Signal</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The watchable object to use as the X-Axis. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
+                <td><div class="xaxis-watchable-objtextox"></div></td>
+            </tr>
+
+            <tr class="line-trigger-type">
+                <td class="text-label"></span><label for="trigger_type">Trigger Condition</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>Condition checked for trigger event.</p>
+                            <ul>
+                                <li><strong>Always true:</strong> Does not wait on any condition. Returns a graph as soon as the buffer is full</li>    
+                                <li><strong>Equal:</strong> x<sub>1</sub>=x<sub>2</sub></li>    
+                                <li><strong>Not Equal:</strong> x<sub>1</sub>!=x<sub>2</sub></li>    
+                                <li><strong>Greater Than:</strong> x<sub>1</sub>&gt;x<sub>2</sub></li>    
+                                <li><strong>Greater or Equal Than:</strong> x<sub>1</sub>&gt;=x<sub>2</sub></li>    
+                                <li><strong>Less Than:</strong> x<sub>1</sub>&lt;x<sub>2</sub></li>    
+                                <li><strong>Change More Than:</strong> Check the change between 2 samples of x<sub>1</sub> to be greater than x<sub>2</sub>. The change dx<sub>1</sub> must be in the same direction as the sign of x<sub>2</sub> <br/>
+                                    |dx<sub>1</sub>|&gt;|x<sub>2</sub>| &amp; sign(dx<sub>1</sub>)=sign(x<sub>2</sub>)</li>    
+                                <li><strong>Is Within:</strong> When x<sub>1</sub> is close to x<sub>2</sub> with a tolerance of x<sub>3</sub>.<br / >
+                                    (|x1-x2|&lt;|x3|)</li>    
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <select name="trigger_type">
+                        <option value="true">Always True</option>
+                        <option value="eq">Equal</option>
+                        <option value="neq">Not Equal</option>
+                        <option value="gt">Greater Than</option>
+                        <option value="get">Greater or Equal Than</option>
+                        <option value="lt">Less Than</option>
+                        <option value="let">Less or Equal Than</option>
+                        <option value="cmt">Change More Than</option>
+                        <option value="within">Is Within</option>
+                    </select>
+                </td>
+            </tr>
+
+            <tr class="line-operand1" style="display:none;">
+                <td class="text-label indented"></span><label>Operand 1 (x<sub>1</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>1</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
+                <td><div class="graph-operand-objtextbox operand1"></div></td>
+            </tr>
+
+            <tr class="line-operand2" style="display:none;">
+                <td class="text-label indented"></span><label>Operand 2 (x<sub>2</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>2</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
+                <td><div class="graph-operand-objtextbox operand2"></div></td>
+            </tr>
+
+            <tr class="line-operand3" style="display:none;">
+                <td class="text-label indented"></span><label>Operand 3 (x<sub>3</sub>)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The operand x<sub>3</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field</p>
+                        </div>
+                    </div>
+                </td>
+                <td><div class="graph-operand-objtextbox operand3"></div></td>
+            </tr>
+
+            <tr class="line-trigger-hold-time">
+                <td class="text-label"></span><label for="trigger_hold_time">Hold Time (ms)</label></td>
+                <td>
+                    <div class="scrutiny-tooltip-container">
+                        <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='16px' height='16px'>
+                        <div class="scrutiny-tooltip-content">
+                            <p>The amount of time, in milliseconds (fractional value possible), that the trigger condition must be true without interruption before launching the trigger event that will cause the acquisition to finish eventually.</p>
+                        </div>
+                    </div>
+                </td>
+                <td><input type="text" name="trigger_hold_time" value="0" size="7"/></td>
+            </tr>
+
+            <tr class="line-estimated-duration">
+                <td class="text-label">Estimated duration</td>
+                <td></td>
+                <td class="label-estimated-duration text-label">N/A</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

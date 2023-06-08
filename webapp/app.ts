@@ -4,7 +4,7 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 import { Datastore } from "./datastore"
 import { ServerConnection } from "./server_connection"
@@ -206,7 +206,7 @@ export class App {
                     that.logger.debug(template_file + " loaded")
                     resolve()
                 } else {
-                    reject()
+                    reject(new Error("Could not load template file. " + template_file))
                 }
             })
         })

@@ -5,15 +5,30 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import { ServerStatus, DeviceStatus } from "./global_definitions"
+import { ServerStatus, DeviceStatus, DataloggerState } from "./global_definitions"
 import { default as $ } from "@jquery"
-import { DeviceInformation, ScrutinyFirmwareDescription } from "./server_api"
+import { DeviceInformation, ScrutinyFirmwareDescription, Datalogging } from "./server_api"
 import { BaseWidget } from "./base_widget"
 import { App } from "./app"
+import { cancel_all_live_edit } from "@scrutiny-live-edit"
 
 type GoldenLayout = any // Stub for external lib
+
+export function configure_all_tooltips(jObj: JQuery) {
+    configure_tooltip(jObj.find("div.scrutiny-tooltip-container") as JQuery<HTMLDivElement>)
+}
+
+export function configure_tooltip(containers: JQuery<HTMLDivElement>) {
+    containers.find(".scrutiny-tooltip-hover").on("mouseover", function (ev: JQuery.MouseOverEvent) {
+        $(this).parent().find(".scrutiny-tooltip-content").show()
+    })
+
+    containers.find(".scrutiny-tooltip-hover").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
+        $(this).parent().find(".scrutiny-tooltip-content").hide()
+    })
+}
 
 export class UI {
     container: JQuery<HTMLDivElement>
@@ -22,6 +37,7 @@ export class UI {
     loaded_sfd: ScrutinyFirmwareDescription | null
     loaded_sfd_id: string | null
     device_info: DeviceInformation | null
+    datalogging_capabilities: Datalogging.Capabilities | null
 
     constructor(container: JQuery<HTMLDivElement>) {
         let config = {
@@ -37,6 +53,13 @@ export class UI {
             }
         })
 
+        this.widget_layout.on("componentCreated", function (component: any) {
+            component.container.on("resize", function () {
+                let widget = component.instance
+                widget.resize()
+            })
+        })
+
         this.indicator_lights = {
             red: "assets/img/indicator-red.png",
             yellow: "assets/img/indicator-yellow.png",
@@ -47,6 +70,7 @@ export class UI {
         this.loaded_sfd = null
         this.loaded_sfd_id = null
         this.device_info = null
+        this.datalogging_capabilities = null
     }
 
     /**
@@ -67,7 +91,8 @@ export class UI {
         $(document).on("keyup", function (e: JQuery.KeyUpEvent) {
             if (e.key == "Escape") {
                 $("#modal-container").hide()
-                $(".tooltip").hide()
+                $(".scrutiny-tooltip-content").hide()
+                cancel_all_live_edit()
             }
         })
 
@@ -206,6 +231,7 @@ export class UI {
             let supported_feature_map_content: JQuery | string = "-"
             let readonly_memory_regions_content: JQuery | string = "-"
             let forbidden_memory_regions_content: JQuery | string = "-"
+            let datalogging_capabilities_content: JQuery | string = "-"
 
             try {
                 device_id = this.device_info["device_id"]
@@ -248,17 +274,19 @@ export class UI {
             try {
                 supported_feature_map_content = $("<ul></ul>") as JQuery<HTMLUListElement>
                 supported_feature_map_content.append(
+                    $("<li>Memory Read : " + (this.device_info["supported_feature_map"]["memory_read"] ? "Yes" : "No") + " </li>")
+                )
+                supported_feature_map_content.append(
                     $("<li>Memory Write : " + (this.device_info["supported_feature_map"]["memory_write"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.append(
-                    $(
-                        "<li>Datalog acquisition: " +
-                            (this.device_info["supported_feature_map"]["datalog_acquire"] ? "Yes" : "No") +
-                            " </li>"
-                    )
+                    $("<li>Datalogging: " + (this.device_info["supported_feature_map"]["datalogging"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.append(
                     $("<li>User command: " + (this.device_info["supported_feature_map"]["user_command"] ? "Yes" : "No") + " </li>")
+                )
+                supported_feature_map_content.append(
+                    $("<li>64bits support: " + (this.device_info["supported_feature_map"]["_64bits"] ? "Yes" : "No") + " </li>")
                 )
                 supported_feature_map_content.addClass("list-no-margin")
             } catch (err) {
@@ -309,6 +337,36 @@ export class UI {
                 forbidden_memory_regions_content = "-"
             }
 
+            try {
+                if (this.datalogging_capabilities == null) {
+                    datalogging_capabilities_content = "-"
+                } else {
+                    datalogging_capabilities_content = $("<ul></ul>") as JQuery<HTMLUListElement>
+                    datalogging_capabilities_content.append(
+                        $("<li>Buffer Size : " + this.datalogging_capabilities["buffer_size"] + " bytes </li>")
+                    )
+                    datalogging_capabilities_content.append($("<li>Encoding : " + this.datalogging_capabilities["encoding"] + " </li>"))
+                    datalogging_capabilities_content.append(
+                        $("<li>Max signal : " + this.datalogging_capabilities["max_nb_signal"] + " </li>")
+                    )
+
+                    let ff_sampling_rates_count = 0
+                    let vf_sampling_rates_count = 0
+                    for (let i = 0; i < this.datalogging_capabilities["sampling_rates"].length; i++) {
+                        if (this.datalogging_capabilities["sampling_rates"][i]["type"] == "fixed_freq") {
+                            ff_sampling_rates_count++
+                        } else if (this.datalogging_capabilities["sampling_rates"][i]["type"] == "variable_freq") {
+                            vf_sampling_rates_count++
+                        }
+                    }
+                    datalogging_capabilities_content.append($("<li>Fixed sampling rates : " + ff_sampling_rates_count + " </li>"))
+                    datalogging_capabilities_content.append($("<li>Variable sampling rate : " + vf_sampling_rates_count + " </li>"))
+                    datalogging_capabilities_content.addClass("list-no-margin")
+                }
+            } catch (e) {
+                datalogging_capabilities_content = "-"
+            }
+
             this.show_modal("Device Information", $($("#template-device-info-table").html()))
             $("#modal-content [label-name='device_id']").text(device_id)
             $("#modal-content [label-name='display_name']").text(display_name)
@@ -332,20 +390,18 @@ export class UI {
                     : forbidden_memory_regions_content[0]
             )
 
-            $("#modal-content [show-tooltip]").on("mouseover", function (ev: JQuery.MouseOverEvent) {
-                const tooltip_id = $(ev.target).attr("show-tooltip") as string
-                $(tooltip_id).show()
-            })
+            $("#modal-content td[label-name='datalogging']").html(
+                typeof datalogging_capabilities_content === "string"
+                    ? datalogging_capabilities_content
+                    : datalogging_capabilities_content[0]
+            )
 
-            $("#modal-content [show-tooltip]").on("mouseleave", function (ev: JQuery.MouseLeaveEvent) {
-                const tooltip_id = $(ev.target).attr("show-tooltip") as string
-                $(tooltip_id).hide()
-            })
+            configure_all_tooltips($("#modal-content"))
         }
     }
 
     /**
-     * Register a widget to the UI. Its icon will be show in the widget menu
+     * Register a widget to the UI. Its icon will be shown in the widget menu
      * @param widget_class Widget class to add
      * @param app The Scrutiny application instance
      */
@@ -358,8 +414,18 @@ export class UI {
             that.widget_layout.registerComponent(widget_class.widget_name(), function (container: any, state: any) {
                 instance_id++
                 const scrutiny_widget_container = $("<div>").addClass("scrutiny-widget-container") as JQuery<HTMLDivElement>
-                const golder_layout_container = $(container.getElement()).append(scrutiny_widget_container)
-                golder_layout_container.css("overflow", "auto")
+                const golden_layout_container = $(container.getElement()).append(scrutiny_widget_container)
+                golden_layout_container.css("overflow", "auto")
+                golden_layout_container.on("resize", function () {
+                    console.log("resize golden_layout_container")
+                })
+                golden_layout_container.on("stateChanged", function () {
+                    console.log("stateChanged golden_layout_container")
+                })
+
+                scrutiny_widget_container.on("resize", function () {
+                    console.log("resize scrutiny_widget_container")
+                })
                 const widget = new widget_class(scrutiny_widget_container, app, instance_id)
                 widget.initialize()
                 return widget
@@ -400,18 +466,49 @@ export class UI {
      * @param status The server status
      */
     set_server_status(status: ServerStatus) {
+        let new_text = ""
         if (status == ServerStatus.Disconnected) {
-            $("#server_status_label").text("Disconnected")
+            new_text = "Disconnected"
             $("#server_status .indicator").attr("src", this.indicator_lights["red"])
         } else if (status == ServerStatus.Connecting) {
-            $("#server_status_label").text("Connecting")
+            new_text = "Connecting"
             $("#server_status .indicator").attr("src", this.indicator_lights["yellow"])
         } else if (status == ServerStatus.Connected) {
-            $("#server_status_label").text("Connected")
+            new_text = "Connected"
             $("#server_status .indicator").attr("src", this.indicator_lights["green"])
         } else {
-            $("#server_status_label").text("Unknown")
+            new_text = "Unknown"
             $("#server_status .indicator").attr("src", this.indicator_lights["grey"])
+        }
+        const label = $("#server_status_label")
+        if (label.text() !== new_text) {
+            label.text(new_text)
+        }
+    }
+
+    set_datalogging_status(status: DataloggerState, completion_ratio: number | null) {
+        let new_text = "Unknown state"
+        if (status == DataloggerState.Standby) {
+            new_text = "Standby"
+        } else if (status == DataloggerState.Acquiring) {
+            new_text = "Acquiring"
+        } else if (status == DataloggerState.WaitForTrigger) {
+            new_text = "Wait For Tigger"
+        } else if (status == DataloggerState.DataReady) {
+            new_text = "Data Ready"
+        } else if (status == DataloggerState.Error) {
+            new_text = "Error"
+        }
+
+        if (completion_ratio !== null) {
+            completion_ratio = Math.round(Math.min(Math.max(completion_ratio, 0), 1) * 100)
+            const completion_ratio_str = completion_ratio.toFixed(0)
+            new_text += ` (${completion_ratio_str}%)`
+        }
+
+        const label = $("#datalogger_state_label")
+        if (label.text() !== new_text) {
+            label.text(new_text)
         }
     }
 
@@ -420,8 +517,13 @@ export class UI {
      * @param status Status of the device communication
      * @param device_info Device information gathered by the server
      */
-    set_device_status(status: DeviceStatus, device_info: DeviceInformation | null) {
+    set_device_status(
+        status: DeviceStatus,
+        device_info: DeviceInformation | null,
+        datalogging_capabilities: Datalogging.Capabilities | null
+    ) {
         this.device_info = device_info
+        this.datalogging_capabilities = datalogging_capabilities
 
         let status_label_text = ""
         let indicator_img = ""
@@ -439,8 +541,9 @@ export class UI {
             indicator_img = this.indicator_lights["grey"]
         }
 
-        if (status_label_text != $("#device_status_label").text()) {
-            $("#device_status_label").text(status_label_text)
+        const label = $("#device_status_label")
+        if (status_label_text != label.text()) {
+            label.text(status_label_text)
         }
 
         const img_elem = $("#device_status .indicator").first()
@@ -450,9 +553,9 @@ export class UI {
         }
 
         if (this.device_info != null) {
-            $("#device_status_label").addClass("clickable_label")
+            label.addClass("clickable_label")
         } else {
-            $("#device_status_label").removeClass("clickable_label")
+            label.removeClass("clickable_label")
         }
     }
 

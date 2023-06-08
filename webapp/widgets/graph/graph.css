@@ -1,0 +1,223 @@
+.graph-layout {
+    height:100%;
+}
+
+
+.graph-layout .status-bar {
+    display: flex;
+    flex-direction: row;
+    width:100%;
+    padding-top:2px;
+    bottom:0;
+}
+
+.graph-layout .status-bar .status-bar-field{
+    display:flex;
+}
+
+.graph-layout .status-bar .button-block {
+    padding-right:10px;
+    padding-bottom:5px;
+}
+
+.graph-layout .status-bar .button-block button {
+    padding:2px 5px 2px 5px; 
+    margin-left:5px;
+}
+
+.graph-layout .status-bar .button-block button.btn-acquire {
+    margin-left:15px;
+}
+
+
+.graph-layout .status-bar .graph-zoom-buttons{
+    margin-left: 15px;
+    padding-bottom:5px;
+}
+
+.graph-layout .status-bar .graph-zoom-buttons button{
+    padding:2px 5px 2px 5px;
+    margin-left: 5px;
+}
+
+.graph-layout .status-bar .graph-zoom-buttons button.selected{
+    background-color: rgb(124, 199, 250);
+}
+
+
+
+.graph-layout .layout-content-element{
+    height:100%; /* Container gets resized by javascript*/
+}
+
+.graph-config .split-pane{
+    display:flex;
+    flex-direction: row;
+}
+
+ .gutter {
+    background-color: #eee;
+    background-repeat: no-repeat;
+    background-position: 50%;
+    cursor:col-resize;
+}
+
+.gutter.gutter-horizontal {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+    cursor: col-resize;
+}
+
+
+.graph-config .form-pane{
+    height:100%; 
+}
+
+.graph-config .form-pane table td{
+    padding: 1px 0px 1px 5px
+}
+
+.graph-config input[name="effective_sampling_rate"],
+.graph-config input[name="effective_sampling_rate"]:active{
+    border:none;
+}
+
+
+.graph-config .btn-add-axis{
+    display:block;
+    margin-left:10px;
+}
+
+.graph-config table.signal-list{
+    width:100%;
+}
+
+
+.graph-config table.signal-list .axis{
+    font-style: italic;
+}
+
+.graph-config table.signal-list tr.axis div{
+    display:inline-block; /* For live edit block*/
+}
+
+.graph-config table.signal-list th{
+    height:0px;
+}
+
+.graph-config input,
+.graph-config select{
+    border-width: 1px;
+    border-style: solid;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    font-size: small;
+}
+
+.graph-config .text-label,
+.graph-config option{
+    font-size: small;
+}
+
+.graph-config .text-label.indented{
+    padding-left:20px;
+}
+
+.graph-config table.signal-list {
+    margin:0;
+    border-collapse: collapse;
+    font-size: small;
+}
+
+.graph-config table.signal-list td,
+.graph-config table.signal-list th{
+    border-left: 1px solid #ddd;
+    padding:1px 10px 1px 5px;
+}
+
+
+.graph-config .error-msg{
+    font-size: small;
+    color:#f00;
+    font-style:italic;
+    padding-left:10px;
+}
+
+.graph-config .input-error{
+    border:1px solid red;
+}
+
+.graph-display{
+    display:flex; 
+    flex-direction:row;
+}
+
+.graph-display .graph_zone p{
+    margin:0;
+}
+
+.graph-display .graph_zone p.error_msg{
+    color:#f00;
+}
+
+.graph-display .legend_zone{
+    font-size: small;
+    margin-right:10px;
+    overflow-x: scroll;
+    padding-left:5px;
+}
+
+.graph-display .legend_zone .multiselect-container{
+    margin:0;
+    padding:0;
+    height:100%;
+
+}
+
+.graph-display .legend_zone tr{
+    -moz-user-select: none;
+    user-select: none;
+}
+
+.graph-display .legend_zone tr.selected td:not(.colorbox_td){
+    background-color:rgb(124, 199, 250);
+}
+
+.graph-display .legend_zone table.legend{
+    margin: 0;
+    padding: 0;
+    border-collapse: collapse;
+    height: max-content;
+}
+
+.graph-display .legend_zone table.legend td.val_td{
+    width:100%;
+}
+
+.graph-display .legend_zone .legend_color_box{
+    display : inline-block;
+    height : 10px;
+    margin-right : 3px;
+    width : 10px;
+    cursor: pointer;
+    border-style: solid;
+    border-width: 1px;
+}
+
+.graph-display .legend_zone .legend_text{
+    margin:0;
+    padding:0;
+    cursor:default;
+}
+
+.graph-display .legend_zone .legend_val{
+    margin:0;
+    padding-right:0;
+    padding-left:0;
+    padding-top:0;
+    padding-left:5px;
+    min-width: 15px;
+}
+
+.graph-display .legend_zone .legend_text.line_hidden{
+    text-decoration: line-through;
+}

@@ -6,7 +6,7 @@
     "@types/jsdom": "^20.0.1",
     "@types/mocha": "^10.0.0",
     "assert": "^2.0.0",
-    "chai": "^4.3.7",
+    "chart.js": "^4.2.1",
     "copy-webpack-plugin": "^11.0.0",
     "eslint": "^8.25.0",
     "git-revision-webpack-plugin": "^5.0.0",
@@ -30,10 +30,13 @@
   },
   "dependencies": {
     "assert": "^2.0.0",
+    "chart.js": "^4.2.1",
+    "chartjs-plugin-zoom": "^2.0.1",
     "glob": "^8.0.3",
     "mocha-loader": "^5.1.5",
     "module-alias": "^2.2.2",
     "source-map-support": "^0.5.21",
+    "split.js": "^1.6.5",
     "webpack-node-externals": "^3.0.0"
   },
   "overrides": {

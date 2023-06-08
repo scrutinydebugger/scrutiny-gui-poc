@@ -4,7 +4,7 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 /**
  * Trims a string by removing the given characters (multiple) from both beginning and end.
@@ -80,4 +80,87 @@ export function get_url_param(name: string): string {
     var regex = new RegExp("[\\?&]" + name + "=([^&#]*)")
     var results = regex.exec(location.search)
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "))
+}
+
+export function number2str(x: number, max_digits: number = 13): string {
+    return x.toFixed(max_digits).replace(/\.?0*$/, "")
+}
+
+/**
+ * Clamps a value between min and max inclusively.
+ * @param val The value to clamp
+ * @param min The lower limit
+ * @param max The high limit
+ * @returns Clamped value
+ */
+export function clamp_val(val: number, min: number, max: number): number {
+    if (isNaN(val)) {
+        val = min
+    }
+    if (val < min) {
+        val = min
+    }
+    if (val > max) {
+        val = max
+    }
+    return val
+}
+
+export function force_input_int(input: JQuery<HTMLInputElement>, min: number, max: number): void {
+    let val = parseInt(input.val() as string)
+    val = clamp_val(val, min, max)
+    if (val != input.val()) {
+        // string and integer can be compared legally
+        input.val(val)
+    }
+}
+
+export function force_input_float(input: JQuery<HTMLInputElement>, min: number, max: number): void {
+    let val = parseFloat(input.val() as string)
+    val = clamp_val(val, min, max)
+    if (val != input.val()) {
+        // string and integer can be compared legally
+        input.val(val)
+    }
+}
+
+export function set_nested(obj: Record<string, any>, path: string[], value: any): void {
+    if (path.length === 1) {
+        obj[path[0]] = value
+    } else {
+        if (typeof obj[path[0]] === "undefined") {
+            obj[path[0]] = {}
+        }
+        set_nested(obj[path[0]], path.slice(1), value)
+    }
+}
+
+export function check_exist_nested(obj: Record<string, any>, keys: string[]): boolean {
+    for (let i = 0; i < keys.length; i++) {
+        if (!obj || typeof obj[keys[i]] === "undefined") {
+            return false
+        }
+        obj = obj[keys[i]] as object
+    }
+    return true
+}
+
+interface MinMax {
+    min: number
+    max: number
+}
+
+export function array_minmax(arr: number[]): MinMax {
+    let len = arr.length
+    let min_val = Infinity
+    let max_val = -Infinity
+    while (len--) {
+        if (arr[len] < min_val) {
+            min_val = arr[len]
+        }
+        if (arr[len] > max_val) {
+            max_val = arr[len]
+        }
+    }
+    return { min: min_val, max: max_val }
 }

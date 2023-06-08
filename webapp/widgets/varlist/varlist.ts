@@ -5,17 +5,17 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, DatastoreEntry } from "@src/datastore"
+import { DatastoreEntryType, SubfolderDescription, DatastoreEntryWithName, AllDatastoreEntryTypes } from "@src/datastore"
 import { BaseWidget } from "@src/base_widget"
 import { App } from "@src/app"
 import * as logging from "@src/logging"
 import { default as $ } from "@jquery"
+import { WatchableTableInterface } from "@src/widgets/common"
 
 import { scrutiny_treetable, PluginOptions as TreeTableOptions, LoadFunctionInterface as TreeTableLoadFunction } from "@scrutiny-treetable"
 import { scrutiny_resizable_table, PluginOptions as ResizableTableOptions } from "@scrutiny-resizable-table"
-import { AllDatastoreEntryTypes, Datastore } from "../../datastore"
 
 $.extend($.fn, { scrutiny_treetable })
 $.extend($.fn, { scrutiny_resizable_table })
@@ -146,56 +146,6 @@ export class VarListWidget extends BaseWidget {
      */
     destroy() {}
 
-    make_entry_row(entry: DatastoreEntryWithName): JQueryRow {
-        const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}">${entry.default_name}</td>`)
-        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
-        tr.append(td_name).append(td_type)
-        td_type.text(entry.datatype)
-        tr.attr(ATTR_DISPLAY_PATH, entry.display_path)
-        tr.attr(ATTR_ENTRY_TYPE, entry.entry_type)
-        tr.addClass(CLASS_ENTRY_NODE)
-
-        const img = $("<div class='treeicon'/>")
-
-        if (entry.entry_type == DatastoreEntryType.Var) {
-            img.addClass("icon-var")
-        } else if (entry.entry_type == DatastoreEntryType.Alias) {
-            img.addClass("icon-alias")
-        } else if (entry.entry_type == DatastoreEntryType.RPV) {
-            img.addClass("icon-rpv")
-        }
-
-        td_name.prepend(img)
-        return tr
-    }
-
-    make_folder_row(subfolder: SubfolderDescription, entry_type: DatastoreEntryType): JQueryRow {
-        const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}">${subfolder.name}</td>`)
-        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
-        tr.append(td_name).append(td_type)
-        tr.attr(ATTR_DISPLAY_PATH, subfolder.display_path)
-        tr.attr(ATTR_ENTRY_TYPE, entry_type)
-
-        const img = $("<div class='treeicon icon-folder' />")
-        td_name.prepend(img)
-        return tr
-    }
-
-    make_root_row(text: string, entry_type: DatastoreEntryType) {
-        const tr = $("<tr></tr>") as JQueryRow
-        const td_name = $(`<td class="${CLASS_NAME_COL}">${text}</td>`)
-        const td_type = $(`<td class='${CLASS_TYPE_COL}'></td>`)
-        tr.append(td_name).append(td_type)
-        tr.attr(ATTR_DISPLAY_PATH, "/")
-        tr.attr(ATTR_ENTRY_TYPE, entry_type)
-
-        const img = $("<div class='treeicon icon-folder' />")
-        td_name.prepend(img)
-        return tr
-    }
-
     table_load_fn(node_id: string, tr: JQueryRow, user_data?: any): ReturnType<TreeTableLoadFunction> {
         const that = this
         let output = [] as ReturnType<TreeTableLoadFunction>
@@ -212,14 +162,16 @@ export class VarListWidget extends BaseWidget {
         const children = this.app.datastore.get_children(entry_type, display_path)
 
         children["subfolders"].forEach(function (subfolder, i) {
+            const row_desc = WatchableTableInterface.make_folder_row_from_datastore_folder(subfolder, entry_type, 1)
             output.push({
-                tr: that.make_folder_row(subfolder, entry_type),
+                tr: row_desc.tr,
             })
         })
 
         children["entries"][entry_type].forEach(function (entry, i) {
+            const row_data = WatchableTableInterface.make_entry_row(entry, entry.default_name ?? "", false, true)
             output.push({
-                tr: that.make_entry_row(entry),
+                tr: row_data.tr,
                 no_children: true,
             })
         })
@@ -247,11 +199,8 @@ export class VarListWidget extends BaseWidget {
         }
 
         for (let i = 0; i < entry_type_list.length; i++) {
-            this.tree_table.scrutiny_treetable(
-                "add_root_node",
-                ROOT_NODE_DESC[entry_type_list[i]].id,
-                this.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
-            )
+            const row_desc = WatchableTableInterface.make_root_row(ROOT_NODE_DESC[entry_type_list[i]].label, entry_type_list[i])
+            this.tree_table.scrutiny_treetable("add_root_node", ROOT_NODE_DESC[entry_type_list[i]].id, row_desc.tr)
         }
     }
 

@@ -5,7 +5,7 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
 import { App, AppConfig } from "./app"
 import { get_url_param } from "./tools"
@@ -13,6 +13,7 @@ import { get_url_param } from "./tools"
 import { BaseWidget } from "./base_widget"
 import { VarListWidget } from "./widgets/varlist/varlist"
 import { WatchWidget } from "./widgets/watch/watch"
+import { GraphWidget } from "./widgets/graph/graph"
 
 var default_config: AppConfig = {
     server: {
@@ -49,6 +50,7 @@ function load_config(): AppConfig {
 
     app.add_widget(VarListWidget as unknown as typeof BaseWidget)
     app.add_widget(WatchWidget as unknown as typeof BaseWidget)
+    app.add_widget(GraphWidget as unknown as typeof GraphWidget)
 
     app.launch() // Will fire the "scrutiny.ready" event when all async init is done.
 })()

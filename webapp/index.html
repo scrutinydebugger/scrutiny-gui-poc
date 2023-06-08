@@ -5,6 +5,7 @@
         <link rel="icon" href="data:,">
 
         <link rel="stylesheet" href="css/scrutiny-main.css">
+        <link rel="stylesheet" href="css/widgets_common.css">
         <link rel="stylesheet" href="libs/goldenlayout/goldenlayout-base.css">
         <link rel="stylesheet" href="components/scrutiny-treetable/scrutiny-treetable.css">
         <link rel="stylesheet" href="components/scrutiny-resizable-table/scrutiny-resizable-table.css">
@@ -13,8 +14,10 @@
     <body>
         <div id="loading_mask">Loading...</div>
         <div id="layout-container"></div>
+        
 
         <div id="menubar">
+            
             <!--
             <div id="menubar_corner_filler"></div>
             <div class='vertical_separator'></div>
@@ -42,6 +45,7 @@
         </div>
 
         <div id="statusbar">
+
             <div id="server_status" class='status_bar_item'>
                 <img class='indicator' src="assets/img/indicator-red.png" width='16px' height='16px' />
                 <span class='status_bar_label'>Server status: 
@@ -64,7 +68,13 @@
                 <span class='status_bar_label'>Loaded firmware: 
                     <span id="loaded_firmware_label">-</span>
                 </span>
-            </div> 
+            </div>
+            
+            <div id="datalogger_state" class='status_bar_item'>
+                <span class='status_bar_label'>Datalogger: 
+                    <span id="datalogger_state_label">-</span>
+                </span>
+            </div>
         </div>
 
 
@@ -119,97 +129,131 @@
                         <tr>
                             <td>Device ID</td>
                             <td label-name="device_id">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-device_id" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-device_id" class='tooltip help-content'><p>The device ID broadcasted by the device itself.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-device_id" class='scrutiny-tooltip-content'><p>The device ID broadcasted by the device itself.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Display Name</td>
                             <td label-name="display_name">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-display_name" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-display_name" class='tooltip help-content'><p>Display name broadcasted by the device itself during discovery phase.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-display_name" class='scrutiny-tooltip-content'><p>Display name broadcasted by the device itself during discovery phase.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Transmit buffer size</td>
                             <td label-name="max_tx_data_size">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-max_tx_data_size" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-max_tx_data_size" class='tooltip help-content'><p>Size fo the device transmit buffer.<br />Limits the size of the payloads that can be sent by the device to the server.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-max_tx_data_size" class='scrutiny-tooltip-content'><p>Size fo the device transmit buffer.<br />Limits the size of the payloads that can be sent by the device to the server.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Reception buffer size</td>
                             <td label-name="max_rx_data_size">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-max_rx_data_size" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-max_rx_data_size" class='tooltip help-content'><p>Size fo the device receive buffer.<br />Limits the size of the payloads that can be sent by the server to the device</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-max_rx_data_size" class='scrutiny-tooltip-content'><p>Size fo the device receive buffer.<br />Limits the size of the payloads that can be sent by the server to the device</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Max bitrate (bps)</td>
                             <td label-name="max_bitrate_bps">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-max_bitrate_bps" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-max_bitrate_bps" class='tooltip help-content'><p>Maximum bitrate requested by the device.<br /> The server will try to respect this limitation.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-max_bitrate_bps" class='scrutiny-tooltip-content'><p>Maximum bitrate requested by the device.<br /> The server will try to respect this limitation.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>RX timeout</td>
                             <td label-name="rx_timeout_us">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-rx_timeout_us" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-rx_timeout_us" class='tooltip help-content'><p>Reception timeout. If no data is received during that period of times, the frame reception is reset and previous data discarded. The following data will be considered to be part of a new request.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-rx_timeout_us" class='scrutiny-tooltip-content'><p>Reception timeout. If no data is received during that period of times, the frame reception is reset and previous data discarded. The following data will be considered to be part of a new request.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Heartbeat timeout</td>
                             <td label-name="heartbeat_timeout_us">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-heartbeat_timeout_us" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-heartbeat_timeout_us" class='tooltip help-content'><p>Session disconnection timeout.<br />If the device receives no heartbeat request for that amount of time, the device will disconnect and the communication session will be destroyed.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-heartbeat_timeout_us" class='scrutiny-tooltip-content'><p>Session disconnection timeout.<br />If the device receives no heartbeat request for that amount of time, the device will disconnect and the communication session will be destroyed.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Address size</td>
                             <td label-name="address_size_bits">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-address_size_bits" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-address_size_bits" class='tooltip help-content'><p>Size of pointers used by the device.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-address_size_bits" class='scrutiny-tooltip-content'><p>Size of pointers used by the device.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Protocol Version</td>
                             <td label-name="protocol_version">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-protocol_version" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-protocol_version" class='tooltip help-content'><p>Scrutiny protocol version used by the device to communicate with the server.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-protocol_version" class='scrutiny-tooltip-content'><p>Scrutiny protocol version used by the device to communicate with the server.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Supported features</td>
                             <td label-name="supported_feature_map">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-supported_feature_map" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-supported_feature_map" class='tooltip help-content'><p>List of supported features by the device.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-supported_feature_map" class='scrutiny-tooltip-content'><p>List of supported features by the device.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Read-only memory regions</td>
                             <td label-name="readonly_memory_regions">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-readonly_memory_regions" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-readonly_memory_regions" class='tooltip help-content'><p>List of read-only memory regions. These region cannot be written through Scrutiny.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">     
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-readonly_memory_regions" class='scrutiny-tooltip-content'><p>List of read-only memory regions. These region cannot be written through Scrutiny.</p></div>
+                                </div>
                             </td>
                         </tr>
                         <tr>
                             <td>Forbidden memory regions</td>
                             <td label-name="forbidden_memory_regions">-</td>
-                            <td class='help-cell'>
-                                <img class='help-icon' show-tooltip="#tooltip-forbidden_memory_regions" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
-                                <div id="tooltip-forbidden_memory_regions" class='tooltip help-content'><p>List of forbidden memory regions. These region cannot be read or written through Scrutiny.</p></div>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-forbidden_memory_regions" class='scrutiny-tooltip-content'><p>List of forbidden memory regions. These region cannot be read or written through Scrutiny.</p></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Datalogging</td>
+                            <td label-name="datalogging">-</td>
+                            <td>
+                                <div class="scrutiny-tooltip-container">   
+                                    <img class="scrutiny-tooltip-hover help-cursor" src='assets/img/question-mark-grey-64x64.png' width='32px' height='32px'>
+                                    <div id="tooltip-datalogging" class='scrutiny-tooltip-content'><p>Capabilities of the device in term of datalogging.</p></div>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -220,7 +264,6 @@
 
         <script type="text/javascript" src="libs/jquery/jquery.js"></script>
         <script type="text/javascript" src='libs/goldenlayout/goldenlayout.js'></script>
-        <script type="text/javascript" src='libs/jstree/jstree.js'></script>
         <!-- scrutiny.js is autogenerated by webpack -->
         <script type="module" src="js/scrutiny.js"></script>
 

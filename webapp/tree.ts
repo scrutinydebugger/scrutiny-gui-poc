@@ -6,9 +6,9 @@
 //   - License : MIT - See LICENSE file.
 //   - Project : Scrutiny Debugger (github.com/scrutinydebugger/scrutiny-gui-webapp)
 //
-//   Copyright (c) 2021-2022 Scrutiny Debugger
+//   Copyright (c) 2021-2023 Scrutiny Debugger
 
-import { trim, trim_end } from "./tools"
+import { trim, trim_end } from "@src/tools"
 
 type ObjDict<ObjType> = Record<string, ObjType>
 interface ShallowSubtreeDict {

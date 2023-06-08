@@ -1,0 +1,53 @@
+table.signal-list{
+    cursor: default;
+}
+
+table.signal-list .stt-spacer{
+    margin-right: 2px;
+}
+
+table.signal-list .stt-expander{
+    cursor: pointer;
+}
+
+table.signal-list .stt-expander-opened{
+    background-image: url("assets/expander-opened.png");
+}
+
+table.signal-list .stt-expander-closed{
+    background-image: url("assets/expander-closed.png");
+}
+
+table.signal-list .stt-dragger{
+    height: 12px;
+    width: 12px;
+    cursor:move;
+    background-image: url("assets/dragger.png");
+    background-repeat: no-repeat;
+    margin-right:4px;
+    background-size: 12px;
+}
+
+table.signal-list tr.stt-insert-below td{
+    border-bottom: 1px solid rgb(252, 72, 243);
+}
+
+table.signal-list tr.stt-selected{
+    background-color: rgb(124, 199, 250);
+}
+
+table.signal-list tr.stt-insert-above td{
+    border-top:1px solid rgb(252, 72, 243);
+}
+
+table.signal-list tr.stt-highlighted{
+    background-color: rgb(124, 199, 250);
+}
+
+table.signal-list tr.stt-disabled td{
+    background-color: #ddd;
+}
+
+table.signal-list tr.stt-just-dropped{
+    background-color: rgb(124, 199, 250);
+}
