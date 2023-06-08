@@ -671,6 +671,31 @@ export class GraphWidget extends BaseWidget {
         this.add_axis()
         this.switch_to_config()
 
+        // Below, we allow the user to drop variables in the table container (blank zone) which will
+        // add the variable under the last axis in the list
+        signal_list_pane.on("dragover", function (e) {
+            e.preventDefault()
+        })
+
+        signal_list_pane.on("drop", function (e) {
+            let last_axis = signal_list_table.scrutiny_treetable("get_root_nodes").last() as JQueryRow
+            if (last_axis.length == 0) {
+                that.add_axis()
+                last_axis = signal_list_table.scrutiny_treetable("get_root_nodes").last() as JQueryRow
+            }
+
+            if (last_axis.length == 0) {
+                throw "No axis found"
+            }
+
+            let last_signal: JQueryRow | null = signal_list_table.scrutiny_treetable("get_children", last_axis).last() as JQueryRow
+            if (last_signal.length == 0) {
+                last_signal = null
+            }
+            signal_list_table.scrutiny_treetable("handle_drop_event", e, last_axis, last_signal)
+            e.stopPropagation()
+        })
+
         this.button_configure.on("click", function () {
             that.switch_to_config()
         })

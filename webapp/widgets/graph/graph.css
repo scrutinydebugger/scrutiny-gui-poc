@@ -68,6 +68,10 @@
 }
 
 
+.graph-config .form-pane{
+    height:100%; 
+}
+
 .graph-config .form-pane table td{
     padding: 1px 0px 1px 5px
 }
@@ -145,10 +149,6 @@
 .graph-display{
     display:flex; 
     flex-direction:row;
-}
-
-.graph-display .graph_zone{
-    
 }
 
 .graph-display .graph_zone p{
