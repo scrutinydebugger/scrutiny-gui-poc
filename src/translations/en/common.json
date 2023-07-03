@@ -1,0 +1,98 @@
+{
+    "menu": {
+        "file": {
+            "label": "File",
+            "open_dashboard": "Open Dashboard",
+            "save_dashboard": "Save Dashboard",
+            "export_dashboard": "Export Dashboard",
+            "exit": "Exit"
+        }
+    },
+    "device_info": {
+        "device_id": {
+            "label": "Device ID",
+            "help": "The device ID broadcasted by the device itself."
+        },
+        "display_name": {
+            "label": "Display Name",
+            "help": "Display name broadcasted by the device itself during discovery phase."
+        },
+        "max_tx_data_size": {
+            "label": "Transmit buffer size",
+            "help": "Size fo the device transmit buffer.\nLimits the size of the payloads that can be sent by the device to the server."
+        },
+        "max_rx_data_size": {
+            "label": "Reception buffer size",
+            "help": "Size fo the device receive buffer.\nLimits the size of the payloads that can be sent by the server to the device"
+        },
+        "max_bitrate_bps": {
+            "label": "Max bitrate (bps)",
+            "help": "Maximum bitrate requested by the device.\n The server will try to respect this limitation."
+        },
+        "rx_timeout_us": {
+            "label": "RX timeout",
+            "help": "Reception timeout. If no data is received during that period of times, the frame reception is reset and previous data discarded. The following data will be considered to be part of a new request."
+        },
+        "heartbeat_timeout_us": {
+            "label": "Heartbeat timeout",
+            "help": "Session disconnection timeout.\nIf the device receives no heartbeat request for that amount of time, the device will disconnect and the communication session will be destroyed."
+        },
+        "address_size_bits": {
+            "label": "Address size",
+            "help": "Size of pointers used by the device."
+        },
+        "protocol_version": {
+            "label": "Protocol Version",
+            "help": "Scrutiny protocol version used by the device to communicate with the server."
+        },
+        "supported_feature_map": {
+            "label": "Supported features",
+            "help": "List of supported features by the device."
+        },
+        "readonly_memory_regions": {
+            "label": "Read-only memory regions",
+            "help": "List of read-only memory regions. These region cannot be written through Scrutiny."
+        },
+        "forbidden_memory_regions": {
+            "label": "Forbidden memory regions",
+            "help": "List of forbidden memory regions. These region cannot be read or written through Scrutiny."
+        }
+    },
+    "firmware_details": {
+        "project_name": {
+            "label": "Project name"
+        },
+        "version": {
+            "label": "Version"
+        },
+        "author": {
+            "label": "Author"
+        },
+        "firmware_id": {
+            "label": "Firmware ID"
+        },
+        "generated_on": {
+            "label": "Generated on"
+        },
+        "generated_with": {
+            "label": "Generated with"
+        }
+    },
+    "status_bar": {
+        "server_status": "Server status",
+        "device_status": "Device status",
+        "loaded_firmware": "Loaded firmware"
+    },
+    "connection_status": {
+        "connected": "Connected",
+        "connecting": "Connecting",
+        "disconnected": "Disconnected"
+    },
+    "datastore": {
+        "entry_type": {
+            "var": "Var",
+            "alias": "Alias",
+            "rpv": "RPV"
+        }
+    }
+}

@@ -1,22 +1,26 @@
 {
-    "compilerOptions": {
-        "target": "es5",
-        "module": "ES2015",
-        "lib": ["es5", "es6", "dom"],
-        "allowJs": true,
-        "sourceMap": true,
-        "rootDir": "./",
-        "downlevelIteration": true,
-        "strict":true,
-        "baseUrl": "./",
-        "paths":{
-            "@jquery" : ["externals/prod/jquery"],
-            "@src/*" : ["webapp/*"],
-            "@tests/*" : ["tests/*"],
-            "@scrutiny-treetable" : ["webapp/components/scrutiny-treetable/scrutiny-treetable"],
-            "@scrutiny-resizable-table" : ["webapp/components/scrutiny-resizable-table/scrutiny-resizable-table"],
-        },
-    },   
-    "include": ["webapp/**/*", "externals/test/jquery.ts", "externals/prod/jquery.ts", "tests/**/*"],
-    "exclude": ["node_modules", "**/*.spec.ts", "build/**/*", "webapp/public"],
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src"
+  ]
 }

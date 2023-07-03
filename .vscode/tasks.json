@@ -1,0 +1,109 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "start react dev server",
+			"type": "shell",
+			"isBackground": true,
+			"command": "BROWSER=none npm start",
+			"detail": "react-scripts start",
+			"presentation": {
+				"reveal": "silent"
+			},
+			"options": {
+				"statusbar": {
+					"hide": true
+				}
+			},
+			"dependsOn": [
+				"scrutiny server"
+			],
+			"problemMatcher": [
+				{
+					"pattern": [
+						{
+							"regexp": ".",
+							"file": 1,
+							"line": 1,
+							"column": 1,
+							"message": 1
+						}
+					],
+					"background": {
+						"activeOnStart": true,
+						"beginsPattern": {
+							"regexp": "."
+						},
+						"endsPattern": {
+							"regexp": "."
+						}
+					},
+				}
+			]
+		},
+		{
+			"label": "scrutiny server",
+			"command": "docker-compose up server",
+			"options": {
+				"cwd": "dev"
+			},
+			"type": "shell",
+			"isBackground": true,
+			"problemMatcher": {
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": {
+						"regexp": "."
+					},
+					"endsPattern": {
+						"regexp": "Attaching to scrutiny-server-1"
+					}
+				},
+				"pattern": {
+					"regexp": "_______________not-matching-anything__________________"
+				}
+			}
+		},
+		{
+			"label": "scrutiny embedded",
+			"command": "bash scripts/launch-tagged-embedded.sh",
+			"options": {
+				"cwd": "dev"
+			},
+			"type": "shell",
+			"isBackground": true,
+			"problemMatcher": {
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": {
+						"regexp": "."
+					},
+					"endsPattern": {
+						"regexp": "Attaching to scrutiny-embedded-1"
+					}
+				},
+				"pattern": {
+					"regexp": "_______________not-matching-anything__________________"
+				}
+			}
+		},
+		{
+			"label": "terminate all",
+			"command": "echo ${input:terminate}",
+			"type": "shell",
+			"options": {
+				"statusbar": {
+					"hide": true
+				}
+			},
+		},
+	],
+	"inputs": [
+		{
+			"id": "terminate",
+			"type": "command",
+			"command": "workbench.action.tasks.terminate",
+			"args": "terminateAll"
+		}
+	]
+}

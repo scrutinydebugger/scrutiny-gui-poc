@@ -1,0 +1,17 @@
+html, body {
+  border: 0px;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  color: #000000;
+  font-family: "Segoe UI", "Helvetica Neue", Arial;
+}
+
+.scrutinyWindowArea {
+  position: absolute;
+    top: 25px;
+    left: 80px;
+    right: 0;
+    bottom: 20px;
+}

@@ -1,44 +1,57 @@
 {
-  "type": "module",
-  "imports": {},
-  "devDependencies": {
-    "@types/jquery": "^3.5.14",
-    "@types/jsdom": "^20.0.1",
-    "@types/mocha": "^10.0.0",
-    "assert": "^2.0.0",
-    "chai": "^4.3.7",
-    "copy-webpack-plugin": "^11.0.0",
-    "eslint": "^8.25.0",
-    "git-revision-webpack-plugin": "^5.0.0",
-    "jquery": "^3.6.1",
-    "jsdom": "^20.0.3",
-    "mocha": "^10.1.0",
-    "prettier": "2.7.1",
-    "source-map-loader": "^4.0.1",
-    "ts-loader": "^9.4.1",
-    "typescript": "^4.8.4",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+  "name": "react-ui",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@blueprintjs/core": "^5.0.0",
+    "@blueprintjs/icons": "^5.0.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.34",
+    "@types/react": "^18.2.8",
+    "@types/react-dom": "^18.2.4",
+    "ajv": "^8.12.0",
+    "debug": "^4.3.4",
+    "i18next": "^22.5.0",
+    "i18next-http-backend": "^2.2.1",
+    "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^18.2.0",
+    "react-i18next": "^12.3.1",
+    "react-mosaic-component": "^6.0.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "lint": "eslint .",
-    "format": "prettier .",
-    "build": "webpack",
-    "dist": "webpack",
-    "dev": "webpack --watch",
-    "test": "webpack --config webpack-test.config.js && mocha dist/js/scrutiny-test.cjs"
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
-  "dependencies": {
-    "assert": "^2.0.0",
-    "glob": "^8.0.3",
-    "mocha-loader": "^5.1.5",
-    "module-alias": "^2.2.2",
-    "source-map-support": "^0.5.21",
-    "webpack-node-externals": "^3.0.0"
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
   },
-  "overrides": {
-    "mocha-loader": {
-      "mocha": "^10.1.0"
-    }
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.8",
+    "@babel/plugin-proposal-private-property-in-object": "7.21.11"
   }
 }

@@ -1,0 +1,19 @@
+{
+    "debug": true,
+    "name": "DockerServer",
+    "api_config": {
+        "client_interface_type": "websocket",
+        "client_interface_config": {
+            "host": "0.0.0.0",
+            "port": 8765
+        }
+    },
+    "device_config": {
+        "response_timeout": 1.0,
+        "link_type": "udp",
+        "link_config": {
+            "host": "embedded",
+            "port": 12345
+        }
+    }
+}

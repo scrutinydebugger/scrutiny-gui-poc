@@ -1,0 +1,29 @@
+volumes:
+  build-data:
+
+services:
+  server:
+    build:
+      context: https://github.com/scrutinydebugger/scrutiny-python.git
+      dockerfile: Dockerfile
+      target: runtime
+    volumes:
+      - './server/config:/app/config'
+      - 'build-data:/build-data'
+      - '/root/.local/share/scrutiny'
+    ports:
+      - '8765:8765'
+    depends_on:
+      - embedded
+    command: "bash scripts/with-venv.sh scrutiny launch-server --config config/udp.json"
+
+  embedded:
+    build:
+      context: https://github.com/scrutinydebugger/scrutiny-embedded.git
+      dockerfile: Dockerfile
+      target: dev-sample
+    volumes:
+      - 'build-data:/build-data'
+    command: "bash -c '[[ -e /build-data/app/build-dev/projects/testapp/testapp_tagged ]] && /build-data/app/build-dev/projects/testapp/testapp_tagged udp-listen 12345 || /app/build-dev/projects/testapp/testapp udp-listen 12345'"
+  
+      

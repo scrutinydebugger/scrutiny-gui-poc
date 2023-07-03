@@ -1,0 +1,39 @@
+.status_bar{
+    border-top: thin solid #999;
+    position: absolute;
+    margin: 0;
+    bottom: 0px;
+    width: 100%;
+    overflow: hidden;
+    padding: 0;
+    background-color: #f3f3f3;
+}
+
+.status_bar_item{
+    display: inline-block;
+    width: auto;
+    margin-top: 0px;
+    margin-right: 10px;
+    margin-left: 10px;
+    padding: 0px;
+    height: 100%;
+   
+}
+
+.status_bar_item img{
+    vertical-align: middle;
+
+}
+
+.status_bar_label{
+    display: inline-block;
+}
+
+.status_bar .vertical_separator{
+    display: inline-block;
+    width: 0px;
+    border-left: thin solid #000;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+}
