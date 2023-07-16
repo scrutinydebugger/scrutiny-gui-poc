@@ -239,39 +239,40 @@ export class Tree<ObjType> {
 
   get_all_paths_recursive(
     path?: string,
-    recursive_list?: string[],
-    array_index?: number
+    work?:{
+      recursive_list: string[],
+      array_index: number
+    }
   ): string[] | null {
     if (typeof path === "undefined") {
       path = "";
     }
 
-    if (typeof recursive_list === "undefined") {
-      recursive_list = new Array(this.count());
+    if (typeof work === "undefined") {
+      work = {
+        recursive_list: new Array(this.count()),
+        array_index: 0
+      }
     }
 
-    if (typeof array_index === "undefined") {
-      array_index = 0;
-    }
 
     let children = this.get_children(path);
 
     let object_names = Object.keys(children.objects);
     for (let i = 0; i < object_names.length; i++) {
-      recursive_list[array_index++] = path + "/" + object_names[i];
+      work.recursive_list[work.array_index++] = path + "/" + object_names[i];
     }
 
     let subtrees = Object.keys(children.subtrees);
     for (let i = 0; i < subtrees.length; i++) {
       this.get_all_paths_recursive(
         path + "/" + subtrees[i],
-        recursive_list,
-        array_index
+        work
       );
     }
 
     if (path === "") {
-      return recursive_list;
+      return work.recursive_list;
     } else {
       return null;
     }
