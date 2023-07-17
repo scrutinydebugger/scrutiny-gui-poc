@@ -27,7 +27,7 @@ export function useScrutinyValue(props: {
     (newValue: number) => {
       if (!entry) throw new Error("cannot set value");
       serverConnection.send_request("write_value", {
-        updates: [{ watchable: entry.server_id, value: newValue }],
+        updates: [{ watchable: entry.server_id, value: newValue, batch_index:0 }],
       });
     },
     [entry, serverConnection]
