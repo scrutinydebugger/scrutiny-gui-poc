@@ -225,7 +225,7 @@ export class ServerConnection {
     this.update_ui_interval = 500;
     this.reconnect_interval = 500;
     this.connect_timeout = 1500;
-    this.get_status_interval = 10000;
+    this.get_status_interval = 2000;
 
     this.logger = getLogger("server-manager");
     this.comm_logger = getLogger("server-comm");
