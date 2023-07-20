@@ -47,6 +47,6 @@ export class EventManagerHandler {
     }
 
     if (eventName in this.events)
-      this.events[eventName].forEach((handle) => handle(getData()));
+      this.events[eventName].forEach((handle) => setTimeout(()=>handle(getData())));
   }
 }

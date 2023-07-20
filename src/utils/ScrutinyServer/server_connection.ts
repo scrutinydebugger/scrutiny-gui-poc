@@ -39,15 +39,18 @@ class LoadWatchableSession {
   /** A map of expected watchable count per type */
   expected_datastore_size: Record<DatastoreEntryType, number | null>;
 
+  /** The conenction session ID of the device when the load session started*/
+  device_session_id_when_started:string;
   /**
    *
    * @param reqid The request ID of the request that initiated the session
    * @param download_type The type of downlaod session (RPV only or Var/Alias)
    */
-  constructor(reqid: number, download_type: WatchableDownloadType) {
+  constructor(reqid: number, download_type: WatchableDownloadType, device_session_id:string) {
     this.reqid = reqid;
     this.download_type = download_type;
     this.canceled = false;
+    this.device_session_id_when_started = device_session_id
 
     this.expected_datastore_size = {} as typeof this.expected_datastore_size;
     for (let i = 0; i < AllDatastoreEntryTypes.length; i++) {
@@ -160,6 +163,8 @@ export class ServerConnection {
   server_status: ServerStatus;
   /** The status of the device communication (Connected/connecting/disconnected) */
   device_status: DeviceStatus;
+  /** Last session ID received by the server. Used to detect a disconnection or reconnection of a device */
+  device_session_id:string|null;
   /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
   loaded_sfd: API.ScrutinyFirmwareDescription | null;
   /** List of information broadcasted by the device upon connection */
@@ -230,6 +235,7 @@ export class ServerConnection {
     this.socket = null;
     this.server_status = ServerStatus.Disconnected;
     this.device_status = DeviceStatus.NA;
+    this.device_session_id = null
     this.loaded_sfd = null;
     this.device_info = null;
 
@@ -337,6 +343,7 @@ export class ServerConnection {
     this.cancel_watchable_download_if_any(WatchableDownloadType.RPV);
     this.server_status = ServerStatus.Disconnected;
     this.device_status = DeviceStatus.NA;
+    this.device_session_id = null
     this.loaded_sfd = null;
     this.device_info = null;
     this.update_ui();
@@ -362,6 +369,11 @@ export class ServerConnection {
     if (download_type == null) {
       throw new Error("Missing download_type");
     }
+
+    if (this.device_session_id === null){
+      throw new Error("Device not connected");
+    }
+
     let download_params: Partial<API.Message.C2S.GetWatchableList> = {
       max_per_response: 1000,
     };
@@ -395,7 +407,12 @@ export class ServerConnection {
         if (reqid == null) {
           return;
         }
-        const new_session = new LoadWatchableSession(reqid, download_type);
+        if (this.device_session_id === null){
+          this.cancel_watchable_download_if_any(download_type);
+          return
+        }
+
+        const new_session = new LoadWatchableSession(reqid, download_type, this.device_session_id);
 
         let expected_size = {} as Record<DatastoreEntryType, number>;
         expected_size[DatastoreEntryType.Var] = data["qty"]["var"];
@@ -614,6 +631,7 @@ export class ServerConnection {
     //this.trigger('scrutiny.server.disconnected')
     this.server_status = ServerStatus.Connected;
     this.device_status = DeviceStatus.NA;
+    this.device_session_id = null;
     this.update_ui();
     this.clear_connect_timeout();
 
@@ -745,7 +763,7 @@ export class ServerConnection {
     try {
       if (this.server_status !== ServerStatus.Connected) {
         download_session.cancel();
-      } else if (this.device_status !== DeviceStatus.Connected) {
+      } else if (this.device_session_id !== download_session.device_session_id_when_started ) {
         download_session.cancel();
       } else {
         if (download_type === WatchableDownloadType.Var_Alias) {
@@ -859,18 +877,20 @@ export class ServerConnection {
 
     try {
       try {
-        const new_device_status = device_status_str_to_enum[data.device_status];
-        if (new_device_status !== this.device_status) {
-          if (new_device_status === DeviceStatus.Connected) {
-            this.trigger("scrutiny.device.connected");
-          } else if (this.device_status === DeviceStatus.Connected) {
+        const new_device_session_id = data.device_session_id;
+        if (new_device_session_id !== this.device_session_id) {
+          if (this.device_session_id !== null){
             this.trigger("scrutiny.device.disconnected");
           }
+          if (new_device_session_id !== null){
+            this.trigger("scrutiny.device.connected");
+          }
         }
-
-        this.device_status = new_device_status;
+        this.device_session_id = new_device_session_id
+        this.device_status = device_status_str_to_enum[data.device_status];
       } catch (e: any) {
         this.device_status = DeviceStatus.NA;
+        this.device_session_id = null
         this.logger.error(
           "[inform_server_status] Received a bad device status"
         );

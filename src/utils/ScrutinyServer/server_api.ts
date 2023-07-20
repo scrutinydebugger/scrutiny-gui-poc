@@ -43,6 +43,7 @@ export namespace Message {
 
         export interface InformServerStatus extends BaseS2CMessage {
             device_status: ServerDeviceStatus
+            device_session_id:string | null
             loaded_sfd: ScrutinyFirmwareDescription | null
             device_comm_link: DeviceCommLink | null
             device_info: DeviceInformation
