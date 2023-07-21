@@ -13,6 +13,7 @@
     "@types/react": "^18.2.8",
     "@types/react-dom": "^18.2.4",
     "ajv": "^8.12.0",
+    "chart.js": "^4.3.0",
     "debug": "^4.3.4",
     "i18next": "^22.5.0",
     "i18next-http-backend": "^2.2.1",
@@ -51,7 +52,7 @@
     ]
   },
   "devDependencies": {
-    "@types/debug": "^4.1.8",
-    "@babel/plugin-proposal-private-property-in-object": "7.21.11"
+    "@babel/plugin-proposal-private-property-in-object": "7.21.11",
+    "@types/debug": "^4.1.8"
   }
 }

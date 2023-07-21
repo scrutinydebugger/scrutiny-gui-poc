@@ -1,0 +1,138 @@
+{
+    "display_name": "Embedded Graph",
+    "config": {
+        "config_name": {
+            "label": "Acquisition Name",
+            "description": "The name given to the acquisition for future reference."
+        },
+        "sampling_rate": {
+            "label": "Sampling Rate",
+            "description": "The sampling frequency of the graph. Availables values depends on the target devices capabilities."
+        },
+        "decimation": {
+            "label": "Decimation",
+            "description": "Decimation reduces the sampling frequency. A decimation of N means that 1 sample every N samples isacquired while all the other are discarded."
+        },
+        "effective_sampling_rate": {
+            "label": "Effective Sampling Rate",
+            "description": "The real sampling rate computed based on the selected sampling rate and decimation."
+        },
+        "probe_location": {
+            "label": "Trigger Position (%)",
+            "description": "When the trigger condition gets fulfilled for the given hold time, a trigger event happens.\nThis parameter control the position of the trigger event in the acquisition window. A value of 0% will put the trigger event on the left of the acquisition. 50% in the middle and 100% at the far right.\nUseful to see before or after an event."
+        },
+        "timeout": {
+            "label": "Acquisition Timeout (s)",
+            "description": "Timeout from the trigger event before the end of the acquisition. A value of 0 means \"no timeout\" and acquisition will finish once the buffer is full"
+        },
+        "xaxis_type": {
+            "label": "X-Axis Type",
+            "description": "Select what the X-Axis is.",
+            "options": {
+                "ideal_time": {
+                    "label": "Ideal time",
+                    "description": "Time deduced from the sampling frequency. Uniform sampling is assumed and uses no space in the datalogging buffer. Not available for variable frequency rates."
+                },
+                "measured_time": {
+                    "label": "Measured Time",
+                    "description": "Time measured by the device. Depending on the device configuration, sampling may or may not be uniform. Requires a 32bits slot in the datalogging buffer."
+                },
+                "signal": {
+                    "label": "Watchable",
+                    "description": "Any watchable object given by the server. Drag & drop any Variable/Alias/RPV from a watch or list widget"
+                }
+            }
+        },
+        "xaxis_signal": {
+            "label": "X-Axis Signal",
+            "description": "The watchable object to use as the X-Axis. Any variable, alias or runtime published value (RPV) can be dropped in this field"
+        },
+        "trigger_type": {
+            "label": "Trigger Condition",
+            "description": "Condition checked for trigger event.",
+            "options": {
+                "true": {
+                    "label": "Always True",
+                    "description": "Does not wait on any condition. Returns a graph as soon as the buffer is full"
+                },
+                "eq": {
+                    "label": "Equal",
+                    "description": {
+                        "html": "x<sub>1</sub>=x<sub>2</sub>"
+                    }
+                },
+                "neq": {
+                    "label": "Not Equal",
+                    "description": {
+                        "html": "x<sub>1</sub>!=x<sub>2</sub>"
+                    }
+                },
+                "gt": {
+                    "label": "Greater Than",
+                    "description": {
+                        "html": "x<sub>1</sub>&gt;x<sub>2</sub>"
+                    }
+                },
+                "get": {
+                    "label": "Greater or Equal Than",
+                    "description": {
+                        "html": "x<sub>1</sub>&gt;=x<sub>2</sub>"
+                    }
+                },
+                "lt": {
+                    "label": "Less Than",
+                    "description": {
+                        "html": "x<sub>1</sub>&lt;x<sub>2</sub>"
+                    }
+                },
+                "let": {
+                    "label": "Less or Equal Than",
+                    "description": {
+                        "html": "x<sub>1</sub>&lt;=x<sub>2</sub>"
+                    }
+                },
+                "cmt": {
+                    "label": "Change More Than",
+                    "description": {
+                        "html": "Check the change between 2 samples of x<sub>1</sub> to be greater than x<sub>2</sub>. The change dx<sub>1</sub> must be in the same direction as the sign of x<sub>2</sub> <br />|dx<sub>1</sub>|&gt;|x<sub>2</sub>| &amp; sign(dx<sub>1</sub>)=sign(x<sub>2</sub>)"
+                    }
+                },
+                "within": {
+                    "label": "Is Within",
+                    "description": {
+                        "html": "When x<sub>1</sub> is close to x<sub>2</sub> with a tolerance of x <sub>3</sub>.<br />(|x1-x2|&lt;|x3|)"
+                    }
+                }
+            }
+        },
+        "operand1": {
+            "label": {
+                "html": "Operand 1 (x<sub>1</sub>)"
+            },
+            "description": {
+                "html": "The operand x<sub>1</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field"
+            }
+        },
+        "operand2": {
+            "label": {
+                "html": "Operand 2 (x<sub>2</sub>)"
+            },
+            "description": {
+                "html": "The operand x<sub>2</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field"
+            }
+        },
+        "operand3": {
+            "label": {
+                "html": "Operand 3 (x<sub>3</sub>)"
+            },
+            "description": {
+                "html": "The operand x<sub>3</sub>. Can be a constant or a watchable. Any variable, alias or runtime published value (RPV) can be dropped in this field"
+            }
+        },
+        "trigger_hold_time": {
+            "label": "Hold Time (ms)",
+            "description": "The amount of time, in milliseconds (fractional value possible), that the trigger condition must be true without interruption before launching the trigger event that will cause the acquisition to finish eventually."
+        },
+        "estimated_duration": "Estimated duration"
+    }
+}

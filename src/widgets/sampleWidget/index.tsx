@@ -78,7 +78,7 @@ function SvgIcon() {
             viewBox="0 0 1422 800"
             id="qqquad"
         >
-            <g shape-rendering="crispEdges" stroke-linejoin="round" fill="hsl(220, 62%, 45%)">
+            <g shapeRendering="crispEdges" strokeLinejoin="round" fill="hsl(220, 62%, 45%)">
                 <polygon points="1422,0 1422,200 1066.5,200"></polygon>
                 <polygon points="1066.5,0 711,200 1066.5,200"></polygon>
                 <polygon points="711,200 1066.5,400 1066.5,200"></polygon>
@@ -102,7 +102,7 @@ function SvgIcon() {
                 <polygon points="1066.5,600 711,800 711,600"></polygon>
                 <polygon points="1066.5,600 1422,600 1422,800"></polygon>
             </g>
-            <g fill="hsl(220, 62%, 45%)" stroke-width="3" stroke="hsl(220, 43%, 13%)"></g>
+            <g fill="hsl(220, 62%, 45%)" strokeWidth="3" stroke="hsl(220, 43%, 13%)"></g>
         </svg>
     )
 }
