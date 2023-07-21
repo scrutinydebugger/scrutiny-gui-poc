@@ -1,19 +1,26 @@
+import { useTranslation } from "react-i18next"
 import { WidgetMeta } from "../types"
+import { BaseWidget, BaseWidgetProps } from "../shared/BaseWidget"
+import * as translations from "./translations"
+import { ToolbarControls } from "./components/ToolbarControls"
+
+// Widget specific import
 import "./styles/varlist.css"
 import "./styles/treetable-theme.css"
-import { defineNewTileManagerRenderer } from "../../utils/TileManager/TileRenderer"
-import * as translations from "./translations"
 import { Varlist } from "./components/Varlist"
 
 export const meta: WidgetMeta = {
-    widget_name: "varlist",
-    icon_path: "assets/img/treelist-96x128.png",
+    name: "varlist",
+    icon: "assets/img/treelist-96x128.png",
     translations,
 }
 
-export const renderer = defineNewTileManagerRenderer(
-    (props) => {
-        return <Varlist {...props}></Varlist>
-    },
-    () => ({})
-)
+export function Widget(props: BaseWidgetProps) {
+    const { tileId, ...rest } = props
+    const { t } = useTranslation(`widget:${meta.name}`)
+    return (
+        <BaseWidget {...rest} title={`${t("display_name")} #${tileId}`} toolbarControls={<ToolbarControls></ToolbarControls>}>
+            <Varlist></Varlist>
+        </BaseWidget>
+    )
+}

@@ -1,18 +1,19 @@
-import { EntryTypeIcon } from "../shared/Icons"
-import { EntryRowIndent } from "../shared/EntryRowIndent"
+import { EntryTypeIcon } from "../../shared/Icons"
+import { EntryRowIndent } from "../../shared/EntryRowIndent"
 
-import { DatastoreEntryType } from "../../utils/ScrutinyServer/datastore"
-import { useNestedState, useNestedStatePath } from "../shared/useNestedState"
+import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
+import { useNestedStatePath } from "../../shared/useNestedState"
 import { Editable } from "./Editable"
-import { WatchEntryType } from "./WatchEntryType"
-import { WatchFolderType } from "./WatchFolderType"
+import { WatchEntryType } from "../types/WatchEntryType"
+import { WatchFolderType } from "../types/WatchFolderType"
 import { ConnectableElement, useDrag, useDrop } from "react-dnd"
-import { useRenderedTileId } from "../../utils/TileManager/useRenderedTileId"
+import { useRenderedTileId } from "../../../utils/TileManager/useRenderedTileId"
 import { useCallback, useEffect } from "react"
 import { Button } from "@blueprintjs/core"
-import { useScrutinyValue } from "../../utils/ScrutinyServer/useScrutinyValue"
-import { onKeyDown } from "./onKeyDown"
-import { useScrutinyDatastoreEntry } from "../../utils/ScrutinyServer/useScrutinyDatastoreEntry"
+import { useScrutinyValue } from "../../../utils/ScrutinyServer/useScrutinyValue"
+import { onKeyDown } from "../hooks/onKeyDown"
+import { useScrutinyDatastoreEntry } from "../../../utils/ScrutinyServer/useScrutinyDatastoreEntry"
+import { useWidgetState } from "../../shared/BaseWidget"
 
 function Value(props: { entry_type: DatastoreEntryType; display_path: string }) {
     const { entry_type, display_path } = props
@@ -50,10 +51,10 @@ export function EntryRow(props: {
         entry_type,
         display_path,
     })
-    const [name, setName, dispatchWidgetState] = useNestedState("widget", "props/name", display_path, {
+    const [name, setName, dispatchWidgetState] = useWidgetState("props/name", display_path, {
         clearOnDefault: true,
     })
-    const [selectedRow, setSelectedRow] = useNestedState<null | string>("widget", "selectedEntry", null, { absolutePath: true })
+    const [selectedRow, setSelectedRow] = useWidgetState<null | string>("selectedEntry", null, { absolutePath: true })
     const tileId = useRenderedTileId()
     const nestedStatePath = useNestedStatePath()
     const myRowPath = nestedStatePath.join("/")
@@ -113,8 +114,8 @@ export function EntryRow(props: {
         },
         [drag, drop]
     )
-    const [isEditingValue, setIsEditingValue] = useNestedState("widget", "props/isEditingValue", false)
-    const [, setIsEditingLabel] = useNestedState("widget", "props/isEditingLabel", false)
+    const [isEditingValue, setIsEditingValue] = useWidgetState("props/isEditingValue", false)
+    const [, setIsEditingLabel] = useWidgetState("props/isEditingLabel", false)
 
     useEffect(() => {
         if (!isSelected) return

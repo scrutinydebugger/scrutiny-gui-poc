@@ -2,7 +2,7 @@ import { EntryTypeIcon } from "../../shared/Icons"
 import { useDrag } from "react-dnd"
 import { EntryRowIndent } from "../../shared/EntryRowIndent"
 import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
-import { WatchEntryType } from "../../watch/WatchEntryType"
+import { WatchEntryType } from "../../watch/types/WatchEntryType"
 import { useRenderedTileId } from "../../../utils/TileManager/useRenderedTileId"
 
 export function EntryRow(props: {

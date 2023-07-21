@@ -1,24 +1,9 @@
-import { BaseWidget, BaseWidgetProps } from "../../shared/BaseWidget"
-import { useTranslation } from "react-i18next"
-import { useNestedState } from "../../shared/useNestedState"
-import { ToolbarControls } from "./ToolbarControls"
 import { UnfilteredRows } from "./UnfilteredRows"
 import { FilteredRows } from "./FilteredRows"
+import { useWidgetState } from "../../shared/BaseWidget"
 
-export function Varlist(props: BaseWidgetProps) {
-    const { tileId, ...rest } = props
-    const { t } = useTranslation("widget:varlist")
-
-    return (
-        <BaseWidget {...rest} title={`${t("display_name")} #${tileId}`} toolbarControls={<ToolbarControls></ToolbarControls>}>
-            <SearchOrList></SearchOrList>
-        </BaseWidget>
-    )
-}
-
-function SearchOrList() {
-    const [search] = useNestedState("widget", "search", "")
-
+export function Varlist() {
+    const [search] = useWidgetState("search", "")
     return (
         <div className="varlist-content">
             <div className="varlist-tree-container">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useScrutinyDatastore } from "../../../utils/ScrutinyServer"
 import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
 import { EntryRow } from "./EntryRow"

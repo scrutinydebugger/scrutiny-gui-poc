@@ -1,17 +1,18 @@
 import { useDrag } from "react-dnd"
 import { RowWithChildren } from "../../shared/RowWithChildren"
-import { useNestedState, NestedStateFolder } from "../../shared/useNestedState"
-import { WatchFolderType } from "../../watch/WatchFolderType"
+import { NestedStateFolder } from "../../shared/useNestedState"
+import { WatchFolderType } from "../../watch/types/WatchFolderType"
 import { useEntryType } from "../useEntryType"
 import { useFolderChildren } from "../useFolderChildren"
 import { displayPathToFolderName } from "../../shared/displayPathToFolderName"
 import { EntryRow } from "./EntryRow"
 import { Datastore, DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
-import { WatchEntryType } from "../../watch/WatchEntryType"
+import { WatchEntryType } from "../../watch/types/WatchEntryType"
 import { useScrutinyDatastore } from "../../../utils/ScrutinyServer"
 import { useRenderedTileId } from "../../../utils/TileManager/useRenderedTileId"
 import { Icon } from "@blueprintjs/core"
 import { useIndent } from "../../shared/Indent"
+import { useWidgetState } from "../../shared/BaseWidget"
 
 function getWatchFolder(
     datastore: Datastore,
@@ -50,7 +51,7 @@ function getWatchFolder(
 export function FolderRow({ displayPath, folderName: overwriteFolderName }: { displayPath: string; folderName?: string }) {
     const folderName = overwriteFolderName ?? displayPathToFolderName(displayPath)
     const namespace = ["files", folderName]
-    const [isOpen, setIsOpen] = useNestedState("widget", [...namespace, "showChildren"], false)
+    const [isOpen, setIsOpen] = useWidgetState([...namespace, "showChildren"], false)
     const entryType = useEntryType()
     const tileId = useRenderedTileId()
 

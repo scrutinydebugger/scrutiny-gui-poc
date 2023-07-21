@@ -1,9 +1,13 @@
-import * as widgets from "./index";
-import { TileTypes, TileTypesProvider } from "../utils/TileManager";
+import widgets from "./index"
+import { TileTypes, TileTypesProvider, defineNewTileManagerRenderer } from "../utils/TileManager"
 
-export const tileTypes: TileTypesProvider = () =>
-  Object.values(widgets).reduce((tileTypes, widget) => {
-    const widgetType = widget.meta.widget_name;
-    tileTypes[widgetType] = widget.renderer;
-    return tileTypes;
-  }, {} as TileTypes);
+const _tileTypes = widgets.reduce((tileTypes, widget) => {
+    const widgetType = widget.meta.name
+    tileTypes[widgetType] = defineNewTileManagerRenderer(
+        (props) => <widget.Widget {...props}></widget.Widget>,
+        () => ({})
+    )
+    return tileTypes
+}, {} as TileTypes)
+
+export const tileTypes: TileTypesProvider = () => _tileTypes

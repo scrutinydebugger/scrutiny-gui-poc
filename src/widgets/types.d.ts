@@ -1,9 +1,11 @@
-import { MosaicPath } from "react-mosaic-component";
+import { MosaicPath } from "react-mosaic-component"
+import { defineNewTileManagerRenderer } from "../utils/TileManager"
+
 export interface WidgetMeta {
-  widget_name: string;
-  icon_path: string;
-  translations: {
-    [key: string]: Record<string, any>;
-    en: Record<string, any>;
-  };
+    name: string
+    icon: string | JSX.Element
+    translations: {
+        [key: string]: Record<string, any>
+        en: Record<string, any>
+    }
 }
