@@ -6,7 +6,11 @@
 //
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
-import { DeviceStatus, ServerStatus } from "../scrutiny/global_definitions";
+import {
+  DeviceStatus,
+  ServerStatus,
+  DataloggerState,
+} from "../scrutiny/global_definitions";
 
 import { Logger } from "./logging";
 import {
@@ -146,7 +150,6 @@ export class ServerConnection {
   /** The amount of time to wait for an answer from the server to a get_status request  before marking the server has disconnected */
   connect_timeout: number;
   /** Interval at which we should request the server for its status (milliseconds) */
-  get_status_interval: number;
 
   /** The main logger object for this module */
   logger: Logger;
@@ -160,12 +163,18 @@ export class ServerConnection {
   server_status: ServerStatus;
   /** The status of the device communication (Connected/connecting/disconnected) */
   device_status: DeviceStatus;
+  /** The state of the datalogger in the device */
+  datalogger_state: DataloggerState;
+  /** Completion ratio of the active acquisition after trigger*/
+  datalogging_completion_ratio: number | null;
+  /** The device datalogging capabilities (buffer size, sampling rates, etc). Null if datalogging is not supported */
+  datalogging_capabilities: API.Datalogging.Capabilities | null;
   /** The actual Scrutiny Firmware Description file loaded by the server. null if none is loaded (no device connected or unknown firmware) */
   loaded_sfd: API.ScrutinyFirmwareDescription | null;
   /** List of information broadcasted by the device upon connection */
   device_info: API.DeviceInformation | null;
   /** Handle to cancel the periodic calls that sends a get_server_status request */
-  get_status_interval_handle: ReturnType<typeof setInterval> | null;
+  get_status_timer_handle: ReturnType<typeof setTimeout> | null;
   /** Allows server periodic reconnect if the server is disconnected. Stays passive otherwise */
   enable_reconnect: boolean;
   /** List of all requests sent for which we are waiting a response. Use to keep track of request chaining */
@@ -220,7 +229,6 @@ export class ServerConnection {
     this.update_ui_interval = 500;
     this.reconnect_interval = 500;
     this.connect_timeout = 1500;
-    this.get_status_interval = 2000;
 
     this.logger = getLogger("server-manager");
     this.comm_logger = getLogger("server-comm");
@@ -230,21 +238,24 @@ export class ServerConnection {
     this.socket = null;
     this.server_status = ServerStatus.Disconnected;
     this.device_status = DeviceStatus.NA;
+    this.datalogger_state = DataloggerState.NA;
+    this.datalogging_completion_ratio = null;
     this.loaded_sfd = null;
     this.device_info = null;
+    this.datalogging_capabilities = null;
 
     this.enable_reconnect = true;
     this.connect_timeout_handle = null;
     this.reconnect_timeout_handle = null;
 
-    this.get_status_interval_handle = null;
+    this.get_status_timer_handle = null;
     this.actual_request_id = 0;
     this.pending_request_queue = {};
     this.active_download_session = {} as typeof this.active_download_session;
     this.active_download_session[WatchableDownloadType.RPV] = null;
     this.active_download_session[WatchableDownloadType.Var_Alias] = null;
 
-    this.set_disconnected();
+    this.set_server_disconnected();
     this.update_ui();
   }
 
@@ -269,6 +280,12 @@ export class ServerConnection {
         this.receive_watchable_update(data);
       }
     );
+    this.register_api_callback(
+      "get_datalogging_capabilities_response",
+      (data: API.Message.S2C.GetDataloggingCapabilitiesResponse) => {
+        this.receive_datalogging_capabilities(data);
+      }
+    );
 
     this.listen("scrutiny.sfd.loaded", (data) => {
       this.reload_datastore_from_server(WatchableDownloadType.Var_Alias);
@@ -279,9 +296,7 @@ export class ServerConnection {
     });
 
     this.listen("scrutiny.device.disconnected", (e) => {
-      this.datastore.clear([DatastoreEntryType.RPV]);
-      this.cancel_watchable_download_if_any(WatchableDownloadType.RPV);
-      this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias);
+      this.set_device_disconnected();
     });
 
     this.listen("scrutiny.sfd.unloaded", () => {
@@ -290,7 +305,7 @@ export class ServerConnection {
     });
 
     this.listen("scrutiny.server.disconnected", () => {
-      this.set_disconnected();
+      this.set_server_disconnected();
       this.datastore.clear();
     });
 
@@ -328,17 +343,33 @@ export class ServerConnection {
       }
     }
   }
+  set_device_disconnected() {
+    this.datastore.clear([DatastoreEntryType.RPV]);
+    this.cancel_watchable_download_if_any(WatchableDownloadType.RPV);
+    this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias);
+
+    this.datalogger_state = DataloggerState.NA;
+    this.datalogging_completion_ratio = null;
+
+    if (this.datalogging_capabilities !== null) {
+      this.datalogging_capabilities = null;
+      this.trigger("scrutiny.datalogging_capabilities_changed");
+    }
+
+    this.device_status = DeviceStatus.NA;
+    this.loaded_sfd = null;
+    this.device_info = null;
+  }
 
   /**
    * Put the connection handler in a disconnected state.
    */
-  set_disconnected(): void {
+  set_server_disconnected(): void {
     this.cancel_watchable_download_if_any(WatchableDownloadType.Var_Alias);
     this.cancel_watchable_download_if_any(WatchableDownloadType.RPV);
+    this.set_device_disconnected();
     this.server_status = ServerStatus.Disconnected;
-    this.device_status = DeviceStatus.NA;
-    this.loaded_sfd = null;
-    this.device_info = null;
+
     this.update_ui();
   }
 
@@ -475,7 +506,7 @@ export class ServerConnection {
    * @param params Data to attach with the request
    * @returns A Promise that will be resolved when the request completes.
    */
-  chain_request(cmd: string, params: any = {}): Promise<any> {
+  chain_request(cmd: string, params: any = {}, timeout = 2000): Promise<any> {
     const reqid = this.send_request(cmd, params);
 
     return new Promise((resolve, reject) => {
@@ -487,13 +518,13 @@ export class ServerConnection {
 
         setTimeout(() => {
           // Reject the Promise and delete it
-          reject();
+          reject(new Error("Request timed out"));
           if (this.pending_request_queue.hasOwnProperty(reqid)) {
             delete this.pending_request_queue[reqid];
           }
-        }, 2000);
+        }, timeout);
       } else {
-        reject(); // Could not send the request
+        reject(new Error("Could not send the request")); // Could not send the request
       }
     });
   }
@@ -521,7 +552,7 @@ export class ServerConnection {
 
     this.connect_timeout_handle = setTimeout(() => {
       if (this.socket !== null) {
-        if (this.socket.readyState !== this.socket.OPEN) {
+        if (this.socket.readyState != this.socket.OPEN) {
           this.close_socket();
         }
       }
@@ -539,21 +570,36 @@ export class ServerConnection {
   /**
    * Starts a timer that will poll the server for its status
    */
-  start_get_status_periodic_call(): void {
+  request_server_status_and_keep_going(): void {
     this.stop_get_status_periodic_call();
-    this.send_request("get_server_status");
-    this.get_status_interval_handle = setInterval(() => {
-      this.send_request("get_server_status");
-    }, this.get_status_interval);
+    this.chain_request("get_server_status")
+      .finally(() => {
+        this.get_status_timer_handle = setTimeout(() => {
+          this.request_server_status_and_keep_going();
+        }, this.get_status_interval_ms());
+      })
+      .catch((e) => {
+        this.logger.error("Failed to get the server status. " + e.message);
+      });
+  }
+
+  get_status_interval_ms(): number {
+    if (this.datalogger_state !== null) {
+      if (this.datalogger_state == DataloggerState.Acquiring) {
+        return 500;
+      }
+    }
+
+    return 1500;
   }
 
   /**
    * Stops the server polling
    */
   stop_get_status_periodic_call(): void {
-    if (this.get_status_interval_handle !== null) {
-      clearInterval(this.get_status_interval_handle);
-      this.get_status_interval_handle = null;
+    if (this.get_status_timer_handle !== null) {
+      clearTimeout(this.get_status_timer_handle);
+      this.get_status_timer_handle = null;
     }
   }
 
@@ -564,7 +610,15 @@ export class ServerConnection {
   update_ui(): void {
     const status = {
       server: { status: this.server_status },
-      device: { status: this.device_status, info: this.device_info },
+      device: {
+        status: this.device_status,
+        info: this.device_info,
+        datalogging_capabilities: this.datalogging_capabilities,
+      },
+      dataloging: {
+        state: this.datalogger_state,
+        completion_ratio: this.datalogging_completion_ratio,
+      },
       loaded_sfd: this.loaded_sfd,
     };
     const newStatus = JSON.stringify(status);
@@ -589,13 +643,16 @@ export class ServerConnection {
    * @param e Close event
    */
   on_socket_close_callback(e: CloseEvent): void {
-    if (this.server_status === ServerStatus.Connected) {
-      this.trigger("scrutiny.server.disconnected");
-    }
+    const must_trigger_disconnected_event =
+      this.server_status === ServerStatus.Connected;
 
-    this.set_disconnected();
+    this.set_server_disconnected();
     this.clear_connect_timeout();
     this.stop_get_status_periodic_call();
+
+    if (must_trigger_disconnected_event) {
+      this.trigger("scrutiny.server.disconnected");
+    }
 
     if (this.socket !== null) {
       this.socket = null;
@@ -611,13 +668,12 @@ export class ServerConnection {
    * @param e Javascript event
    */
   on_socket_open_callback(e: Event): void {
-    //this.trigger('scrutiny.server.disconnected')
     this.server_status = ServerStatus.Connected;
     this.device_status = DeviceStatus.NA;
     this.update_ui();
     this.clear_connect_timeout();
 
-    this.start_get_status_periodic_call();
+    this.request_server_status_and_keep_going();
 
     this.trigger("scrutiny.server.connected");
   }
@@ -627,13 +683,16 @@ export class ServerConnection {
    * @param e Javascript event
    */
   on_socket_error_callback(e: Event): void {
-    if (this.server_status === ServerStatus.Connected) {
-      this.trigger("scrutiny.server.disconnected");
-    }
+    const must_trigger_disconnected_event =
+      this.server_status === ServerStatus.Connected;
 
-    this.set_disconnected();
+    this.set_server_disconnected();
     this.clear_connect_timeout();
     this.stop_get_status_periodic_call();
+
+    if (must_trigger_disconnected_event) {
+      this.trigger("scrutiny.server.disconnected");
+    }
 
     this.close_socket();
 
@@ -857,6 +916,18 @@ export class ServerConnection {
       connected_ready: DeviceStatus.Connected,
     };
 
+    const datalogging_state_str_to_enum: Record<
+      API.Datalogging.DataloggerState,
+      DataloggerState
+    > = {
+      unavailable: DataloggerState.NA,
+      standby: DataloggerState.Standby,
+      acquiring: DataloggerState.Acquiring,
+      data_ready: DataloggerState.DataReady,
+      waiting_for_trigger: DataloggerState.WaitForTrigger,
+      error: DataloggerState.Error,
+    };
+
     try {
       try {
         const new_device_status = device_status_str_to_enum[data.device_status];
@@ -911,7 +982,45 @@ export class ServerConnection {
       }
 
       try {
+        const new_datalogger_state =
+          datalogging_state_str_to_enum[
+            data.device_datalogging_status.datalogger_state
+          ];
+        if (new_datalogger_state !== this.datalogger_state) {
+          this.trigger(
+            "scrutiny.datalogging.status_changed",
+            new_datalogger_state
+          );
+
+          if (new_datalogger_state === DataloggerState.DataReady) {
+            this.trigger("scrutiny.datalogging.data_ready");
+          } else if (this.datalogger_state === DataloggerState.Acquiring) {
+            this.trigger("scrutiny.datalogging.acquisition_started");
+          } else if (this.datalogger_state === DataloggerState.Error) {
+            this.trigger("scrutiny.datalogging.error");
+          }
+        }
+
+        this.datalogger_state = new_datalogger_state;
+        this.datalogging_completion_ratio =
+          data.device_datalogging_status.completion_ratio;
+      } catch (e) {
+        this.datalogger_state = DataloggerState.NA;
+        this.logger.error(
+          "[inform_server_status] Received a bad datalogging status",
+          e
+        );
+      }
+
+      try {
         this.device_info = data["device_info"];
+        if (this.device_info !== null) {
+          if (this.device_info.supported_feature_map.datalogging) {
+            if (this.datalogging_capabilities == null) {
+              this.send_request("get_datalogging_capabilities");
+            }
+          }
+        }
       } catch (e) {
         this.device_info = null;
         this.logger.error(
@@ -941,15 +1050,37 @@ export class ServerConnection {
         try {
           this.datastore.set_value_from_server_id(server_id, value);
         } catch (e) {
-          this.logger.error(
-            `Cannot update value of entry with server ID ${server_id}. `,
-            e
+          this.logger.log(
+            `Cannot update value of entry with server ID ${server_id}. ` + e
           );
         }
       }
     } catch (e) {
       this.logger.error(
         "[receive_watchable_update] Received a bad update list.",
+        e
+      );
+    }
+  }
+
+  receive_datalogging_capabilities(
+    data: API.Message.S2C.GetDataloggingCapabilitiesResponse
+  ) {
+    try {
+      this.datalogging_capabilities = null;
+      if (data["available"]) {
+        if (data["capabilities"] !== null) {
+          this.datalogging_capabilities = data["capabilities"];
+        }
+      }
+
+      this.trigger(
+        "scrutiny.datalogging_capabilities_changed",
+        this.datalogging_capabilities
+      );
+    } catch (e) {
+      this.logger.error(
+        "[get_datalogging_capabilities_response] Received a bad datalogging capabilities.",
         e
       );
     }

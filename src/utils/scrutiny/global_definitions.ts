@@ -7,14 +7,23 @@
 //   Copyright (c) 2021-2022 Scrutiny Debugger
 
 export enum ServerStatus {
-    Disconnected = "disconnected",
-    Connecting = "connecting",
-    Connected = "connected",
+  Disconnected = "disconnected",
+  Connecting = "connecting",
+  Connected = "connected",
 }
 
 export enum DeviceStatus {
-    NA = "unknown",
-    Disconnected = "disconnected",
-    Connecting = "connecting",
-    Connected = "connected",
+  NA = "unknown",
+  Disconnected = "disconnected",
+  Connecting = "connecting",
+  Connected = "connected",
+}
+
+export enum DataloggerState {
+  NA = "unknown",
+  Standby = "standby",
+  WaitForTrigger = "waiting_for_trigger",
+  Acquiring = "acquiring",
+  DataReady = "data_ready",
+  Error = "error",
 }
