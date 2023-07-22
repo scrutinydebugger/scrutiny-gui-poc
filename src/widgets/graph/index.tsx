@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next"
 import { WidgetMeta } from "../types"
-import { BaseWidget, BaseWidgetProps } from "../shared/BaseWidget"
+import { BaseWidget, BaseWidgetProps, useWidgetState } from "../shared/BaseWidget"
 import * as translations from "./translations"
 import { ToolbarControls } from "./components/ToolbarControls"
-import { Graph } from "./components/Graph"
 import { Config } from "./components/Config"
+import { GraphConfig } from "./types/GraphConfig"
 
 export const meta: WidgetMeta = {
     name: "graph",
@@ -24,9 +24,24 @@ export function Widget(props: BaseWidgetProps) {
 }
 
 function WidgetContent() {
+    const [config, setConfig] = useWidgetState("config", {
+        config_name: "Graph",
+        sampling_rate: "",
+        decimation: 1,
+        effective_sampling_rate: "",
+        probe_location: 50,
+        timeout: "",
+        xaxis_type: "",
+        xaxis_signal: "",
+        trigger_type: "true",
+        operand1: "",
+        operand2: "",
+        operand3: "",
+        trigger_hold_time: 0,
+    } as GraphConfig)
     return (
         <>
-            <Config></Config>
+            <Config value={config} onChange={setConfig}></Config>
         </>
     )
 }
