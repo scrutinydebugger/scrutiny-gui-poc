@@ -43,7 +43,6 @@ export function Watchable(props: {
                 type="text"
                 value={typeof value === "string" ? value : ""}
                 onChange={(ev) => onChange(ev.target.value)}
-                readOnly={props.allowConstant !== true}
                 style={isOver ? { backgroundColor: "gainsboro" } : {}}
             ></InputGroup>
             {typeof value === "object" && value && "entry_type" in value && (

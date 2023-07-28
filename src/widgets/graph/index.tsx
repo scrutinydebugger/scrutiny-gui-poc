@@ -26,18 +26,19 @@ export function Widget(props: BaseWidgetProps) {
 function WidgetContent() {
     const [config, setConfig] = useWidgetState("config", {
         config_name: "Graph",
-        sampling_rate: "",
+        sampling_rate: null,
         decimation: 1,
         effective_sampling_rate: "",
         probe_location: 50,
         timeout: "",
-        xaxis_type: "",
-        xaxis_signal: "",
+        xaxis_type: "measured_time",
+        xaxis_signal: null,
         trigger_type: "true",
         operand1: "",
         operand2: "",
         operand3: "",
         trigger_hold_time: 0,
+        yaxis: [],
     } as GraphConfig)
     return (
         <>

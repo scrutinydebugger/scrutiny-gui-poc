@@ -572,7 +572,7 @@ export class ServerConnection {
                 info: this.device_info,
                 datalogging_capabilities: this.datalogging_capabilities,
             },
-            dataloging: {
+            datalogging: {
                 state: this.datalogger_state,
                 completion_ratio: this.datalogging_completion_ratio,
             },

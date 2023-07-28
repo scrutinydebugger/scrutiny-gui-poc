@@ -1,26 +1,24 @@
 import { HTMLSelect, Icon, InputGroup, Tooltip } from "@blueprintjs/core"
-import { PropsWithChildren, useReducer } from "react"
+import { PropsWithChildren, useEffect, useReducer, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Datalogging } from "../../../utils/ScrutinyServer/server_api"
+import { ValueDataType } from "../../../utils/ScrutinyServer/server_api"
 import { Indent, useIndent } from "../../shared/Indent"
 import { GraphConfig } from "../types/GraphConfig"
 import { Watchable, WatchableType } from "./Watchable"
+import { useScrutinyStatus } from "../../../utils/ScrutinyServer/useScrutinyStatus"
 
-const NB_OPERANDS_MAP: Record<Datalogging.TriggerType, number> = {
-    true: 0,
-    eq: 2,
-    neq: 2,
-    gt: 2,
-    get: 2,
-    lt: 2,
-    let: 2,
-    cmt: 2,
-    within: 3,
-}
+import { NB_OPERANDS_MAP, TYPEMAP } from "../constants"
+import { useScrutinyDatastore } from "../../../utils/ScrutinyServer"
+import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
+import { useEventManager } from "../../../utils/EventManager"
 
 export function Config({ value, onChange }: { value: GraphConfig; onChange: { (config: GraphConfig): void } }) {
     const { t } = useTranslation("widget:graph")
-    const [{ config: state }, dispatch] = useReducer(graphConfigReducer, { config: value, onChange })
+    const [{ config: state }, dispatch] = useReducer(graphConfigReducer, { config: value, onChange } as GraphConfigState)
+    const estimatedDuration = useEstimatedDuration(state)
+    const { deviceDataloggingCapabilities } = useScrutinyStatus()
+
+    // if deviceDataloggingCapabilities === null, disable "Acquire"
     return (
         <table>
             <tbody>
@@ -42,17 +40,28 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
                 <ConfigInput name="sampling_rate">
                     <HTMLSelect
                         name="sampling_rate"
-                        value={state.sampling_rate}
+                        value={state.sampling_rate?.identifier ?? 0}
                         fill={true}
-                        onChange={(ev) =>
+                        onChange={(ev) => {
+                            const identifier = parseInt(ev.target.value)
                             dispatch({
                                 action: "set",
                                 field: "sampling_rate",
-                                value: ev.target.value,
+                                value: deviceDataloggingCapabilities?.sampling_rates.find((rate) => rate.identifier === identifier) ?? null,
                             })
-                        }
+                        }}
                     >
-                        <option>Todo</option>
+                        {deviceDataloggingCapabilities ? (
+                            deviceDataloggingCapabilities.sampling_rates.map((sampling_rate) => (
+                                <option value={sampling_rate.identifier} key={sampling_rate.identifier}>
+                                    {sampling_rate.type === "fixed_freq"
+                                        ? number2str(sampling_rate.frequency as number, 3) + " Hz"
+                                        : `VF[${sampling_rate.identifier}] : ${sampling_rate.name ? sampling_rate.name : "<No name>"}`}
+                                </option>
+                            ))
+                        ) : (
+                            <option>N/A</option>
+                        )}
                     </HTMLSelect>
                 </ConfigInput>
 
@@ -65,7 +74,7 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
                             dispatch({
                                 action: "set",
                                 field: "decimation",
-                                value: ev.target.value,
+                                value: parseInt(ev.target.value),
                             })
                         }
                         min={1}
@@ -129,15 +138,19 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
                             })
                         }
                     >
-                        <option value="ideal_time">{t("config.xaxis_type.options.ideal_time.label")}</option>
-                        <option value="measured_time">{t("config.xaxis_type.options.measured_time.label")}</option>
+                        <option disabled={deviceDataloggingCapabilities === null} value="ideal_time">
+                            {t("config.xaxis_type.options.ideal_time.label")}
+                        </option>
+                        <option disabled={state.sampling_rate?.type == "variable_freq"} value="measured_time">
+                            {t("config.xaxis_type.options.measured_time.label")}
+                        </option>
                         <option value="signal">{t("config.xaxis_type.options.signal.label")}</option>
                     </HTMLSelect>
                 </ConfigInput>
 
                 <ConfigInput name="xaxis_signal">
                     <Watchable
-                        value={state.xaxis_signal}
+                        value={state.xaxis_signal ?? ""}
                         onChange={(value: string | WatchableType) => dispatch({ action: "set", field: "xaxis_signal", value })}
                     ></Watchable>
                 </ConfigInput>
@@ -227,9 +240,9 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
                 </ConfigInput>
 
                 <tr className="line-estimated-duration">
-                    <td className="text-label">Estimated duration</td>
+                    <td className="text-label">{t("config.estimated_duration")}</td>
                     <td></td>
-                    <td className="label-estimated-duration text-label">N/A</td>
+                    <td className="label-estimated-duration text-label">{estimatedDuration}</td>
                 </tr>
             </tbody>
         </table>
@@ -271,7 +284,6 @@ function ConfigDescription({ name }: { name: string }) {
         ></MaybeHtmlTranslation>
     )
 }
-
 function ConfigOptions({ name }: { name: string }) {
     const { t } = useTranslation("widget:graph")
 
@@ -293,7 +305,6 @@ function ConfigOptions({ name }: { name: string }) {
         </ul>
     )
 }
-
 function ConfigInput({ name, children }: { name: string } & PropsWithChildren) {
     const indent = useIndent()
     return (
@@ -339,9 +350,131 @@ function graphConfigReducer<K extends keyof GraphConfig>(prevState: GraphConfigS
                     [action.field]: action.value,
                 },
             }
+            if (newState.config.sampling_rate !== null) {
+                if (typeof newState.config.decimation === "string")
+                    newState.config.decimation = parseInt(newState.config.decimation as string)
+                if (isNaN(newState.config.decimation)) {
+                    newState.config.decimation = 0
+                }
+
+                if (
+                    newState.config.decimation > 0 &&
+                    newState.config.sampling_rate.type == "fixed_freq" &&
+                    newState.config.sampling_rate.frequency
+                ) {
+                    newState.config.effective_sampling_rate = newState.config.sampling_rate.frequency / newState.config.decimation + ""
+                } else {
+                    newState.config.effective_sampling_rate = "N/A"
+                }
+            }
+
             prevState.onChange(newState.config)
             return newState
         default:
             throw new Error("invalid action")
     }
+}
+
+function useEstimatedDuration({ sampling_rate, decimation, xaxis_type, xaxis_signal, yaxis }: GraphConfig): string {
+    const { deviceDataloggingCapabilities } = useScrutinyStatus()
+    const datastore = useScrutinyDatastore()
+    let new_duration_label = "N/A"
+
+    // ensure this is refreshed if the datastore wasn't ready and then becomes ready
+    const [entryTypeCacheBusting, setEntryTypeCacheBusting] = useState(0)
+    const { listen } = useEventManager()
+
+    // this will force a re-render if some entry types were not ready on the original render, but becomes ready later
+    useEffect(() => {
+        const requiredEntryTypes = [] as DatastoreEntryType[]
+        if (xaxis_signal) requiredEntryTypes.push(xaxis_signal.entry_type)
+        for (const axis of yaxis) {
+            for (const signal of axis.signals) {
+                if (!requiredEntryTypes.includes(signal.entry_type)) {
+                    requiredEntryTypes.push(signal.entry_type)
+                }
+            }
+        }
+        const unregisterCallbacks = [] as Array<{ (): void }>
+        for (const requiredEntryType of requiredEntryTypes) {
+            if (!datastore.is_ready(requiredEntryType)) {
+                unregisterCallbacks.push(
+                    listen("scrutiny.datastore.ready", (data: { entry_type: DatastoreEntryType }) => {
+                        if (data.entry_type === requiredEntryType) setEntryTypeCacheBusting(entryTypeCacheBusting + 1)
+                    })
+                )
+            }
+        }
+        return () => unregisterCallbacks.forEach((cb) => cb())
+    }, [entryTypeCacheBusting, setEntryTypeCacheBusting, listen, datastore, xaxis_signal, yaxis])
+
+    // Can't compute anything if we don't know what we can do.
+    if (deviceDataloggingCapabilities !== null) {
+        const entry_id_set = new Set()
+        if (deviceDataloggingCapabilities.encoding == "raw") {
+            let size_per_sample = 0
+            if (xaxis_type == "measured_time") {
+                size_per_sample += 4
+            } else if (xaxis_type == "signal" && xaxis_signal) {
+                const xaxisSignalEntry = datastore.get_entry(xaxis_signal.entry_type, xaxis_signal.display_path)
+                if (xaxisSignalEntry) {
+                    size_per_sample += get_typesize_bytes(xaxisSignalEntry.datatype)
+                }
+            }
+            // sampling rate and decimation will be null if invalid. frequency null if variable frequency rate
+            if (sampling_rate != null && decimation != null && sampling_rate.frequency !== null) {
+                // TODO
+                let bad_entry = false
+                for (const axis of yaxis) {
+                    for (const signal of axis.signals) {
+                        const entry = datastore.get_entry(signal.entry_type, signal.display_path)
+                        if (entry == null) {
+                            bad_entry = true
+                            break
+                        }
+                        // Do not count duplicates
+                        if (!entry_id_set.has(entry.server_id)) {
+                            entry_id_set.add(entry.server_id)
+                            size_per_sample += get_typesize_bytes(entry.datatype)
+                        }
+                    }
+                    if (bad_entry) {
+                        break
+                    }
+                }
+                if (!bad_entry && size_per_sample > 0) {
+                    const nb_samples = Math.floor(deviceDataloggingCapabilities.buffer_size / size_per_sample - 1)
+                    if (nb_samples > 0) {
+                        let duration = (nb_samples / sampling_rate.frequency) * decimation
+                        let units = "seconds"
+
+                        if (duration < 1) {
+                            duration *= 1000
+                            units = "milliseconds"
+                        }
+
+                        if (duration < 1) {
+                            duration *= 1000
+                            units = "microseconds"
+                        }
+
+                        new_duration_label = `${duration.toFixed(1)} ${units} (${nb_samples} samples)`
+                    }
+                }
+            }
+        }
+    }
+
+    return new_duration_label
+}
+
+function get_typesize_bytes(dtype: ValueDataType): number {
+    if (!(dtype in TYPEMAP)) {
+        throw "Cannot determine data type size from type " + dtype
+    }
+    return TYPEMAP[dtype]
+}
+
+function number2str(x: number, max_digits: number = 13): string {
+    return x.toFixed(max_digits).replace(/\.?0*$/, "")
 }

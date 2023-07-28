@@ -1,0 +1,41 @@
+import { Datalogging } from "../../utils/ScrutinyServer/server_api"
+
+export const NB_OPERANDS_MAP: Record<Datalogging.TriggerType, number> = {
+    true: 0,
+    eq: 2,
+    neq: 2,
+    gt: 2,
+    get: 2,
+    lt: 2,
+    let: 2,
+    cmt: 2,
+    within: 3,
+}
+
+export const TYPEMAP = {
+    sint8: 1,
+    sint16: 2,
+    sint32: 4,
+    sint64: 8,
+    sint128: 16,
+    sint256: 32,
+    uint8: 1,
+    uint16: 2,
+    uint32: 4,
+    uint64: 8,
+    uint128: 16,
+    uint256: 32,
+    float8: 1,
+    float16: 2,
+    float32: 4,
+    float64: 8,
+    float128: 16,
+    float256: 32,
+    cfloat8: 1,
+    cfloat16: 2,
+    cfloat32: 4,
+    cfloat64: 8,
+    cfloat128: 16,
+    cfloat256: 32,
+    boolean: 1,
+}
