@@ -8,7 +8,6 @@
 .varlist-table td,
 .varlist-table th{
     border-left: 1px solid #ddd;
-    
     padding:1px 10px 1px 5px;
 }
 
@@ -17,6 +16,10 @@
     text-align: left;
     background-color: #f0f0f0;
     font-weight: bold;
+}
+.bp5-dark .varlist-table th {
+    border-color: #222;
+    background-color: #0f0f0f;
 }
 
 .varlist-table img.treeicon{

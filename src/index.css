@@ -11,3 +11,11 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* .bp5-dark div {background-color: #293742;} */
+.bp5-dark .mosaic.mosaic-blueprint-theme .mosaic-window div.mosaic-window-body {background-color: #2f343c;}
+.bp5-dark .mosaic.mosaic-blueprint-theme .mosaic-window .mosaic-window-toolbar,
+.bp5-dark div.side_menu,
+.bp5-dark div.status_bar,
+.bp5-dark div.menu_bar
+{background-color: #2f343c;}
