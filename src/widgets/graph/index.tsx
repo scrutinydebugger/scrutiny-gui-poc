@@ -4,7 +4,12 @@ import { BaseWidget, BaseWidgetProps, useWidgetState } from "../shared/BaseWidge
 import * as translations from "./translations"
 import { ToolbarControls } from "./components/ToolbarControls"
 import { Config } from "./components/Config"
-import { GraphConfig } from "./types/GraphConfig"
+import { GraphConfig, YAxis } from "./types/GraphConfig"
+import { YAxesComponent } from "./components/YAxesComponent"
+import { Button } from "@blueprintjs/core"
+import { useState } from "react"
+import { configToRequest } from "./utils/configToRequest"
+import { useScrutinyDatastore } from "../../utils/ScrutinyServer"
 
 export const meta: WidgetMeta = {
     name: "graph",
@@ -24,7 +29,8 @@ export function Widget(props: BaseWidgetProps) {
 }
 
 function WidgetContent() {
-    const [config, setConfig] = useWidgetState("config", {
+    const { t } = useTranslation(`widget:${meta.name}`)
+    const [config, setConfig] = useWidgetState("config/graph", {
         config_name: "Graph",
         sampling_rate: null,
         decimation: 1,
@@ -38,11 +44,25 @@ function WidgetContent() {
         operand2: "",
         operand3: "",
         trigger_hold_time: 0,
-        yaxis: [],
     } as GraphConfig)
+
+    const datastore = useScrutinyDatastore()
+    const [yaxis] = useWidgetState("config/yaxis", [] as YAxis[])
+    const [request, setRequest] = useState("")
     return (
         <>
+            <Button>{t("configure")}</Button>
+            <Button
+                onClick={() => {
+                    setRequest(JSON.stringify(configToRequest(config, yaxis, datastore), null, 4))
+                }}
+            >
+                {t("acquire")}
+            </Button>
+            <hr />
             <Config value={config} onChange={setConfig}></Config>
+            <YAxesComponent></YAxesComponent>
+            <pre>{request}</pre>
         </>
     )
 }

@@ -1,5 +1,8 @@
 {
     "display_name": "Embedded Graph",
+    "add_axis": "Add Axis",
+    "acquire": "Acquire",
+    "configure": "Configure",
     "config": {
         "config_name": {
             "label": "Acquisition Name",

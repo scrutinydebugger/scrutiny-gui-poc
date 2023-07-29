@@ -1,26 +1,34 @@
-import { HTMLSelect, Icon, InputGroup, Tooltip } from "@blueprintjs/core"
-import { PropsWithChildren, useEffect, useReducer, useState } from "react"
+import { HTMLSelect, InputGroup } from "@blueprintjs/core"
+import { useReducer } from "react"
 import { useTranslation } from "react-i18next"
-import { ValueDataType } from "../../../utils/ScrutinyServer/server_api"
-import { Indent, useIndent } from "../../shared/Indent"
-import { GraphConfig } from "../types/GraphConfig"
+import { Indent } from "../../shared/Indent"
+import { GraphConfig, YAxis } from "../types/GraphConfig"
 import { Watchable, WatchableType } from "./Watchable"
 import { useScrutinyStatus } from "../../../utils/ScrutinyServer/useScrutinyStatus"
 
-import { NB_OPERANDS_MAP, TYPEMAP } from "../constants"
-import { useScrutinyDatastore } from "../../../utils/ScrutinyServer"
-import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
-import { useEventManager } from "../../../utils/EventManager"
+import { NB_OPERANDS_MAP } from "../constants"
+import { useWidgetState } from "../../shared/BaseWidget"
+import { useEstimatedDuration } from "./useEstimatedDuration"
+import { ConfigInput } from "./ConfigInput"
 
 export function Config({ value, onChange }: { value: GraphConfig; onChange: { (config: GraphConfig): void } }) {
     const { t } = useTranslation("widget:graph")
     const [{ config: state }, dispatch] = useReducer(graphConfigReducer, { config: value, onChange } as GraphConfigState)
-    const estimatedDuration = useEstimatedDuration(state)
+    const [yaxis] = useWidgetState("config/yaxis", [] as YAxis[])
+    const estimatedDuration = useEstimatedDuration(state, yaxis)
     const { deviceDataloggingCapabilities } = useScrutinyStatus()
+
+    if (deviceDataloggingCapabilities && state.sampling_rate === null) {
+        dispatch({
+            action: "set",
+            field: "sampling_rate",
+            value: deviceDataloggingCapabilities?.sampling_rates[0] ?? null,
+        })
+    }
 
     // if deviceDataloggingCapabilities === null, disable "Acquire"
     return (
-        <table>
+        <table style={{ display: "inline-block" }}>
             <tbody>
                 <ConfigInput name="config_name">
                     <InputGroup
@@ -249,101 +257,23 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
     )
 }
 
-function MaybeHtmlTranslation({
-    name,
-    render,
-}: {
-    name: string
-    render: {
-        (content: JSX.Element | null, props: { dangerouslySetInnerHTML?: { __html: string } }): JSX.Element
-    }
-}) {
-    const { t } = useTranslation("widget:graph")
-    const value = t(name, { returnObjects: true }) as string | { html?: string }
-    if (typeof value === "object" && typeof value?.html === "string")
-        return render(null, {
-            dangerouslySetInnerHTML: { __html: value.html as string },
-        })
-
-    return render(<>{value}</>, {})
-}
-
-function ConfigLabel({ name }: { name: string }) {
-    return (
-        <MaybeHtmlTranslation
-            name={`config.${name}.label`}
-            render={(content, props) => <span {...props}>{content}</span>}
-        ></MaybeHtmlTranslation>
-    )
-}
-function ConfigDescription({ name }: { name: string }) {
-    return (
-        <MaybeHtmlTranslation
-            name={`config.${name}.description`}
-            render={(content, props) => <div {...props}>{content}</div>}
-        ></MaybeHtmlTranslation>
-    )
-}
-function ConfigOptions({ name }: { name: string }) {
-    const { t } = useTranslation("widget:graph")
-
-    const options = t(`config.${name}.options`, { returnObjects: true })
-    if (typeof options === "string") return <></>
-    const keys = Object.keys(options)
-    return (
-        <ul>
-            {Object.values(options).map(({ label, description }, idx) => (
-                <li key={keys[idx]}>
-                    <b>{label}:</b>{" "}
-                    {typeof description === "object" && typeof description?.html === "string" ? (
-                        <span dangerouslySetInnerHTML={{ __html: description.html }}></span>
-                    ) : (
-                        description
-                    )}
-                </li>
-            ))}
-        </ul>
-    )
-}
-function ConfigInput({ name, children }: { name: string } & PropsWithChildren) {
-    const indent = useIndent()
-    return (
-        <tr>
-            <td style={{ paddingLeft: indent + "px" }}>
-                <ConfigLabel name={name}></ConfigLabel>
-            </td>
-
-            <Tooltip
-                content={
-                    <>
-                        <ConfigDescription name={name}></ConfigDescription>
-                        <ConfigOptions name={name}></ConfigOptions>
-                    </>
-                }
-                targetTagName="td"
-            >
-                <Icon icon="help"></Icon>
-            </Tooltip>
-            <td>{children}</td>
-        </tr>
-    )
-}
-
 interface GraphConfigDispatchActionSetValue<K extends keyof GraphConfig> {
     action: "set"
     field: K
     value: GraphConfig[K]
 }
 
+type GraphConfigDispatchAction<K extends keyof GraphConfig> = GraphConfigDispatchActionSetValue<K>
+
 interface GraphConfigState {
     config: GraphConfig
     onChange: { (config: GraphConfig): void }
 }
 
-function graphConfigReducer<K extends keyof GraphConfig>(prevState: GraphConfigState, action: GraphConfigDispatchActionSetValue<K>) {
+function graphConfigReducer<K extends keyof GraphConfig>(prevState: GraphConfigState, action: GraphConfigDispatchAction<K>) {
     switch (action.action) {
-        case "set":
-            const newState = {
+        case "set": {
+            const newState: GraphConfigState = {
                 ...prevState,
                 config: {
                     ...prevState.config,
@@ -370,109 +300,10 @@ function graphConfigReducer<K extends keyof GraphConfig>(prevState: GraphConfigS
 
             prevState.onChange(newState.config)
             return newState
+        }
         default:
             throw new Error("invalid action")
     }
-}
-
-function useEstimatedDuration({ sampling_rate, decimation, xaxis_type, xaxis_signal, yaxis }: GraphConfig): string {
-    const { deviceDataloggingCapabilities } = useScrutinyStatus()
-    const datastore = useScrutinyDatastore()
-    let new_duration_label = "N/A"
-
-    // ensure this is refreshed if the datastore wasn't ready and then becomes ready
-    const [entryTypeCacheBusting, setEntryTypeCacheBusting] = useState(0)
-    const { listen } = useEventManager()
-
-    // this will force a re-render if some entry types were not ready on the original render, but becomes ready later
-    useEffect(() => {
-        const requiredEntryTypes = [] as DatastoreEntryType[]
-        if (xaxis_signal) requiredEntryTypes.push(xaxis_signal.entry_type)
-        for (const axis of yaxis) {
-            for (const signal of axis.signals) {
-                if (!requiredEntryTypes.includes(signal.entry_type)) {
-                    requiredEntryTypes.push(signal.entry_type)
-                }
-            }
-        }
-        const unregisterCallbacks = [] as Array<{ (): void }>
-        for (const requiredEntryType of requiredEntryTypes) {
-            if (!datastore.is_ready(requiredEntryType)) {
-                unregisterCallbacks.push(
-                    listen("scrutiny.datastore.ready", (data: { entry_type: DatastoreEntryType }) => {
-                        if (data.entry_type === requiredEntryType) setEntryTypeCacheBusting(entryTypeCacheBusting + 1)
-                    })
-                )
-            }
-        }
-        return () => unregisterCallbacks.forEach((cb) => cb())
-    }, [entryTypeCacheBusting, setEntryTypeCacheBusting, listen, datastore, xaxis_signal, yaxis])
-
-    // Can't compute anything if we don't know what we can do.
-    if (deviceDataloggingCapabilities !== null) {
-        const entry_id_set = new Set()
-        if (deviceDataloggingCapabilities.encoding == "raw") {
-            let size_per_sample = 0
-            if (xaxis_type == "measured_time") {
-                size_per_sample += 4
-            } else if (xaxis_type == "signal" && xaxis_signal) {
-                const xaxisSignalEntry = datastore.get_entry(xaxis_signal.entry_type, xaxis_signal.display_path)
-                if (xaxisSignalEntry) {
-                    size_per_sample += get_typesize_bytes(xaxisSignalEntry.datatype)
-                }
-            }
-            // sampling rate and decimation will be null if invalid. frequency null if variable frequency rate
-            if (sampling_rate != null && decimation != null && sampling_rate.frequency !== null) {
-                // TODO
-                let bad_entry = false
-                for (const axis of yaxis) {
-                    for (const signal of axis.signals) {
-                        const entry = datastore.get_entry(signal.entry_type, signal.display_path)
-                        if (entry == null) {
-                            bad_entry = true
-                            break
-                        }
-                        // Do not count duplicates
-                        if (!entry_id_set.has(entry.server_id)) {
-                            entry_id_set.add(entry.server_id)
-                            size_per_sample += get_typesize_bytes(entry.datatype)
-                        }
-                    }
-                    if (bad_entry) {
-                        break
-                    }
-                }
-                if (!bad_entry && size_per_sample > 0) {
-                    const nb_samples = Math.floor(deviceDataloggingCapabilities.buffer_size / size_per_sample - 1)
-                    if (nb_samples > 0) {
-                        let duration = (nb_samples / sampling_rate.frequency) * decimation
-                        let units = "seconds"
-
-                        if (duration < 1) {
-                            duration *= 1000
-                            units = "milliseconds"
-                        }
-
-                        if (duration < 1) {
-                            duration *= 1000
-                            units = "microseconds"
-                        }
-
-                        new_duration_label = `${duration.toFixed(1)} ${units} (${nb_samples} samples)`
-                    }
-                }
-            }
-        }
-    }
-
-    return new_duration_label
-}
-
-function get_typesize_bytes(dtype: ValueDataType): number {
-    if (!(dtype in TYPEMAP)) {
-        throw "Cannot determine data type size from type " + dtype
-    }
-    return TYPEMAP[dtype]
 }
 
 function number2str(x: number, max_digits: number = 13): string {

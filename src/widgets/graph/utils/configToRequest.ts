@@ -2,9 +2,10 @@ import { Datastore } from "../../../utils/ScrutinyServer/datastore"
 import { Datalogging, Message } from "../../../utils/ScrutinyServer/server_api"
 import { WatchableType } from "../components/Watchable"
 import { NB_OPERANDS_MAP } from "../constants"
-import { GraphConfig } from "../types/GraphConfig"
+import { GraphConfig, YAxis } from "../types/GraphConfig"
 
 type GraphConfigError = Partial<Record<keyof GraphConfig, string>> & {
+    yaxis?: string
     yaxisSignals?: Array<{ yaxisIdx: number; signalIdx: number; error: string }>
 }
 /**
@@ -14,6 +15,7 @@ type GraphConfigError = Partial<Record<keyof GraphConfig, string>> & {
  */
 export function configToRequest(
     config: GraphConfig,
+    yaxis: YAxis[],
     datastore: Datastore
 ): { request: Partial<Message.C2S.RequestDataloggingAcquisition>; errors: null } | { request: null; errors: GraphConfigError } {
     const errors: GraphConfigError = {}
@@ -72,7 +74,7 @@ export function configToRequest(
 
     // Expected operand count based on trigger type
     const nb_operands = NB_OPERANDS_MAP[config.trigger_type]
-    const fields = ["operand1", "operand2", "operand3"].slice(nb_operands) as Array<"operand1" | "operand2" | "operand3">
+    const fields = ["operand1", "operand2", "operand3"].slice(0, nb_operands) as Array<"operand1" | "operand2" | "operand3">
     for (const field of fields) {
         if (config[field] === "") {
             errors[field] = "Invalid value"
@@ -83,14 +85,14 @@ export function configToRequest(
 
     // Read the list of watchable dragged in the Axis region
 
-    if (config.yaxis.length === 0) {
+    if (yaxis.length === 0) {
         // Need at least one axis
         errors["yaxis"] = "Missing Y-Axis"
     }
 
     // Get the datastore entry matching the element dropped by the user
     const signals = [] as Datalogging.AcquisitionRequestSignalDef[]
-    config.yaxis.forEach((yaxis, yaxisIdx) => {
+    yaxis.forEach((yaxis, yaxisIdx) => {
         yaxis.signals.forEach((signal, signalIdx) => {
             const entry = datastore.get_entry(signal.entry_type, signal.display_path)
             if (entry == null) {
@@ -105,7 +107,7 @@ export function configToRequest(
             }
         })
     })
-    const yaxis = config.yaxis.map((axis, id) => {
+    const parsedYaxis = yaxis.map((axis, id) => {
         return {
             id: id,
             name: axis.label,
@@ -133,7 +135,7 @@ export function configToRequest(
         operands: operands_list,
         trigger_hold_time: hold_time_sec,
         signals: signals,
-        yaxis: yaxis,
+        yaxis: parsedYaxis,
     }
 
     return { errors: null, request }

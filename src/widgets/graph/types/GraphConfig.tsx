@@ -15,7 +15,7 @@ export interface GraphConfig {
     operand2: string | WatchableType
     operand3: string | WatchableType
     trigger_hold_time: number
-    yaxis: Array<YAxis>
+    // yaxis: Array<YAxis>
 }
 
 export interface YAxis {
