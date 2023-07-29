@@ -46,7 +46,7 @@ export function FolderRow(props: {
         })
     }, [isSelected, setIsEditingLabel, removeEntry])
 
-    const [{ isOver }, drop] = useDrop(
+    const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: ["scrutiny.entry", "scrutiny.folder"],
             drop(item: WatchEntryType | WatchFolderType, monitor) {
@@ -72,6 +72,7 @@ export function FolderRow(props: {
             collect(monitor) {
                 return {
                     isOver: monitor.isOver(),
+                    canDrop: monitor.canDrop(),
                 }
             },
         }),
@@ -103,7 +104,13 @@ export function FolderRow(props: {
         [drag, drop]
     )
     const indent = useIndent()
-    const trStyle = isOver ? { backgroundColor: "gainsboro" } : isSelected ? { backgroundColor: "lightgreen" } : {}
+    const trStyle = isOver
+        ? { backgroundColor: "gainsboro" }
+        : canDrop
+        ? { backgroundColor: "gray" }
+        : isSelected
+        ? { backgroundColor: "lightgreen" }
+        : {}
     return (
         <RowWithChildren
             showChildrenWidgetStateKey="props/isOpen"

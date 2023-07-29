@@ -59,7 +59,7 @@ export function EntryRow(props: {
     const nestedStatePath = useNestedStatePath()
     const myRowPath = nestedStatePath.join("/")
     const isSelected = selectedRow === myRowPath
-    const [{ isOver }, drop] = useDrop(
+    const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: ["scrutiny.folder", "scrutiny.entry"],
             drop(item: WatchEntryType | WatchFolderType, monitor) {
@@ -83,6 +83,7 @@ export function EntryRow(props: {
             collect(monitor) {
                 return {
                     isOver: monitor.isOver(),
+                    canDrop: monitor.canDrop(),
                 }
             },
         }),
@@ -139,7 +140,7 @@ export function EntryRow(props: {
         )
     }, [isSelected, setIsEditingLabel, setIsEditingValue, removeEntry])
 
-    const tdStyle: Record<string, string> = isOver ? { borderBottom: "2px solid red" } : {}
+    const tdStyle: Record<string, string> = isOver ? { borderBottom: "2px solid red" } : canDrop ? { backgroundColor: "gray" } : {}
 
     if (entry === null) {
         // entry not available
@@ -156,7 +157,7 @@ export function EntryRow(props: {
                 else setSelectedRow(myRowPath)
             }}
         >
-            <td>
+            <td style={tdStyle}>
                 <EntryRowIndent></EntryRowIndent>
                 <EntryTypeIcon entryType={props.entry_type}></EntryTypeIcon>
                 <Tooltip content={display_path}>

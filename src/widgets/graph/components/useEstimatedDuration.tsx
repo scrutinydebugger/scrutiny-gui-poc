@@ -43,11 +43,11 @@ export function useEstimatedDuration({ sampling_rate, decimation, xaxis_type, xa
     // Can't compute anything if we don't know what we can do.
     if (deviceDataloggingCapabilities !== null) {
         const entry_id_set = new Set()
-        if (deviceDataloggingCapabilities.encoding == "raw") {
+        if (deviceDataloggingCapabilities.encoding === "raw") {
             let size_per_sample = 0
-            if (xaxis_type == "measured_time") {
+            if (xaxis_type === "measured_time") {
                 size_per_sample += 4
-            } else if (xaxis_type == "signal" && xaxis_signal) {
+            } else if (xaxis_type === "signal" && xaxis_signal) {
                 const xaxisSignalEntry = datastore.get_entry(xaxis_signal.entry_type, xaxis_signal.display_path)
                 if (xaxisSignalEntry) {
                     size_per_sample += get_typesize_bytes(xaxisSignalEntry.datatype)
@@ -102,7 +102,7 @@ export function useEstimatedDuration({ sampling_rate, decimation, xaxis_type, xa
 
 function get_typesize_bytes(dtype: ValueDataType): number {
     if (!(dtype in TYPEMAP)) {
-        throw "Cannot determine data type size from type " + dtype
+        throw new Error("Cannot determine data type size from type " + dtype)
     }
     return TYPEMAP[dtype]
 }

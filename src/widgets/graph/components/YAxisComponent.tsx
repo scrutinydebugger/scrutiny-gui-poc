@@ -11,7 +11,7 @@ import { useCallback } from "react"
 export function YAxisComponent(props: { removeEntry: { (): void } }) {
     const [label, setLabel] = useWidgetState("label", "Axis 1")
     const [signals, setSignals] = useWidgetState("signals", [] as YAxis["signals"])
-    const [{ isOver }, drop] = useDrop(
+    const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: ["scrutiny.entry"],
             drop(item: WatchEntryType, monitor) {
@@ -30,12 +30,13 @@ export function YAxisComponent(props: { removeEntry: { (): void } }) {
             collect(monitor) {
                 return {
                     isOver: monitor.isOver(),
+                    canDrop: monitor.canDrop(),
                 }
             },
         }),
         [signals, setSignals]
     )
-    const tdStyle = isOver ? { backgroundColor: "gainsboro" } : {}
+    const tdStyle = isOver ? { backgroundColor: "gainsboro" } : canDrop ? { backgroundColor: "gray" } : {}
     const removeSignal = useCallback(
         (index: number) => {
             signals.splice(index, 1)

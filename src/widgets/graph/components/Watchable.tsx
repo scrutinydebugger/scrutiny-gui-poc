@@ -1,23 +1,25 @@
 import { Button, InputGroup, Tooltip } from "@blueprintjs/core"
-import { useDrag, useDrop } from "react-dnd"
+import { useDrag, useDrop, DndContext } from "react-dnd"
 import { WatchEntryType } from "../../watch/types/WatchEntryType"
 import { EntryTypeIcon } from "../../shared/Icons"
 import { DatastoreEntryType } from "../../../utils/ScrutinyServer/datastore"
 import { useRenderedTileId } from "../../../utils/TileManager/useRenderedTileId"
 import { useNestedStatePath } from "../../shared/useNestedState"
+import { useContext } from "react"
 
 export interface WatchableType {
     display_path: string
     entry_type: DatastoreEntryType
     label: string
 }
+
 export function Watchable(props: {
     value: string | WatchableType
     onChange: { (value: string | WatchableType): void }
     allowConstant?: boolean
 }) {
     const { value, onChange } = props
-    const [{ isOver }, drop] = useDrop(
+    const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: ["scrutiny.entry"],
             drop(item: WatchEntryType, monitor) {
@@ -33,6 +35,7 @@ export function Watchable(props: {
             collect(monitor) {
                 return {
                     isOver: monitor.isOver(),
+                    canDrop: monitor.canDrop(),
                 }
             },
         }),
@@ -44,7 +47,7 @@ export function Watchable(props: {
                 type="text"
                 value={typeof value === "string" ? value : ""}
                 onChange={(ev) => onChange(ev.target.value)}
-                style={isOver ? { backgroundColor: "gainsboro" } : {}}
+                style={isOver ? { backgroundColor: "gainsboro" } : canDrop ? { backgroundColor: "gray" } : {}}
             ></InputGroup>
             {typeof value === "object" && value && "entry_type" in value && <Potato value={value} clearValue={() => onChange("")}></Potato>}
         </div>

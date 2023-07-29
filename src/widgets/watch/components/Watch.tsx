@@ -66,7 +66,7 @@ export function Watch() {
     }, [selectNextOrPrev, selectedRow, entries])
 
     const tileId = useRenderedTileId()
-    const [{ isOver }, drop] = useDrop(
+    const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: ["scrutiny.entry", "scrutiny.folder"],
             drop(item: WatchEntryType | WatchFolderType, monitor) {
@@ -91,6 +91,7 @@ export function Watch() {
             collect(monitor) {
                 return {
                     isOver: monitor.isOver({ shallow: true }),
+                    canDrop: !monitor.isOver() && monitor.canDrop(),
                 }
             },
         }),
@@ -102,7 +103,7 @@ export function Watch() {
             ref={drop}
             style={{
                 height: "100%",
-                ...(isOver ? { backgroundColor: "gainsboro" } : {}),
+                ...(isOver ? { backgroundColor: "gainsboro" } : canDrop ? { backgroundColor: "gray" } : {}),
             }}
         >
             <div className="varlist-tree-container">

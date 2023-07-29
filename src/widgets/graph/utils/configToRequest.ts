@@ -44,8 +44,8 @@ export function configToRequest(
 
     // Type of X-Axis + sampling rate selection.
     let x_axis_signal: Datalogging.SignalDefinition | null = null
-    if (config.xaxis_type == "ideal_time" && config.sampling_rate !== null) {
-        if (config.sampling_rate.type == "variable_freq") {
+    if (config.xaxis_type === "ideal_time" && config.sampling_rate !== null) {
+        if (config.sampling_rate.type === "variable_freq") {
             errors["xaxis_type"] = "Unavailable with variable frequency"
         }
     } else if (config.xaxis_type === "signal") {

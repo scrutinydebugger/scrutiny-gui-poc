@@ -149,7 +149,7 @@ export function Config({ value, onChange }: { value: GraphConfig; onChange: { (c
                         <option disabled={deviceDataloggingCapabilities === null} value="ideal_time">
                             {t("config.xaxis_type.options.ideal_time.label")}
                         </option>
-                        <option disabled={state.sampling_rate?.type == "variable_freq"} value="measured_time">
+                        <option disabled={state.sampling_rate?.type === "variable_freq"} value="measured_time">
                             {t("config.xaxis_type.options.measured_time.label")}
                         </option>
                         <option value="signal">{t("config.xaxis_type.options.signal.label")}</option>
@@ -289,7 +289,7 @@ function graphConfigReducer<K extends keyof GraphConfig>(prevState: GraphConfigS
 
                 if (
                     newState.config.decimation > 0 &&
-                    newState.config.sampling_rate.type == "fixed_freq" &&
+                    newState.config.sampling_rate.type === "fixed_freq" &&
                     newState.config.sampling_rate.frequency
                 ) {
                     newState.config.effective_sampling_rate = newState.config.sampling_rate.frequency / newState.config.decimation + ""
