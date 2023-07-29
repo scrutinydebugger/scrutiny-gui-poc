@@ -15,24 +15,6 @@ table.varlist-table .stt-expander{
     display: inline-block;
 }
 
-table.varlist-table .stt-expander-opened{
-    background-image: url("../assets/expander-opened.png");
-}
-
-table.varlist-table .stt-expander-closed{
-    background-image: url("../assets/expander-closed.png");
-}
-
-table.varlist-table .stt-dragger{
-    height: 12px;
-    width: 12px;
-    cursor:move;
-    background-image: url("../assets/dragger.png");
-    background-repeat: no-repeat;
-    margin-right:4px;
-    background-size: 12px;
-    display: inline-block;
-}
 
 table.varlist-table tr.stt-insert-below td{
     border-bottom: 1px solid rgb(252, 72, 243);
