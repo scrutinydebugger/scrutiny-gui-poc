@@ -9,7 +9,7 @@ import { WatchFolderType } from "../types/WatchFolderType"
 import { ConnectableElement, useDrag, useDrop } from "react-dnd"
 import { useRenderedTileId } from "../../../utils/TileManager/useRenderedTileId"
 import { useCallback, useEffect } from "react"
-import { Button } from "@blueprintjs/core"
+import { Button, Tooltip } from "@blueprintjs/core"
 import { useScrutinyValue } from "../../../utils/ScrutinyServer/useScrutinyValue"
 import { onKeyDown } from "../hooks/onKeyDown"
 import { useScrutinyDatastoreEntry } from "../../../utils/ScrutinyServer/useScrutinyDatastoreEntry"
@@ -159,7 +159,9 @@ export function EntryRow(props: {
             <td>
                 <EntryRowIndent></EntryRowIndent>
                 <EntryTypeIcon entryType={props.entry_type}></EntryTypeIcon>
-                <Editable nestedStateKey="props/isEditingLabel" value={name} onChange={setName}></Editable>
+                <Tooltip content={display_path}>
+                    <Editable nestedStateKey="props/isEditingLabel" value={name} onChange={setName}></Editable>
+                </Tooltip>
             </td>
 
             <td
