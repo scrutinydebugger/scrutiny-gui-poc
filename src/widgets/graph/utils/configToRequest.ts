@@ -15,7 +15,7 @@ type GraphConfigError = Partial<Record<keyof GraphConfig, string>> & {
  */
 export function configToRequest(
     config: GraphConfig,
-    yaxis: YAxis[],
+    yaxes: YAxis[],
     datastore: Datastore
 ): { request: Partial<Message.C2S.RequestDataloggingAcquisition>; errors: null } | { request: null; errors: GraphConfigError } {
     const errors: GraphConfigError = {}
@@ -57,7 +57,7 @@ export function configToRequest(
                 errors["xaxis_signal"] = "Cannot get datastore entry matching entry type and path"
             } else {
                 x_axis_signal = {
-                    id: entry.server_id,
+                    path: entry.display_path,
                     name: config.xaxis_signal.label,
                 }
             }
@@ -85,14 +85,14 @@ export function configToRequest(
 
     // Read the list of watchable dragged in the Axis region
 
-    if (yaxis.length === 0) {
+    if (yaxes.length === 0) {
         // Need at least one axis
         errors["yaxis"] = "Missing Y-Axis"
     }
 
     // Get the datastore entry matching the element dropped by the user
     const signals = [] as Datalogging.AcquisitionRequestSignalDef[]
-    yaxis.forEach((yaxis, yaxisIdx) => {
+    yaxes.forEach((yaxis, yaxisIdx) => {
         yaxis.signals.forEach((signal, signalIdx) => {
             const entry = datastore.get_entry(signal.entry_type, signal.display_path)
             if (entry == null) {
@@ -101,13 +101,13 @@ export function configToRequest(
             } else {
                 signals.push({
                     axis_id: yaxisIdx,
-                    id: entry.server_id,
+                    path: entry.display_path,
                     name: signal.label,
                 })
             }
         })
     })
-    const parsedYaxis = yaxis.map((axis, id) => {
+    const parsedYaxes = yaxes.map((axis, id) => {
         return {
             id: id,
             name: axis.label,
@@ -135,7 +135,7 @@ export function configToRequest(
         operands: operands_list,
         trigger_hold_time: hold_time_sec,
         signals: signals,
-        yaxis: parsedYaxis,
+        yaxes: parsedYaxes,
     }
 
     return { errors: null, request }

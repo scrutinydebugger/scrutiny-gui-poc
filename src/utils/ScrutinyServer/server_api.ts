@@ -28,7 +28,7 @@ export namespace Datalogging {
     }
 
     export interface SignalDefinition {
-        id: string
+        path: string
         name: string
     }
 
@@ -58,7 +58,7 @@ export namespace Datalogging {
     }
 
     export interface AcquisitionRequestSignalDef {
-        id: string
+        path: string
         name: string
         axis_id: number
     }
@@ -102,7 +102,7 @@ export namespace Message {
             probe_location: number
             condition: Datalogging.TriggerType
             operands: Datalogging.Operand[]
-            yaxis: Datalogging.AxisDef[]
+            yaxes: Datalogging.AxisDef[]
             signals: Datalogging.AcquisitionRequestSignalDef[]
             x_axis_type: Datalogging.XAxisType
             x_axis_signal: Datalogging.SignalDefinition | null
@@ -167,7 +167,7 @@ export namespace Message {
         export interface ReadDataloggingAcquisitionContent extends BaseS2CMessage {
             reference_id: string
             trigger_index: number | null
-            yaxis: Datalogging.AxisDef[]
+            yaxes: Datalogging.AxisDef[]
             signals: Datalogging.SignalDataWithAxis[]
             xdata: Datalogging.SignalData
         }
