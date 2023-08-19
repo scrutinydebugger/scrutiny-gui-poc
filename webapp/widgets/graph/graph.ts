@@ -295,7 +295,7 @@ const payload = {
             27.240000000000002, 27.26, 27.28,
         ],
     },
-    yaxis: [
+    yaxes: [
         { name: "Axis 1", id: 0 },
         { name: "Axis 2", id: 1 },
     ],
@@ -365,7 +365,7 @@ interface JQueryDisableable<T> extends JQuery<T> {
 }
 
 interface SignalTableConfig {
-    yaxis: API.Datalogging.AxisDef[]
+    yaxes: API.Datalogging.AxisDef[]
     signals: {
         row: JQueryRow
         axis_id: number
@@ -1272,8 +1272,8 @@ export class GraphWidget extends BaseWidget {
 
         config.options.scales = {}
         // Y - Axis
-        for (let i = 0; i < data.yaxis.length; i++) {
-            const yaxis = data.yaxis[i]
+        for (let i = 0; i < data.yaxes.length; i++) {
+            const yaxis = data.yaxes[i]
             const scale_id = `yaxis_${yaxis.id}`
             config.options.scales[scale_id] = {
                 type: "linear",
@@ -1616,13 +1616,13 @@ export class GraphWidget extends BaseWidget {
      * Gets the list of signal to be acquired dropped by the user in the drag n' drop region
      */
     get_configured_signal_config(): SignalTableConfig {
-        const signal_config = { signals: [], yaxis: [] } as SignalTableConfig
+        const signal_config = { signals: [], yaxes: [] } as SignalTableConfig
 
         const treetable = this.get_signal_list_table()
         // Axes are treetable root nodes
         const root_nodes = treetable.scrutiny_treetable("get_root_nodes") as JQueryRow
         for (let i = 0; i < root_nodes.length; i++) {
-            signal_config.yaxis.push({
+            signal_config.yaxes.push({
                 id: i,
                 name: root_nodes.eq(i).text(),
             })
@@ -1831,7 +1831,7 @@ export class GraphWidget extends BaseWidget {
                 valid = false
             } else {
                 x_axis_signal = {
-                    id: xaxis_watchable.entry.server_id,
+                    path: xaxis_watchable.entry.display_path,
                     name: xaxis_watchable.name,
                 }
             }
@@ -1892,7 +1892,7 @@ export class GraphWidget extends BaseWidget {
         // Read the list of watchable dragged in the Axis region
         const signal_list_table = this.get_signal_list_table()
         const signal_config = this.get_configured_signal_config()
-        if (signal_config.yaxis.length == 0) {
+        if (signal_config.yaxes.length == 0) {
             // Need at least one axis
             valid = false
             signal_list_table.before(err_msg.clone().text("Missing Y-Axis"))
@@ -1913,7 +1913,7 @@ export class GraphWidget extends BaseWidget {
             } else {
                 signals.push({
                     axis_id: signal_config.signals[i].axis_id,
-                    id: entry.server_id,
+                    path: entry.display_path,
                     name: WatchableTableInterface.get_name_cell(row).text(),
                 })
             }
@@ -1940,7 +1940,7 @@ export class GraphWidget extends BaseWidget {
             operands: operands_list,
             trigger_hold_time: hold_time_sec,
             signals: signals,
-            yaxis: signal_config.yaxis,
+            yaxes: signal_config.yaxes,
         }
 
         return request

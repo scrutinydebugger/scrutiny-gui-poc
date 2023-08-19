@@ -16,5 +16,6 @@
     "files.associations": {
         "atomic": "cpp"
     },
-    "cSpell.enabled": true
+    "cSpell.enabled": true,
+    "liveServer.settings.port": 5501
 }
