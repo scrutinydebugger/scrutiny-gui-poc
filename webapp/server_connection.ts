@@ -259,7 +259,7 @@ export class ServerConnection {
         // todo : agglomerate list
         this.app.on_event("scrutiny.datastore.start_watching", function (data) {
             let params = {
-                watchables: [data.entry.server_id],
+                watchables: [data.entry.display_path],
             }
 
             that.send_request("subscribe_watchable", params)
@@ -268,7 +268,7 @@ export class ServerConnection {
         // todo : agglomerate list
         this.app.on_event("scrutiny.datastore.stop_watching", function (data) {
             let params = {
-                watchables: [data.entry.server_id],
+                watchables: [data.entry.display_path],
             }
 
             that.send_request("unsubscribe_watchable", params)
