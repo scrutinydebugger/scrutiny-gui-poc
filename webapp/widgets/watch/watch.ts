@@ -404,10 +404,10 @@ export class WatchWidget extends BaseWidget {
         }
 
         const data = {
-            updates: [{ watchable: entry.server_id, value: valnum }],
+            updates: [{ watchable: entry.server_id, value: valnum, batch_index:0 }],
         }
         // todo : Handle feedback? Display something on bad value? (like a fading red glow)
-        return this.app.server_conn.send_request("write_value", data)
+        return this.app.server_conn.send_request("write_watchable", data)
     }
 
     /**
