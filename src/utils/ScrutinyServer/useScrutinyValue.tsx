@@ -26,7 +26,7 @@ export function useScrutinyValue(props: {
   const updateValue = useCallback(
     (newValue: number) => {
       if (!entry) throw new Error("cannot set value");
-      serverConnection.send_request("write_value", {
+      serverConnection.send_request("write_watchable", {
         updates: [{ watchable: entry.server_id, value: newValue }],
       });
     },
