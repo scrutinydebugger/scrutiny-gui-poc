@@ -1492,7 +1492,7 @@ export class GraphWidget extends BaseWidget {
         } else {
             const name_entry_pair = input.scrutiny_objtextbox("get_obj") as NameEntryPair
             operand.type = "watchable"
-            operand.value = name_entry_pair.entry.server_id
+            operand.value = name_entry_pair.entry.display_path
         }
         return operand
     }
