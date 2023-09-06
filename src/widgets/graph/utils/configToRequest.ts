@@ -144,7 +144,7 @@ export function configToRequest(
 function watchableToOperand(value: string | WatchableType, datastore: Datastore): Datalogging.Operand {
     if (typeof value === "object" && value) {
         const entry = datastore.get_entry(value.entry_type, value.display_path)
-        return { type: "watchable", value: entry.server_id }
+        return { type: "watchable", value: entry.display_path }
     }
     return { type: "literal", value }
 }
