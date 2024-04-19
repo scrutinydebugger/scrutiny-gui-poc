@@ -250,7 +250,11 @@ export class UI {
             } catch (err) {}
 
             try {
-                max_bitrate_bps = this.device_info["max_bitrate_bps"] + " b/s"
+                if (this.device_info["max_bitrate_bps"] !== null){
+                    max_bitrate_bps = this.device_info["max_bitrate_bps"] + " b/s"
+                } else {
+                    max_bitrate_bps = "No limit"
+                }
             } catch (err) {}
 
             try {
@@ -273,9 +277,6 @@ export class UI {
 
             try {
                 supported_feature_map_content = $("<ul></ul>") as JQuery<HTMLUListElement>
-                supported_feature_map_content.append(
-                    $("<li>Memory Read : " + (this.device_info["supported_feature_map"]["memory_read"] ? "Yes" : "No") + " </li>")
-                )
                 supported_feature_map_content.append(
                     $("<li>Memory Write : " + (this.device_info["supported_feature_map"]["memory_write"] ? "Yes" : "No") + " </li>")
                 )

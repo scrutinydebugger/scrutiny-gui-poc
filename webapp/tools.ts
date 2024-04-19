@@ -109,7 +109,7 @@ export function clamp_val(val: number, min: number, max: number): number {
 export function force_input_int(input: JQuery<HTMLInputElement>, min: number, max: number): void {
     let val = parseInt(input.val() as string)
     val = clamp_val(val, min, max)
-    if (val != input.val()) {
+    if (val.toString() != input.val()) {
         // string and integer can be compared legally
         input.val(val)
     }
@@ -118,7 +118,7 @@ export function force_input_int(input: JQuery<HTMLInputElement>, min: number, ma
 export function force_input_float(input: JQuery<HTMLInputElement>, min: number, max: number): void {
     let val = parseFloat(input.val() as string)
     val = clamp_val(val, min, max)
-    if (val != input.val()) {
+    if (val.toString() != input.val()) {
         // string and integer can be compared legally
         input.val(val)
     }

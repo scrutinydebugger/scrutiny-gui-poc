@@ -36,8 +36,9 @@ import { JQueryObjTextbox } from "@scrutiny-objtextbox"
 
 type ActiveTab = "configure" | "graph" | "browse"
 type ZoomDir = "x" | "y" | "xy"
-
-const payload = {
+/*
+To create graph without server. Development purpose
+const dev_graph_payload = {
     cmd: "read_datalogging_acquisition_content_response",
     reqid: 111,
     reference_id: "30364187463f4f10a49d061cb1f5abd3",
@@ -300,7 +301,7 @@ const payload = {
         { name: "Axis 2", id: 1 },
     ],
 }
-
+*/
 const CLASS_AXIS_ROW = "axis"
 const CLASS_INPUT_ERROR = "input-error"
 const CLASS_ERROR_MSG = "error-msg"
@@ -822,9 +823,11 @@ export class GraphWidget extends BaseWidget {
         this.clear_graph()
 
         // debug only
+        /*
         setTimeout(function () {
-            that.show_acquisition_data(payload)
+            that.show_acquisition_data(dev_graph_payload)
         }, 0)
+        */
     }
 
     set_zoom_dir(dir: ZoomDir) {
