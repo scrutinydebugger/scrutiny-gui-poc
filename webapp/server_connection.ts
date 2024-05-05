@@ -506,10 +506,7 @@ export class ServerConnection {
             function () {
                 if (that.socket !== null) {
                     if (that.socket.readyState != that.socket.OPEN) {
-                        that.close_socket()
-                        if (that.enable_reconnect) {
-                            that.try_reconnect(that.reconnect_interval)
-                        }
+                        that.close_socket() // Will reconnect in close callback
                     }
                 }
             } as Function,
