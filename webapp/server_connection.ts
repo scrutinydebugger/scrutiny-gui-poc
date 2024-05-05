@@ -415,6 +415,9 @@ export class ServerConnection {
         this.enable_reconnect = false
         this.close_socket()
 
+        this.clear_connect_timeout()
+        this.stop_get_status_periodic_call()
+
         if (this.server_status == ServerStatus.Connected) {
             this.app.trigger_event("scrutiny.server.disconnected")
         }
@@ -481,7 +484,7 @@ export class ServerConnection {
      * Creates the websocket and attach all the callbacks
      */
     create_socket(): void {
-        const that = this // Javascript is such a beautiful language
+        const that = this
         this.close_socket()
 
         this.reconnect_timeout_handle = null
@@ -504,6 +507,9 @@ export class ServerConnection {
                 if (that.socket !== null) {
                     if (that.socket.readyState != that.socket.OPEN) {
                         that.close_socket()
+                        if (that.enable_reconnect) {
+                            that.try_reconnect(that.reconnect_interval)
+                        }
                     }
                 }
             } as Function,
