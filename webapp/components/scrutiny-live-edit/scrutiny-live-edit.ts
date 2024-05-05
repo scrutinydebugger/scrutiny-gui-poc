@@ -125,14 +125,13 @@ function _edit_mode($element: JQuery, val?: string): void {
             const valstr = input.val() as string
             $element.trigger(EVENT_COMMIT, valstr)
             _label_mode($element, valstr)
-            e.stopPropagation()
         }
 
         if (e.key == "Escape") {
             $element.trigger(EVENT_CANCEL)
             _label_mode($element, previous_value)
-            e.stopPropagation()
         }
+        e.stopPropagation() 
     })
 
     if (typeof val === "undefined") {
