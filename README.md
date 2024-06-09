@@ -1,5 +1,5 @@
 # scrutiny-gui-webapp
-Scrutiny GUI client web application
+Scrutiny GUI Proof Of Concept
 
-## Roadmap
- Initial Release : https://github.com/scrutinydebugger/scrutiny-gui-webapp/projects/1
+V1 of the GUI to demonstrate Scrutiny and develop the rest. 
+Another version of the GUI based on Electorn/React is planned.
